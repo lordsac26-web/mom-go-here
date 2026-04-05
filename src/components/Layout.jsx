@@ -22,7 +22,7 @@ export default function Layout() {
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
             <span className="text-3xl">🌸</span>
-            <span className="text-2xl font-black text-primary">MindBloom</span>
+            <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
