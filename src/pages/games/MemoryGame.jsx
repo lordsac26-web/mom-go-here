@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import FlipCard from "../../components/FlipCard";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameStore } from "../../stores/gameStore";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -61,6 +62,24 @@ export default function MemoryGame() {
   const lockRef = useRef(false);
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
 
+  // Zustand store integration
+  const initializeGame = useGameStore((state) => state.initializeGame);
+  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
+  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
+  const currentRound = useGameStore((state) => state.currentRound);
+  const gameStatus = useGameStore((state) => state.gameStatus);
+
+  // Init Zustand on game start
+  useEffect(() => {
+    if (started && gameStatus === "setup") {
+      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      initializeGame(
+        [{ id: user.id || "player-1", name: user.name || "Player" }],
+        1
+      );
+    }
+  }, [started, gameStatus, initializeGame]);
+
   function startGame(idx = sizeIdx) {
     const { pairs } = SIZES[idx];
     const selected = shuffle(EMOJI_SETS).slice(0, pairs);
@@ -72,6 +91,14 @@ export default function MemoryGame() {
     setWon(false);
     setStarted(true);
     lockRef.current = false;
+    // Log game start
+    addHistoryEntry({
+      round: 1,
+      playerId: "player-1",
+      playerName: "Player",
+      action: "start_game",
+      result: { difficulty: SIZES[idx].label },
+    });
   }
 
   function handleClick(id) {
@@ -95,7 +122,18 @@ export default function MemoryGame() {
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
           setMatched(prev => {
             const newMatched = prev + 1;
-            if (newMatched === SIZES[sizeIdx].pairs) { winVibrate(); setWon(true); }
+            addHistoryEntry({
+              round: 1,
+              playerId: "player-1",
+              playerName: "Player",
+              action: "match_found",
+              result: { pair: newMatched, totalPairs: SIZES[sizeIdx].pairs },
+            });
+            if (newMatched === SIZES[sizeIdx].pairs) { 
+              winVibrate();
+              setWon(true);
+              setPlayerScore("player-1", moves + 1);
+            }
             return newMatched;
           });
           setFlipped([]);
@@ -104,6 +142,13 @@ export default function MemoryGame() {
       } else {
         setTimeout(() => {
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c));
+          addHistoryEntry({
+            round: 1,
+            playerId: "player-1",
+            playerName: "Player",
+            action: "mismatch",
+            result: { move: moves + 1 },
+          });
           setFlipped([]);
           lockRef.current = false;
         }, 1200);
