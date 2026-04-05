@@ -72,50 +72,20 @@ export default function VolumeSlider({ label, value, onChange, disabled = false,
 
       {/* Quick preset buttons */}
       <div className="flex gap-1 flex-wrap">
-        <button
-          onClick={() => onChange(0.25)}
-          disabled={disabled || muted}
-          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
-            Math.abs(value - 0.25) < 0.05
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-          } disabled:opacity-50`}
-        >
-          25%
-        </button>
-        <button
-          onClick={() => onChange(0.5)}
-          disabled={disabled || muted}
-          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
-            Math.abs(value - 0.5) < 0.05
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-          } disabled:opacity-50`}
-        >
-          50%
-        </button>
-        <button
-          onClick={() => onChange(0.75)}
-          disabled={disabled || muted}
-          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
-            Math.abs(value - 0.75) < 0.05
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-          } disabled:opacity-50`}
-        >
-          75%
-        </button>
-        <button
-          onClick={() => onChange(1)}
-          disabled={disabled || muted}
-          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
-            Math.abs(value - 1) < 0.05
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground hover:bg-muted/80'
-          } disabled:opacity-50`}
-        >
-          Max
-        </button>
+        {[{ label: '10%', val: 0.1 }, { label: '25%', val: 0.25 }, { label: '40%', val: 0.4 }, { label: '50%', val: 0.5 }, { label: '70%', val: 0.7 }, { label: '75%', val: 0.75 }, { label: '100%', val: 1 }].map(p => (
+          <button
+            key={p.val}
+            onClick={() => onChange(p.val)}
+            disabled={disabled || muted}
+            className={`flex-1 min-w-10 px-1.5 py-1 rounded text-xs font-bold transition-all ${
+              Math.abs(value - p.val) < 0.05
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-foreground hover:bg-muted/80'
+            } disabled:opacity-50`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
     </div>
   );
