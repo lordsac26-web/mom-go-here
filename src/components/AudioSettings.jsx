@@ -1,6 +1,7 @@
 import { useAudioStore } from '@/stores/audioStore';
 import { Volume2, Volume, VolumeX } from 'lucide-react';
 import { useGameAudio } from '@/hooks/useGameAudio';
+import useHaptics from '@/hooks/useHaptics';
 
 /**
  * Audio settings panel for volume sliders and mute toggles.
@@ -8,6 +9,7 @@ import { useGameAudio } from '@/hooks/useGameAudio';
  */
 export default function AudioSettings() {
   const { uiClickSound } = useGameAudio();
+  const { tapVibrate } = useHaptics();
   const sfxVolume = useAudioStore((state) => state.sfxVolume);
   const musicVolume = useAudioStore((state) => state.musicVolume);
   const muteAll = useAudioStore((state) => state.muteAll);
@@ -33,6 +35,7 @@ export default function AudioSettings() {
         <button
           onClick={() => {
             uiClickSound();
+            tapVibrate();
             toggleMuteAll();
           }}
           className={`px-6 py-3 rounded-lg font-black text-lg transition-all ${
@@ -57,6 +60,7 @@ export default function AudioSettings() {
           value={sfxVolume * 100}
           onChange={(e) => {
             uiClickSound();
+            tapVibrate();
             setSfxVolume(e.target.value / 100);
           }}
           disabled={muteAll}
@@ -85,6 +89,7 @@ export default function AudioSettings() {
           <button
             onClick={() => {
               uiClickSound();
+              tapVibrate();
               toggleMuteMusic();
             }}
             disabled={muteAll}
@@ -104,6 +109,7 @@ export default function AudioSettings() {
           value={musicVolume * 100}
           onChange={(e) => {
             uiClickSound();
+            tapVibrate();
             setMusicVolume(e.target.value / 100);
           }}
           disabled={muteAll || muteMusic}
