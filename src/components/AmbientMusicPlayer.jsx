@@ -11,10 +11,16 @@ export default function AmbientMusicPlayer() {
   const activeNotesRef = useRef([]);
   const timeoutIdsRef = useRef([]);
   const isPlayingRef = useRef(false);
+  const musicVolumeRef = useRef(0.5);
 
   const musicVolume = useAudioStore((state) => state.musicVolume);
   const muteAll = useAudioStore((state) => state.muteAll);
   const muteMusic = useAudioStore((state) => state.muteMusic);
+
+  // Keep musicVolume in ref for playMelody closure
+  useEffect(() => {
+    musicVolumeRef.current = musicVolume;
+  }, [musicVolume]);
 
   // Initialize audio context
   const initAudioContext = () => {
@@ -63,13 +69,14 @@ export default function AmbientMusicPlayer() {
          osc.type = 'sine';
          osc.frequency.value = freq;
 
+         const vol = musicVolumeRef.current;
          gain.gain.setValueAtTime(0, currentTime);
          gain.gain.linearRampToValueAtTime(
-           (musicVolume * 0.2) / 2,
+           (vol * 0.2) / 2,
            currentTime + 0.05
          );
          gain.gain.linearRampToValueAtTime(
-           (musicVolume * 0.15) / 2,
+           (vol * 0.15) / 2,
            currentTime + dur - 0.1
          );
          gain.gain.linearRampToValueAtTime(0, currentTime + dur);
@@ -124,18 +131,7 @@ export default function AmbientMusicPlayer() {
     activeNotesRef.current = [];
   };
 
-  // Update volume of playing notes when slider changes
-  useEffect(() => {
-    const ctx = audioContextRef.current;
-    if (!ctx || !isPlayingRef.current) return;
 
-    activeNotesRef.current.forEach(({ gain }) => {
-      if (gain && gain.gain) {
-        // Scale the gain smoothly to new volume level
-        gain.gain.linearRampToValueAtTime((musicVolume * 0.2) / 2, ctx.currentTime + 0.05);
-      }
-    });
-  }, [musicVolume]);
 
   // Control music playback based on settings
   useEffect(() => {
