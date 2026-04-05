@@ -10,8 +10,10 @@ export default function AIChatBot() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [waitingForReply, setWaitingForReply] = useState(false);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const conversationRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const bubbleRef = useRef(null);
@@ -41,13 +43,22 @@ export default function AIChatBot() {
       setMessages([]);
     }
     setConversation(convo);
+    conversationRef.current = convo;
     setLoading(false);
   }
 
   useEffect(() => {
     if (!conversation?.id) return;
     const unsub = base44.agents.subscribeToConversation(conversation.id, (data) => {
-      setMessages(data.messages || []);
+      const msgs = data.messages || [];
+      setMessages(msgs);
+      // Update the conversation ref with latest data
+      conversationRef.current = { ...conversationRef.current, messages: msgs };
+      // If the last message is from the assistant, we're no longer waiting
+      const lastMsg = msgs[msgs.length - 1];
+      if (lastMsg && lastMsg.role === "assistant" && lastMsg.content) {
+        setWaitingForReply(false);
+      }
     });
     return () => unsub();
   }, [conversation?.id]);
@@ -58,11 +69,13 @@ export default function AIChatBot() {
   }
 
   async function handleSend() {
-    if (!input.trim() || sending || !conversation) return;
+    if (!input.trim() || sending || !conversationRef.current) return;
     setSending(true);
+    setWaitingForReply(true);
     const msg = input.trim();
     setInput("");
-    await base44.agents.addMessage(conversation, { role: "user", content: msg });
+    // Use the ref to always have the latest conversation state
+    await base44.agents.addMessage(conversationRef.current, { role: "user", content: msg });
     setSending(false);
   }
 
@@ -182,7 +195,7 @@ export default function AIChatBot() {
               </div>
             ))}
 
-            {sending && (
+            {(sending || waitingForReply) && (
               <div className="flex justify-start">
                 <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
                   <div className="flex gap-1">
