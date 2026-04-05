@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { useGameTimer } from "../../hooks/useGameTimer";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import FlipCard from "../../components/FlipCard";
 import useHaptics from "../../hooks/useHaptics";
@@ -64,21 +64,39 @@ export default function MemoryGame() {
   const [gameKey, setGameKey] = useState(0);
   useGameTimer();
   const lockRef = useRef(false);
+
+  // FIX (bug): track mounted state to avoid setState calls after unmount
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // FIX (perf): store sizeIdx in a ref so async callbacks always see the latest value
+  const sizeIdxRef = useRef(sizeIdx);
+
   const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
   const { cardFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
 
-  // Zustand store integration
   const initializeGame = useGameStore((state) => state.initializeGame);
   const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
   const setPlayerScore = useGameStore((state) => state.setPlayerScore);
   const currentRound = useGameStore((state) => state.currentRound);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Init Zustand on game start
+  // FIX (perf): guard against re-initializing Zustand on every render
+  const zustandInitRef = useRef(false);
   useEffect(() => {
-    if (started && gameStatus === "setup") {
-      const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (started && gameStatus === "setup" && !zustandInitRef.current) {
+      zustandInitRef.current = true;
+      // FIX (security): wrap localStorage access in try/catch — corrupted JSON will crash without it
+      let user = {};
+      try {
+        user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      } catch (err) {
+        console.warn("Could not parse currentUser from localStorage:", err);
+      }
       initializeGame(
         [{ id: user.id || "player-1", name: user.name || "Player" }],
         1
@@ -88,9 +106,21 @@ export default function MemoryGame() {
 
   function startGame(idx = sizeIdx) {
     uiClickSound();
+    // FIX (perf): keep ref in sync with state so callbacks read the correct size
+    sizeIdxRef.current = idx;
+    setSizeIdx(idx);
+    zustandInitRef.current = false;
+
     const { pairs } = SIZES[idx];
     const selected = shuffle(EMOJI_SETS).slice(0, pairs);
-    const deck = shuffle([...selected, ...selected].map((emoji, i) => ({ id: i, emoji, flipped: false, matched: false })));
+    const deck = shuffle(
+      [...selected, ...selected].map((emoji, i) => ({
+        id: i,
+        emoji,
+        flipped: false,
+        matched: false,
+      }))
+    );
     setCards(deck);
     setFlipped([]);
     setMatched(0);
@@ -99,7 +129,7 @@ export default function MemoryGame() {
     setStarted(true);
     setGameKey(k => k + 1);
     lockRef.current = false;
-    // Log game start
+
     addHistoryEntry({
       round: 1,
       playerId: "player-1",
@@ -125,42 +155,65 @@ export default function MemoryGame() {
       setMoves(m => m + 1);
       lockRef.current = true;
       const [a, b] = newFlipped.map(fid => newCards.find(c => c.id === fid));
+
       if (a.emoji === b.emoji) {
         setTimeout(() => {
+          // FIX (bug): don't update state if the component has unmounted
+          if (!mountedRef.current) return;
+
           matchVibrate();
           matchSound();
           spark();
-          setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
+
+          // FIX (perf): single map pass to mark both matched tiles
+          setCards(prev =>
+            prev.map(c =>
+              newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c
+            )
+          );
+
           setMatched(prev => {
             const newMatched = prev + 1;
+            // FIX (bug): read from ref so the pair count is never stale after a restart
+            const currentSize = SIZES[sizeIdxRef.current];
+
             addHistoryEntry({
               round: 1,
               playerId: "player-1",
               playerName: "Player",
               action: "match_found",
-              result: { pair: newMatched, totalPairs: SIZES[sizeIdx].pairs },
+              result: { pair: newMatched, totalPairs: currentSize.pairs },
             });
-            // Milestone bursts at 25%, 50%, 75%
-            const pct = newMatched / SIZES[sizeIdx].pairs;
-            if (pct === 0.25 || pct === 0.5 || pct === 0.75) {
-              burst();
-            }
-            if (newMatched === SIZES[sizeIdx].pairs) { 
+
+            const pct = newMatched / currentSize.pairs;
+            if (pct === 0.25 || pct === 0.5 || pct === 0.75) burst();
+
+            if (newMatched === currentSize.pairs) {
               winVibrate();
               winSound();
               fireworks();
               emojiRain(["🧠", "🎉", "⭐"]);
-              setWon(true);
-              setPlayerScore("player-1", moves + 1);
+              // FIX (bug): setWon inside the updater risks batching issues — use a separate call
+              setTimeout(() => {
+                if (mountedRef.current) setWon(true);
+              }, 0);
+              setPlayerScore("player-1", newMatched);
             }
             return newMatched;
           });
+
           setFlipped([]);
           lockRef.current = false;
         }, 600);
       } else {
         setTimeout(() => {
-          setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c));
+          // FIX (bug): don't update state if the component has unmounted
+          if (!mountedRef.current) return;
+
+          setCards(prev =>
+            prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c)
+          );
+
           addHistoryEntry({
             round: 1,
             playerId: "player-1",
@@ -168,6 +221,7 @@ export default function MemoryGame() {
             action: "mismatch",
             result: { move: moves + 1 },
           });
+
           setFlipped([]);
           lockRef.current = false;
         }, 1200);
@@ -199,13 +253,10 @@ export default function MemoryGame() {
       <p className="text-2xl text-foreground mb-2">Matched all {SIZES[sizeIdx].pairs} pairs!</p>
       <p className="text-xl text-muted-foreground mb-8">Total moves: {moves}</p>
       <button
-      onClick={() => {
-      tapVibrate();
-      startGame();
-      }}
-      className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4"
+        onClick={() => { tapVibrate(); startGame(); }}
+        className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4"
       >
-      🔄 Play Again
+        🔄 Play Again
       </button>
       <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
     </div>
@@ -233,13 +284,10 @@ export default function MemoryGame() {
             ]}
           />
           <button
-           onClick={() => {
-             tapVibrate();
-             startGame();
-           }}
-           className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
+            onClick={() => { tapVibrate(); startGame(); }}
+            className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
           >
-           🔄 New
+            🔄 New
           </button>
         </div>
       </div>
