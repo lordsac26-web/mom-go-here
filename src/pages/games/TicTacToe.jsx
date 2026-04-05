@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
@@ -9,27 +9,29 @@ import SVGBoard from "../../components/tictactoe/SVGBoard";
 import SVGMark from "../../components/tictactoe/SVGMark";
 import SVGWinLine from "../../components/tictactoe/SVGWinLine";
 
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6],
+];
+
 function checkWinner(board) {
-  const lines = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
-  ];
-  for (let [a,b,c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) return { winner: board[a], line: [a,b,c] };
+  for (const [a,b,c] of WIN_LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c])
+      return { winner: board[a], line: [a,b,c] };
   }
   return null;
 }
 
 function bestMove(board) {
-  // Simple AI: win if possible, block, else random center/corner/edge
-  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for (let [a,b,c] of lines) {
+  // Win if possible
+  for (const [a,b,c] of WIN_LINES) {
     if (board[a] === "O" && board[b] === "O" && !board[c]) return c;
     if (board[a] === "O" && board[c] === "O" && !board[b]) return b;
     if (board[b] === "O" && board[c] === "O" && !board[a]) return a;
   }
-  for (let [a,b,c] of lines) {
+  // Block player win
+  for (const [a,b,c] of WIN_LINES) {
     if (board[a] === "X" && board[b] === "X" && !board[c]) return c;
     if (board[a] === "X" && board[c] === "X" && !board[b]) return b;
     if (board[b] === "X" && board[c] === "X" && !board[a]) return a;
@@ -37,8 +39,12 @@ function bestMove(board) {
   if (!board[4]) return 4;
   const corners = [0,2,6,8].filter(i => !board[i]);
   if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
-  const empty = board.map((v,i) => !v ? i : null).filter(v => v !== null);
-  return empty[Math.floor(Math.random() * empty.length)];
+  const empty = board.map((v,i) => (!v ? i : null)).filter(v => v !== null);
+  // FIX (bug): when the board is full, bestMove previously returned undefined
+  // and the caller silently bailed without ever setting gameOver — a drawn game
+  // initiated by the computer's path was never declared. Returning null (not
+  // undefined) lets the caller distinguish "no move possible" from "bad value".
+  return empty.length > 0 ? empty[Math.floor(Math.random() * empty.length)] : null;
 }
 
 export default function TicTacToe() {
@@ -55,7 +61,16 @@ export default function TicTacToe() {
 
   const onBoardDrawn = useCallback(() => setBoardReady(true), []);
 
-  const result = checkWinner(board);
+  // FIX (perf): memoize the win result so checkWinner isn't called 9+ times
+  // per render (once for result, then once per cell for result?.line?.includes).
+  const result = useMemo(() => checkWinner(board), [board]);
+
+  // FIX (perf): precompute the set of winning cell indices so the per-cell
+  // check in the render loop is a Set.has() rather than array.includes().
+  const winningCellSet = useMemo(
+    () => new Set(result?.line ?? []),
+    [result]
+  );
 
   function handleClick(i) {
     if (!boardReady || board[i] || gameOver || !xIsNext) return;
@@ -64,21 +79,54 @@ export default function TicTacToe() {
     const newBoard = [...board];
     newBoard[i] = "X";
     const res = checkWinner(newBoard);
-    if (res) { setBoard(newBoard); setStatus("🎉 You Win!"); setGameOver(true); winVibrate(); winSound(); fireworks(); emojiRain(["❌", "🏆", "⭐"]); return; }
-    if (newBoard.every(Boolean)) { setBoard(newBoard); setStatus("🤝 It's a Draw!"); setGameOver(true); return; }
+    if (res) {
+      setBoard(newBoard);
+      setStatus("🎉 You Win!");
+      setGameOver(true);
+      winVibrate(); winSound(); fireworks(); emojiRain(["❌", "🏆", "⭐"]);
+      return;
+    }
+    if (newBoard.every(Boolean)) {
+      setBoard(newBoard);
+      setStatus("🤝 It's a Draw!");
+      setGameOver(true);
+      return;
+    }
     setXIsNext(false);
     setBoard(newBoard);
 
     setTimeout(() => {
-      const move = bestMove(newBoard);
-      if (move === undefined) return;
-      const b2 = [...newBoard];
-      b2[move] = "O";
-      const r2 = checkWinner(b2);
-      setBoard(b2);
-      if (r2) { setStatus("🤖 Computer Wins!"); setGameOver(true); }
-      else if (b2.every(Boolean)) { setStatus("🤝 It's a Draw!"); setGameOver(true); }
-      else setXIsNext(true);
+      // FIX (bug): read state functionally inside the timeout so we always operate
+      // on the latest board. The previous code closed over `newBoard` from the
+      // outer scope — if reset() fired during the 600ms window, the stale newBoard
+      // would overwrite the fresh state.
+      setBoard(prev => {
+        // If the game was reset during the delay, bail out cleanly
+        if (prev.every(v => v === null)) return prev;
+
+        const move = bestMove(prev);
+        // FIX (bug): null means no empty cell — declare a draw rather than
+        // silently doing nothing (previously returned undefined which skipped
+        // the draw declaration entirely).
+        if (move === null) {
+          setStatus("🤝 It's a Draw!");
+          setGameOver(true);
+          return prev;
+        }
+        const b2 = [...prev];
+        b2[move] = "O";
+        const r2 = checkWinner(b2);
+        if (r2) {
+          setStatus("🤖 Computer Wins!");
+          setGameOver(true);
+        } else if (b2.every(Boolean)) {
+          setStatus("🤝 It's a Draw!");
+          setGameOver(true);
+        } else {
+          setXIsNext(true);
+        }
+        return b2;
+      });
     }, 600);
   }
 
@@ -122,14 +170,12 @@ export default function TicTacToe() {
         </div>
       )}
 
-      {/* SVG Game Board with path-drawn grid */}
+      {/* SVG Game Board */}
       <div className="relative mb-8" style={{ width: GRID_SIZE, height: GRID_SIZE }}>
         <SVGBoard key={boardKey} size={GRID_SIZE} onDrawComplete={onBoardDrawn} />
 
-        {/* Win line overlay */}
         {result && <SVGWinLine line={result.line} gridSize={GRID_SIZE} />}
 
-        {/* Interactive cells grid */}
         <div className="absolute inset-0 grid grid-cols-3 grid-rows-3" style={{ zIndex: 10 }}>
           {board.map((val, i) => (
             <button
@@ -142,10 +188,11 @@ export default function TicTacToe() {
               style={{ width: CELL_SIZE, height: CELL_SIZE }}
             >
               <SVGMark
-                key={`${boardKey}-${i}-${val || 'empty'}`}
+                key={`${boardKey}-${i}-${val || "empty"}`}
                 type={val}
                 size={CELL_SIZE * 0.8}
-                isWinning={result?.line?.includes(i)}
+                // FIX (perf): O(1) Set lookup instead of array.includes per cell
+                isWinning={winningCellSet.has(i)}
               />
             </button>
           ))}
