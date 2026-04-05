@@ -12,7 +12,6 @@ export default function AIChatBot() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
-  // Auto scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -21,7 +20,6 @@ export default function AIChatBot() {
 
   async function initConversation() {
     setLoading(true);
-    // Try to load existing conversations
     const convos = await base44.agents.listConversations({ agent_name: "momHelper" });
     let convo;
     if (convos.length > 0) {
@@ -38,7 +36,6 @@ export default function AIChatBot() {
     setLoading(false);
   }
 
-  // Subscribe to live updates
   useEffect(() => {
     if (!conversation?.id) return;
     const unsub = base44.agents.subscribeToConversation(conversation.id, (data) => {
@@ -68,7 +65,6 @@ export default function AIChatBot() {
     }
   }
 
-  // Filter to only show user and assistant messages with content
   const visibleMessages = messages.filter(m => (m.role === "user" || m.role === "assistant") && m.content);
 
   return (
@@ -84,11 +80,11 @@ export default function AIChatBot() {
         </button>
       )}
 
-      {/* Chat window */}
+      {/* Chat window — full screen on mobile, floating on desktop */}
       {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background sm:inset-auto sm:bottom-24 sm:right-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:border-2 sm:border-border sm:shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:inset-auto sm:bottom-24 sm:right-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:border-2 sm:border-border sm:shadow-2xl">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl">
+          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl shrink-0">
             <div className="flex items-center gap-3">
               <span className="text-3xl">🌸</span>
               <div>
@@ -101,8 +97,8 @@ export default function AIChatBot() {
             </button>
           </div>
 
-          {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Messages — scrollable middle section */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
             {loading && (
               <div className="flex justify-center py-8">
                 <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
@@ -111,9 +107,9 @@ export default function AIChatBot() {
 
             {!loading && visibleMessages.length === 0 && (
               <div className="text-center py-8">
-                <span className="text-6xl">👋</span>
-                <p className="text-xl font-bold text-foreground mt-3">Hi there!</p>
-                <p className="text-muted-foreground mt-1">I'm here to help. Ask me about games, settings, or just chat!</p>
+                <span className="text-5xl">👋</span>
+                <p className="text-lg font-bold text-foreground mt-3">Hi there!</p>
+                <p className="text-muted-foreground text-base mt-1">I'm here to help. Ask me about games, settings, or just chat!</p>
               </div>
             )}
 
@@ -135,7 +131,6 @@ export default function AIChatBot() {
               </div>
             ))}
 
-            {/* Typing indicator */}
             {sending && (
               <div className="flex justify-start">
                 <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
@@ -149,8 +144,8 @@ export default function AIChatBot() {
             )}
           </div>
 
-          {/* Input */}
-          <div className="p-3 border-t border-border bg-card sm:rounded-b-2xl">
+          {/* Input — pinned to bottom, safe area aware */}
+          <div className="shrink-0 p-3 border-t border-border bg-card sm:rounded-b-2xl pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <div className="flex gap-2">
               <input
                 value={input}
