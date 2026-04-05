@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { Download, Share2, Mail, Facebook, Twitter } from "lucide-react";
+import { toast } from "sonner";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -100,21 +102,71 @@ export default function SpotDiff() {
               className="w-full rounded-xl border-2 border-border"
             />
             <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
-            <div className="flex gap-3 mt-3">
-              <a
-                href={imageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-secondary text-foreground text-lg font-bold py-3 rounded-xl text-center border-2 border-border"
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <button
+                onClick={async () => {
+                  const res = await fetch(imageUrl);
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `ai-art-${Date.now()}.png`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Image downloaded!");
+                }}
+                className="flex items-center justify-center gap-2 bg-secondary text-foreground text-lg font-bold py-3 rounded-xl border-2 border-border"
               >
-                🔗 Open Full Size
-              </a>
+                <Download size={20} /> Download
+              </button>
               <button
                 onClick={() => { setPrompt(""); setImageUrl(null); }}
-                className="flex-1 bg-primary text-primary-foreground text-lg font-bold py-3 rounded-xl"
+                className="flex items-center justify-center gap-2 bg-primary text-primary-foreground text-lg font-bold py-3 rounded-xl"
               >
                 ✨ New Image
               </button>
+            </div>
+
+            {/* Share buttons */}
+            <div className="mt-3">
+              <p className="text-base font-black text-foreground mb-2">📤 Share your creation</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: "My AI Art", text: `Check out this AI art I made: "${prompt}"`, url: imageUrl });
+                    } else {
+                      navigator.clipboard.writeText(imageUrl);
+                      toast.success("Link copied to clipboard!");
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-card border-2 border-border text-foreground font-bold py-3 rounded-xl text-base"
+                >
+                  <Share2 size={18} /> Share
+                </button>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(imageUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl text-base"
+                >
+                  <Facebook size={18} />
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this AI art I made! "${prompt}"`)}&url=${encodeURIComponent(imageUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-base"
+                >
+                  <Twitter size={18} />
+                </a>
+                <a
+                  href={`mailto:?subject=${encodeURIComponent("Check out my AI Art!")}&body=${encodeURIComponent(`I created this with AI Art Studio: "${prompt}"\n\n${imageUrl}`)}`}
+                  className="flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-3 px-4 rounded-xl text-base"
+                >
+                  <Mail size={18} />
+                </a>
+              </div>
             </div>
           </div>
         )}
