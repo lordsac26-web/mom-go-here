@@ -4,9 +4,8 @@ import gsap from "gsap";
 import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
-import AmbientMusicPlayerV2 from "./AmbientMusicPlayerV2";
 import ParallaxBackground from "./ParallaxBackground";
-import { useAudioStore } from "@/stores/audioStore";
+import PersistentAudioStream from "./PersistentAudioStream";
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,42 +13,6 @@ export default function Layout() {
   const { user } = useAuth();
   const menuRef = useRef(null);
   const menuItemsRef = useRef([]);
-  const playerRef = useRef(null);
-
-  // Audio state from Zustand
-  const musicVolume = useAudioStore((state) => state.musicVolume);
-  const muteAll = useAudioStore((state) => state.muteAll);
-  const muteMusic = useAudioStore((state) => state.muteMusic);
-  const musicGenre = useAudioStore((state) => state.musicGenre);
-
-  // Initialize and manage AmbientMusicPlayerV2 instance
-  useEffect(() => {
-    if (!playerRef.current) {
-      playerRef.current = new AmbientMusicPlayerV2({
-        musicVolume,
-        muteAll,
-        muteMusic,
-        genre: musicGenre,
-      });
-    }
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-    };
-  }, []);
-
-  // Sync audio state to player
-  useEffect(() => {
-    if (playerRef.current) {
-      playerRef.current.setVolume(musicVolume);
-      playerRef.current.setMuteAll(muteAll);
-      playerRef.current.setMuteMusic(muteMusic);
-      playerRef.current.setGenre(musicGenre);
-    }
-  }, [musicVolume, muteAll, muteMusic, musicGenre]);
 
   const navItems = [
     { to: "/", label: "🏠 Home", icon: Home },
@@ -91,7 +54,8 @@ export default function Layout() {
       {/* 7-Layer Parallax Background */}
       <ParallaxBackground />
 
-      {/* Ambient Music - managed via playerRef */}
+      {/* Persistent audio stream for music */}
+      <PersistentAudioStream />
 
       {/* Top Nav */}
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">

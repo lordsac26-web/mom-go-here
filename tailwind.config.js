@@ -2,6 +2,16 @@
 module.exports = {
     darkMode: ["class"],
     content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+    safelist: [
+      "from-purple-700", "to-purple-900", "border-purple-500",
+      "from-blue-700", "to-cyan-900", "border-blue-500",
+      "from-green-700", "to-emerald-900", "border-green-500",
+      "from-orange-600", "to-red-900", "border-orange-500",
+      "from-indigo-800", "to-slate-900", "border-indigo-500",
+      "from-pink-600", "to-rose-900", "border-pink-500",
+      "from-yellow-600", "to-amber-900", "border-yellow-500",
+      "from-gray-800", "to-gray-950", "border-gray-500",
+    ],
   theme: {
   	extend: {
   		borderRadius: {

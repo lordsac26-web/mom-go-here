@@ -8,6 +8,7 @@ import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
 import GridRevealWrapper from "../../components/GridRevealWrapper";
+import MemoryBackgroundPicker, { MEMORY_BACKGROUNDS } from "../../components/MemoryBackgroundPicker";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -21,11 +22,12 @@ function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
-function Tile({ card, onClick }) {
+function Tile({ card, onClick, bgStyle }) {
   const isRevealed = card.flipped || card.matched;
+  const bg = bgStyle || MEMORY_BACKGROUNDS[0];
 
   const backContent = (
-    <div className="w-full h-full bg-gradient-to-br from-purple-700 to-purple-900 rounded-xl border-4 border-purple-500 flex items-center justify-center shadow-lg">
+    <div className={`w-full h-full bg-gradient-to-br ${bg.gradient} rounded-xl border-4 ${bg.border} flex items-center justify-center shadow-lg`}>
       <span className="text-3xl">🌸</span>
     </div>
   );
@@ -57,6 +59,7 @@ export default function MemoryGame() {
   const [sizeIdx, setSizeIdx] = useState(0);
   const [cards, setCards] = useState([]);
   const [flipped, setFlipped] = useState([]);
+  const [bgKey, setBgKey] = useState("classic");
   const [matched, setMatched] = useState(0);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
@@ -229,12 +232,17 @@ export default function MemoryGame() {
     }
   }
 
+  const currentBg = MEMORY_BACKGROUNDS.find(b => b.key === bgKey) || MEMORY_BACKGROUNDS[0];
+
   if (!started) return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
       <div className="text-8xl mb-4">🧠</div>
       <h1 className="text-4xl font-black text-primary mb-2 text-center">Memory Match</h1>
       <p className="text-xl text-muted-foreground text-center mb-8">Flip tiles to find matching pairs!</p>
-      <div className="space-y-4 w-full max-w-sm">
+
+      <MemoryBackgroundPicker selected={bgKey} onSelect={setBgKey} />
+
+      <div className="space-y-4 w-full max-w-sm mt-6">
         {SIZES.map((s, i) => (
           <button key={i} onClick={() => { setSizeIdx(i); startGame(i); }}
             className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white text-2xl font-black py-5 rounded-2xl shadow-xl">
@@ -298,7 +306,7 @@ export default function MemoryGame() {
         className="grid gap-2 max-w-lg mx-auto"
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
       >
-        {cards.map(card => <Tile key={card.id} card={card} onClick={handleClick} />)}
+        {cards.map(card => <Tile key={card.id} card={card} onClick={handleClick} bgStyle={currentBg} />)}
       </GridRevealWrapper>
     </div>
   );

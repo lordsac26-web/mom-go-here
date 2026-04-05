@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import MagneticCard from "../components/MagneticCard";
+import { ALL_GAMES } from "../components/GameTileManager";
 
 const MOTIVATIONAL_QUOTES = [
   { quote: "Every day is a new beginning. Take a deep breath and start again.", author: "Unknown" },
@@ -21,19 +22,7 @@ const MOTIVATIONAL_QUOTES = [
   { quote: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
 ];
 
-const ALL_GAMES = [
-  { name: "Memory Match", emoji: "🧠", path: "/games/memory", color: "from-purple-600 to-purple-800", desc: "Flip the tiles!" },
-  { name: "Mahjong", emoji: "🀄", path: "/games/mahjong", color: "from-red-600 to-red-800", desc: "Match the tiles" },
-  { name: "Solitaire", emoji: "♠️", path: "/games/solitaire", color: "from-green-600 to-green-800", desc: "Classic cards" },
-  { name: "Tic Tac Toe", emoji: "❌", path: "/games/tictactoe", color: "from-blue-600 to-blue-800", desc: "X's and O's" },
-  { name: "Word Search", emoji: "🔤", path: "/games/wordsearch", color: "from-yellow-600 to-yellow-800", desc: "Find the words" },
-  { name: "Sudoku", emoji: "🔢", path: "/games/sudoku", color: "from-indigo-600 to-indigo-800", desc: "Number puzzle" },
-  { name: "Checkers", emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "vs Computer" },
-  { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll the dice!" },
-  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI artwork" },
-  { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Spell words!" },
-  { name: "Lucky Slots", emoji: "🎰", path: "/games/slots", color: "from-yellow-600 to-red-700", desc: "Spin to win!" },
-];
+
 
 const RELIGION_LABELS = {
   Christianity: { label: "Daily Scripture", emoji: "✝️" },

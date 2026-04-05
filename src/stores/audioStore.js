@@ -7,6 +7,9 @@ export const useAudioStore = create((set) => ({
   muteAll: true,
   muteMusic: true,
   musicGenre: 'ambient',
+  currentStreamUrl: '',
+  currentStationName: '',
+  isPlayerActive: false,
 
   // Actions
   setSfxVolume: (vol) => set({ sfxVolume: Math.max(0, Math.min(1, vol)) }),
@@ -14,6 +17,9 @@ export const useAudioStore = create((set) => ({
   toggleMuteAll: () => set((state) => ({ muteAll: !state.muteAll })),
   toggleMuteMusic: () => set((state) => ({ muteMusic: !state.muteMusic })),
   setMusicGenre: (genre) => set({ musicGenre: genre }),
+  setCurrentStreamUrl: (url) => set({ currentStreamUrl: url }),
+  setCurrentStationName: (name) => set({ currentStationName: name }),
+  setPlayerActive: (val) => set({ isPlayerActive: val }),
   
   // Derived: Is SFX enabled?
   isSfxEnabled: () => {

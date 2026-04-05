@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import AudioSettings from "@/components/AudioSettings";
 import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
+import SettingsGameManager from "@/components/SettingsGameManager";
+import MusicPlayerFull from "@/components/MusicPlayerFull";
 
 const RELIGIONS = [
   { value: "None",         label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -198,6 +200,12 @@ export default function Settings() {
 
         {/* Audio Settings */}
         <AudioSettings />
+
+        {/* Full Music Player */}
+        <MusicPlayerFull />
+
+        {/* Game Selection */}
+        <SettingsGameManager />
 
         {/* Chat Bubble Settings */}
         <ChatBubbleSettings />

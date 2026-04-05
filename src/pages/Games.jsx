@@ -3,28 +3,17 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import MagneticCard from "../components/MagneticCard";
+import GameTileManager, { ALL_GAMES as MASTER_GAMES } from "../components/GameTileManager";
+import { Settings } from "lucide-react";
 
-// FIX (bug): path for AI Art Studio now matches what Onboarding.jsx saves ("/games/artstudio").
-// NOTE: you must also fix Onboarding.jsx — change "/games/spotdiff" to "/games/artstudio"
-// so existing saved profiles don't retain the wrong path. See comment in Onboarding fix.
-const ALL_GAMES = [
-  { name: "Memory Match",  emoji: "🧠", path: "/games/memory",   color: "from-purple-600 to-purple-800", desc: "Flip 3D tiles to find matching pairs" },
-  { name: "Mahjong",       emoji: "🀄", path: "/games/mahjong",  color: "from-red-600 to-red-800",       desc: "Match pairs of 3D Mahjong tiles" },
-  { name: "Solitaire",     emoji: "♠️", path: "/games/solitaire",color: "from-green-600 to-green-800",   desc: "Classic Klondike card solitaire" },
-  { name: "Tic Tac Toe",   emoji: "❌", path: "/games/tictactoe",color: "from-blue-600 to-blue-800",     desc: "Play X's and O's against the computer" },
-  { name: "Word Search",   emoji: "🔤", path: "/games/wordsearch",color: "from-yellow-600 to-yellow-800",desc: "Find hidden words in the grid" },
-  { name: "Sudoku",        emoji: "🔢", path: "/games/sudoku",   color: "from-indigo-600 to-indigo-800", desc: "Fill in the number puzzle" },
-  { name: "Checkers",      emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
-  { name: "Yahtzee",       emoji: "🎲", path: "/games/yahtzee",  color: "from-pink-600 to-pink-800",     desc: "Roll dice and score points!" },
-  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio",color: "from-teal-600 to-teal-800",     desc: "Create AI-generated artwork" },
-  { name: "Buzz Word!",    emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800",   desc: "Make words from jumbled letters!" },
-  { name: "Lucky Slots",   emoji: "🎰", path: "/games/slots",    color: "from-yellow-600 to-red-700",    desc: "Spin the reels & win big!" },
-];
+
 
 export default function Games() {
   const { user } = useAuth();
-  const [visibleGames, setVisibleGames] = useState(ALL_GAMES);
+  const [visibleGames, setVisibleGames] = useState(MASTER_GAMES);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
+  const [showManager, setShowManager] = useState(false);
+  const [profileId, setProfileId] = useState(null);
 
   // FIX (bug): load the user's favorite_games preference and filter the list.
   // Previously the onboarding selection was saved but never applied here.
@@ -38,12 +27,11 @@ export default function Games() {
     try {
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       if (signal?.aborted) return;
+      setProfileId(profiles[0]?.id || null);
       const favPaths = profiles[0]?.favorite_games;
       if (Array.isArray(favPaths) && favPaths.length > 0) {
-        // Only show games the user selected; preserve the ALL_GAMES display order
-        setVisibleGames(ALL_GAMES.filter(g => favPaths.includes(g.path)));
+        setVisibleGames(MASTER_GAMES.filter(g => favPaths.includes(g.path)));
       }
-      // If no preference saved yet, fall through and show all games (default)
     } catch (err) {
       if (signal?.aborted) return;
       console.error("Could not load game preferences:", err);
@@ -67,10 +55,36 @@ export default function Games() {
     );
   }
 
+  async function handleGameUpdate(paths) {
+    if (profileId) {
+      await base44.entities.UserProfile.update(profileId, { favorite_games: paths });
+      setVisibleGames(MASTER_GAMES.filter(g => paths.includes(g.path)));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background px-4 py-6 pb-24">
-      <h1 className="text-4xl font-black text-primary text-center mb-2">🎮 Choose a Game</h1>
+      <div className="flex items-center justify-between mb-2 px-2">
+        <div />
+        <h1 className="text-4xl font-black text-primary text-center">🎮 Choose a Game</h1>
+        <button
+          onClick={() => setShowManager(true)}
+          className="bg-secondary text-foreground p-3 rounded-xl"
+          aria-label="Manage games"
+        >
+          <Settings size={24} />
+        </button>
+      </div>
       <p className="text-center text-muted-foreground text-xl mb-8">Tap any game to start playing!</p>
+
+      {showManager && (
+        <GameTileManager
+          currentGames={visibleGames}
+          onUpdate={handleGameUpdate}
+          onClose={() => setShowManager(false)}
+        />
+      )}
+
       <div className="grid grid-cols-1 gap-5 max-w-lg mx-auto">
         {visibleGames.map((game) => (
           <MagneticCard key={game.path} strength={0.35} rotationStrength={0.18} hoverScale={1.03}>
