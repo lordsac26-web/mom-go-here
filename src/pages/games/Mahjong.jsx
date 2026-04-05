@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
@@ -35,6 +35,10 @@ const DIFFICULTIES = [
 ];
 
 function buildTiles(pairCount) {
+  // FIX (bug): guard against requesting more pairs than tile definitions exist
+  if (pairCount > TILE_DEFS.length) {
+    throw new Error(`Cannot create ${pairCount} pairs — only ${TILE_DEFS.length} unique tiles available.`);
+  }
   const selected = shuffle(TILE_DEFS).slice(0, pairCount);
   const pairs = [...selected, ...selected];
   return shuffle(pairs).map((def, i) => ({
@@ -60,22 +64,36 @@ export default function Mahjong() {
   const [won, setWon] = useState(false);
   const [moves, setMoves] = useState(0);
 
+  // FIX (bug): store the mismatch deselect timeout so it can be cancelled on new selection
+  const mismatchTimeoutRef = useRef(null);
+
   const diff = diffIdx !== null ? DIFFICULTIES[diffIdx] : null;
   const total = tiles.length / 2;
 
   function handleClick(id) {
     tapVibrate();
     mahjongTileSound();
+
     if (selectedId === null) {
+      // FIX (bug): cancel any pending mismatch deselect before making a new selection
+      if (mismatchTimeoutRef.current) {
+        clearTimeout(mismatchTimeoutRef.current);
+        mismatchTimeoutRef.current = null;
+        // Clear any previously highlighted mismatch tiles before starting fresh
+        setTiles(prev => prev.map(t => ({ ...t, selected: false })));
+      }
       setTiles(prev => prev.map(t => t.id === id ? { ...t, selected: true } : t));
       setSelectedId(id);
       return;
     }
+
     if (selectedId === id) {
       setTiles(prev => prev.map(t => t.id === id ? { ...t, selected: false } : t));
       setSelectedId(null);
       return;
     }
+
+    // FIX (perf): look up both tiles in one pass and batch the state update
     const first = tiles.find(t => t.id === selectedId);
     const second = tiles.find(t => t.id === id);
     setMoves(m => m + 1);
@@ -85,23 +103,42 @@ export default function Mahjong() {
       matchSound();
       spark();
       if (newMatches === total) {
-        winVibrate(); winSound(); fireworks(); emojiRain(["🀄", "🎉", "⭐"]); setWon(true); setMessage("");
+        winVibrate(); winSound(); fireworks(); emojiRain(["🀄", "🎉", "⭐"]);
+        setWon(true);
+        setMessage("");
       } else {
-        // Milestone bursts at 25%, 50%, 75%
         const pct = newMatches / total;
         if (pct === 0.25 || pct === 0.5 || pct === 0.75) burst();
-        successVibrate(); setMessage("✅ Match!");
+        successVibrate();
+        setMessage("✅ Match!");
       }
-      setTiles(prev => prev.map(t => [selectedId, id].includes(t.id) ? { ...t, matched: true, selected: false } : t));
+      // FIX (perf): single map pass — mark both matched tiles at once
+      setTiles(prev =>
+        prev.map(t =>
+          t.id === selectedId || t.id === id
+            ? { ...t, matched: true, selected: false }
+            : t
+        )
+      );
       setMatches(newMatches);
       setSelectedId(null);
       setTimeout(() => setMessage(""), 1000);
     } else {
       setMessage("❌ No match, try again!");
-      setTiles(prev => prev.map(t => [selectedId, id].includes(t.id) ? { ...t, selected: true } : t));
-      setTimeout(() => {
-        setTiles(prev => prev.map(t => [selectedId, id].includes(t.id) ? { ...t, selected: false } : t));
+      setTiles(prev =>
+        prev.map(t =>
+          t.id === selectedId || t.id === id ? { ...t, selected: true } : t
+        )
+      );
+      // FIX (bug): store timeout ID so a new selection can cancel it
+      mismatchTimeoutRef.current = setTimeout(() => {
+        setTiles(prev =>
+          prev.map(t =>
+            t.id === selectedId || t.id === id ? { ...t, selected: false } : t
+          )
+        );
         setMessage("");
+        mismatchTimeoutRef.current = null;
       }, 900);
       setSelectedId(null);
     }
@@ -109,6 +146,11 @@ export default function Mahjong() {
 
   function startGame(idx) {
     uiClickSound();
+    // FIX (bug): cancel any pending timeout when restarting mid-game
+    if (mismatchTimeoutRef.current) {
+      clearTimeout(mismatchTimeoutRef.current);
+      mismatchTimeoutRef.current = null;
+    }
     setDiffIdx(idx);
     setTiles(buildTiles(DIFFICULTIES[idx].pairs));
     setSelectedId(null);
@@ -125,6 +167,10 @@ export default function Mahjong() {
 
   function backToMenu() {
     uiClickSound();
+    if (mismatchTimeoutRef.current) {
+      clearTimeout(mismatchTimeoutRef.current);
+      mismatchTimeoutRef.current = null;
+    }
     setDiffIdx(null);
     setTiles([]);
     setWon(false);
