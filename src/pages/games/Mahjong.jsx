@@ -6,6 +6,7 @@ import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import MahjongTile from "../../components/MahjongTile";
 import useConfetti from "../../hooks/useConfetti";
+import GridRevealWrapper from "../../components/GridRevealWrapper";
 
 // Authentic Mahjong tile definitions with suits
 const TILE_DEFS = [
@@ -197,9 +198,15 @@ export default function Mahjong() {
 
       <p className="text-center text-muted-foreground text-lg mb-4">Tap two matching tiles to remove them</p>
 
-      <div className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto" style={{ gridTemplateColumns: `repeat(${diff.cols}, 1fr)` }}>
+      <GridRevealWrapper
+        cols={diff.cols}
+        pattern="auto"
+        revealKey={matches === 0 ? diffIdx : -1}
+        className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto"
+        style={{ gridTemplateColumns: `repeat(${diff.cols}, 1fr)` }}
+      >
         {tiles.map(tile => <MahjongTile key={tile.id} tile={tile} onClick={handleClick} />)}
-      </div>
+      </GridRevealWrapper>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
+import GridRevealWrapper from "../../components/GridRevealWrapper";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -60,6 +61,7 @@ export default function MemoryGame() {
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
   const [started, setStarted] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
   useGameTimer();
   const lockRef = useRef(false);
   const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
@@ -95,6 +97,7 @@ export default function MemoryGame() {
     setMoves(0);
     setWon(false);
     setStarted(true);
+    setGameKey(k => k + 1);
     lockRef.current = false;
     // Log game start
     addHistoryEntry({
@@ -240,9 +243,15 @@ export default function MemoryGame() {
           </button>
         </div>
       </div>
-      <div className={`grid gap-2 max-w-lg mx-auto`} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      <GridRevealWrapper
+        cols={cols}
+        pattern="auto"
+        revealKey={gameKey}
+        className="grid gap-2 max-w-lg mx-auto"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+      >
         {cards.map(card => <Tile key={card.id} card={card} onClick={handleClick} />)}
-      </div>
+      </GridRevealWrapper>
     </div>
   );
 }
