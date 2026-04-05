@@ -1,31 +1,83 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import MagneticCard from "../components/MagneticCard";
 
-const GAMES = [
-  { name: "Memory Match", emoji: "🧠", path: "/games/memory", color: "from-purple-600 to-purple-800", desc: "Flip 3D tiles to find matching pairs" },
-  { name: "Mahjong", emoji: "🀄", path: "/games/mahjong", color: "from-red-600 to-red-800", desc: "Match pairs of 3D Mahjong tiles" },
-  { name: "Solitaire", emoji: "♠️", path: "/games/solitaire", color: "from-green-600 to-green-800", desc: "Classic Klondike card solitaire" },
-  { name: "Tic Tac Toe", emoji: "❌", path: "/games/tictactoe", color: "from-blue-600 to-blue-800", desc: "Play X's and O's against the computer" },
-  { name: "Word Search", emoji: "🔤", path: "/games/wordsearch", color: "from-yellow-600 to-yellow-800", desc: "Find hidden words in the grid" },
-  { name: "Sudoku", emoji: "🔢", path: "/games/sudoku", color: "from-indigo-600 to-indigo-800", desc: "Fill in the number puzzle" },
-  { name: "Checkers", emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
-  { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll dice and score points!" },
-  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
-  { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Make words from jumbled letters!" },
-  { name: "Lucky Slots", emoji: "🎰", path: "/games/slots", color: "from-yellow-600 to-red-700", desc: "Spin the reels & win big!" },
+// FIX (bug): path for AI Art Studio now matches what Onboarding.jsx saves ("/games/artstudio").
+// NOTE: you must also fix Onboarding.jsx — change "/games/spotdiff" to "/games/artstudio"
+// so existing saved profiles don't retain the wrong path. See comment in Onboarding fix.
+const ALL_GAMES = [
+  { name: "Memory Match",  emoji: "🧠", path: "/games/memory",   color: "from-purple-600 to-purple-800", desc: "Flip 3D tiles to find matching pairs" },
+  { name: "Mahjong",       emoji: "🀄", path: "/games/mahjong",  color: "from-red-600 to-red-800",       desc: "Match pairs of 3D Mahjong tiles" },
+  { name: "Solitaire",     emoji: "♠️", path: "/games/solitaire",color: "from-green-600 to-green-800",   desc: "Classic Klondike card solitaire" },
+  { name: "Tic Tac Toe",   emoji: "❌", path: "/games/tictactoe",color: "from-blue-600 to-blue-800",     desc: "Play X's and O's against the computer" },
+  { name: "Word Search",   emoji: "🔤", path: "/games/wordsearch",color: "from-yellow-600 to-yellow-800",desc: "Find hidden words in the grid" },
+  { name: "Sudoku",        emoji: "🔢", path: "/games/sudoku",   color: "from-indigo-600 to-indigo-800", desc: "Fill in the number puzzle" },
+  { name: "Checkers",      emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
+  { name: "Yahtzee",       emoji: "🎲", path: "/games/yahtzee",  color: "from-pink-600 to-pink-800",     desc: "Roll dice and score points!" },
+  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio",color: "from-teal-600 to-teal-800",     desc: "Create AI-generated artwork" },
+  { name: "Buzz Word!",    emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800",   desc: "Make words from jumbled letters!" },
+  { name: "Lucky Slots",   emoji: "🎰", path: "/games/slots",    color: "from-yellow-600 to-red-700",    desc: "Spin the reels & win big!" },
 ];
 
 export default function Games() {
+  const { user } = useAuth();
+  const [visibleGames, setVisibleGames] = useState(ALL_GAMES);
+  const [loadingPrefs, setLoadingPrefs] = useState(true);
+
+  // FIX (bug): load the user's favorite_games preference and filter the list.
+  // Previously the onboarding selection was saved but never applied here.
+  const loadPrefs = useCallback(async (signal) => {
+    if (!user?.email) {
+      setLoadingPrefs(false);
+      return;
+    }
+    // FIX (perf + bug): try/catch so a failed fetch falls back to showing all games
+    // rather than freezing the spinner or crashing the page.
+    try {
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      if (signal?.aborted) return;
+      const favPaths = profiles[0]?.favorite_games;
+      if (Array.isArray(favPaths) && favPaths.length > 0) {
+        // Only show games the user selected; preserve the ALL_GAMES display order
+        setVisibleGames(ALL_GAMES.filter(g => favPaths.includes(g.path)));
+      }
+      // If no preference saved yet, fall through and show all games (default)
+    } catch (err) {
+      if (signal?.aborted) return;
+      console.error("Could not load game preferences:", err);
+      // Fall back to showing all games — better than a blank screen
+    } finally {
+      if (!signal?.aborted) setLoadingPrefs(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadPrefs(controller.signal);
+    return () => controller.abort();
+  }, [loadPrefs]);
+
+  if (loadingPrefs) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background px-4 py-6 pb-24">
       <h1 className="text-4xl font-black text-primary text-center mb-2">🎮 Choose a Game</h1>
       <p className="text-center text-muted-foreground text-xl mb-8">Tap any game to start playing!</p>
       <div className="grid grid-cols-1 gap-5 max-w-lg mx-auto">
-        {GAMES.map((game) => (
-          <MagneticCard key={game.name} strength={0.35} rotationStrength={0.18} hoverScale={1.03}>
+        {visibleGames.map((game) => (
+          <MagneticCard key={game.path} strength={0.35} rotationStrength={0.18} hoverScale={1.03}>
+            {/* FIX (bug): added w-full so the link fills the magnetic card wrapper edge-to-edge */}
             <Link
               to={game.path}
-              className={`bg-gradient-to-r ${game.color} rounded-2xl p-6 shadow-xl flex items-center gap-5 block`}
+              className={`bg-gradient-to-r ${game.color} rounded-2xl p-6 shadow-xl flex items-center gap-5 w-full`}
             >
               <span className="text-6xl">{game.emoji}</span>
               <div>
