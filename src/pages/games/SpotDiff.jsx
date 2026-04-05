@@ -1,130 +1,106 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 
-// Each scenario has an image + differences defined as colored shapes
-// that appear ONLY on the right (modified) image, making them clearly visible
-const SCENARIOS = [
+// Prompts for AI to generate original + modified scene pairs
+const SCENE_PROMPTS = [
   {
-    title: "Garden in Bloom",
-    image: "https://images.unsplash.com/photo-1490750967868-88df5691cc5b?w=500&q=80",
-    differences: [
-      { x: 15, y: 20, color: "#ff0000", shape: "circle", size: 28, label: "Red dot" },
-      { x: 72, y: 15, color: "#00aaff", shape: "circle", size: 24, label: "Blue spot" },
-      { x: 48, y: 55, color: "#ffff00", shape: "square", size: 26, label: "Yellow patch" },
-      { x: 82, y: 68, color: "#ff00ff", shape: "circle", size: 22, label: "Pink mark" },
-      { x: 28, y: 80, color: "#00ff88", shape: "square", size: 24, label: "Green shape" },
-    ]
+    title: "Garden Tea Party",
+    original: "A sunny garden tea party scene with a round table, two teacups, a teapot, three red roses in a vase, a yellow butterfly, a white picket fence, and blue sky. Flat illustrated style, bright colors.",
+    modified: "A sunny garden tea party scene with a round table, two teacups, a teapot, two red roses in a vase (one is missing), a purple butterfly (not yellow), a white picket fence, and blue sky. There is also an extra cookie on the table and the teapot lid is open. Flat illustrated style, bright colors.",
+    hints: ["One rose is missing", "Butterfly changed color", "Extra cookie appeared", "Teapot lid is open"],
   },
   {
-    title: "Mountain Peaks",
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&q=80",
-    differences: [
-      { x: 10, y: 12, color: "#ff6600", shape: "circle", size: 26, label: "Orange spot" },
-      { x: 68, y: 20, color: "#ff0000", shape: "square", size: 24, label: "Red square" },
-      { x: 42, y: 48, color: "#00ccff", shape: "circle", size: 28, label: "Blue circle" },
-      { x: 85, y: 72, color: "#ffff00", shape: "circle", size: 22, label: "Yellow dot" },
-      { x: 22, y: 78, color: "#cc00ff", shape: "square", size: 26, label: "Purple patch" },
-    ]
+    title: "Cozy Living Room",
+    original: "A cozy living room with a red sofa, a lamp with a yellow shade, a bookshelf with 5 books, a round clock on the wall showing 3 o'clock, a potted green plant, and a cat sleeping on the sofa. Flat illustrated style.",
+    modified: "A cozy living room with a red sofa, a lamp with a blue shade (not yellow), a bookshelf with 4 books (one missing), a round clock on the wall showing 6 o'clock, a potted green plant with a flower added, and a cat sleeping on the sofa. Flat illustrated style.",
+    hints: ["Lamp shade changed color", "A book is missing", "Clock shows different time", "Plant has a flower"],
   },
   {
-    title: "Peaceful Beach",
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80",
-    differences: [
-      { x: 18, y: 18, color: "#ff0000", shape: "circle", size: 28, label: "Red dot" },
-      { x: 74, y: 12, color: "#00ff00", shape: "square", size: 24, label: "Green box" },
-      { x: 50, y: 50, color: "#ff6600", shape: "circle", size: 26, label: "Orange mark" },
-      { x: 88, y: 65, color: "#0000ff", shape: "circle", size: 22, label: "Blue spot" },
-      { x: 30, y: 82, color: "#ff00aa", shape: "square", size: 24, label: "Pink shape" },
-    ]
-  },
-  {
-    title: "Cozy Autumn Path",
-    image: "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?w=500&q=80",
-    differences: [
-      { x: 12, y: 25, color: "#00ccff", shape: "circle", size: 28, label: "Blue circle" },
-      { x: 78, y: 18, color: "#ff3300", shape: "square", size: 26, label: "Red square" },
-      { x: 44, y: 60, color: "#ffcc00", shape: "circle", size: 24, label: "Yellow spot" },
-      { x: 80, y: 75, color: "#00ff88", shape: "circle", size: 22, label: "Green mark" },
-      { x: 25, y: 85, color: "#ff0099", shape: "square", size: 26, label: "Pink patch" },
-    ]
+    title: "Seaside Village",
+    original: "A cheerful seaside village with three colorful houses, a red lighthouse, two sailboats on blue water, a yellow sun, seagulls flying, and a wooden dock. Flat illustrated style.",
+    modified: "A cheerful seaside village with three colorful houses, a blue lighthouse (not red), one sailboat on blue water (one is missing), a yellow sun, seagulls flying, and a wooden dock with an extra barrel on it. Flat illustrated style.",
+    hints: ["Lighthouse changed color", "One sailboat is missing", "Extra barrel on the dock"],
   },
 ];
 
-function DiffShape({ diff, found }) {
-  const half = diff.size / 2;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: `${diff.x}%`,
-        top: `${diff.y}%`,
-        transform: "translate(-50%, -50%)",
-        width: diff.size,
-        height: diff.size,
-        backgroundColor: found ? "rgba(34,197,94,0.85)" : diff.color,
-        borderRadius: diff.shape === "circle" ? "50%" : "4px",
-        border: found ? "3px solid #22c55e" : "3px solid rgba(255,255,255,0.8)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 14,
-        color: "white",
-        fontWeight: "bold",
-        transition: "background-color 0.3s",
-        pointerEvents: "none",
-      }}
-    >
-      {found ? "✓" : ""}
-    </div>
-  );
-}
-
 export default function SpotDiff() {
   useGameTimer();
-  const [scenarioIdx] = useState(Math.floor(Math.random() * SCENARIOS.length));
-  const scenario = SCENARIOS[scenarioIdx];
+  const [sceneIdx] = useState(Math.floor(Math.random() * SCENE_PROMPTS.length));
+  const scene = SCENE_PROMPTS[sceneIdx];
+
+  const [originalUrl, setOriginalUrl] = useState(null);
+  const [modifiedUrl, setModifiedUrl] = useState(null);
+  const [generating, setGenerating] = useState(true);
+  const [error, setError] = useState(null);
+
   const [found, setFound] = useState([]);
-  const [misses, setMisses] = useState([]);
   const [won, setWon] = useState(false);
+  const [showHints, setShowHints] = useState(false);
 
-  const total = scenario.differences.length;
+  useEffect(() => {
+    generateImages();
+  }, []);
 
-  function handleRightClick(e) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
-
-    for (let i = 0; i < scenario.differences.length; i++) {
-      if (found.includes(i)) continue;
-      const diff = scenario.differences[i];
-      const dist = Math.sqrt(Math.pow(xPct - diff.x, 2) + Math.pow(yPct - diff.y, 2));
-      if (dist < 10) {
-        const newFound = [...found, i];
-        setFound(newFound);
-        if (newFound.length === total) setWon(true);
-        return;
-      }
+  async function generateImages() {
+    setGenerating(true);
+    setError(null);
+    try {
+      const [orig, mod] = await Promise.all([
+        base44.integrations.Core.GenerateImage({ prompt: scene.original }),
+        base44.integrations.Core.GenerateImage({ prompt: scene.modified }),
+      ]);
+      setOriginalUrl(orig.url);
+      setModifiedUrl(mod.url);
+    } catch (e) {
+      setError("Could not generate images. Please try again.");
     }
-    // Miss
-    const missId = Date.now();
-    setMisses(prev => [...prev, { x: xPct, y: yPct, id: missId }]);
-    setTimeout(() => setMisses(prev => prev.filter(m => m.id !== missId)), 800);
+    setGenerating(false);
+  }
+
+  function toggleHint(i) {
+    if (found.includes(i)) return;
+    const newFound = [...found, i];
+    setFound(newFound);
+    if (newFound.length === scene.hints.length) setWon(true);
   }
 
   function reset() {
     setFound([]);
-    setMisses([]);
     setWon(false);
+    setShowHints(false);
+    setOriginalUrl(null);
+    setModifiedUrl(null);
+    generateImages();
   }
+
+  if (generating) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+      <div className="text-7xl mb-4 animate-bounce">🎨</div>
+      <h2 className="text-3xl font-black text-primary mb-3">Creating your puzzle...</h2>
+      <p className="text-xl text-muted-foreground mb-6">AI is painting two unique scenes for you!</p>
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+      <div className="text-7xl mb-4">😕</div>
+      <p className="text-2xl text-foreground mb-6">{error}</p>
+      <button onClick={generateImages} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl">
+        Try Again
+      </button>
+      <Link to="/games" className="mt-4 text-primary text-xl font-bold">← Back to Games</Link>
+    </div>
+  );
 
   if (won) return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-4">All Found!</h1>
+      <h1 className="text-4xl font-black text-primary mb-4">You Found Them All!</h1>
       <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-        🔄 Play Again
+        🔄 New Puzzle
       </button>
       <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
     </div>
@@ -136,60 +112,59 @@ export default function SpotDiff() {
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-center">
           <div className="text-2xl font-black text-primary">🔍 Spot the Diff</div>
-          <div className="text-muted-foreground">Found: {found.length} / {total}</div>
+          <div className="text-muted-foreground">Found: {found.length} / {scene.hints.length}</div>
         </div>
         <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
       </div>
 
-      <p className="text-center text-2xl font-black text-foreground mb-1">{scenario.title}</p>
+      <p className="text-center text-2xl font-black text-foreground mb-1">{scene.title}</p>
       <p className="text-center text-muted-foreground text-lg mb-3">
-        Tap the colored shapes on the <span className="text-primary font-black">RIGHT image</span> to find them!
+        Study both images — tap each difference you spot in the list below!
       </p>
 
-      {/* Found list */}
-      <div className="flex flex-wrap gap-2 justify-center mb-4 px-2">
-        {scenario.differences.map((d, i) => (
-          <span key={i} className={`px-3 py-2 rounded-full text-base font-bold border-2 transition-all ${
-            found.includes(i) ? "bg-green-700 border-green-500 text-white" : "bg-card border-border text-muted-foreground"
-          }`}>
-            {found.includes(i) ? "✅" : "⭕"} {d.label}
-          </span>
-        ))}
+      {/* Images side by side */}
+      <div className="flex gap-2 max-w-2xl mx-auto mb-4">
+        <div className="flex-1">
+          <p className="text-center text-base font-black text-foreground mb-1">Original</p>
+          <img src={originalUrl} alt="Original" className="w-full rounded-xl border-2 border-border object-cover" style={{ height: "200px" }} />
+        </div>
+        <div className="flex-1">
+          <p className="text-center text-base font-black text-primary mb-1">Modified</p>
+          <img src={modifiedUrl} alt="Modified" className="w-full rounded-xl border-4 border-primary object-cover" style={{ height: "200px" }} />
+        </div>
       </div>
 
-      {/* Two images side by side */}
-      <div className="flex gap-2 max-w-2xl mx-auto">
-        {/* Original - no shapes */}
-        <div className="flex-1">
-          <p className="text-center text-lg font-black text-foreground mb-1">Original</p>
-          <div className="relative rounded-xl overflow-hidden border-2 border-border">
-            <img src={scenario.image} alt="Original" className="w-full object-cover" style={{ height: "220px" }} />
-          </div>
-        </div>
-
-        {/* Modified - with colored shapes */}
-        <div className="flex-1">
-          <p className="text-center text-lg font-black text-primary mb-1">👆 Find These!</p>
-          <div
-            className="relative rounded-xl overflow-hidden border-4 border-primary cursor-crosshair"
-            onClick={handleRightClick}
+      {/* Tap to mark differences found */}
+      <div className="max-w-lg mx-auto px-2">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xl font-black text-foreground">Differences to find:</h3>
+          <button
+            onClick={() => setShowHints(!showHints)}
+            className="text-primary text-lg font-bold underline"
           >
-            <img src={scenario.image} alt="Modified" className="w-full object-cover" style={{ height: "220px" }} />
-            {scenario.differences.map((diff, i) => (
-              <DiffShape key={i} diff={diff} found={found.includes(i)} />
-            ))}
-            {/* Miss indicators */}
-            {misses.map(m => (
-              <div key={m.id} style={{ left: `${m.x}%`, top: `${m.y}%`, position: "absolute", transform: "translate(-50%,-50%)" }}
-                className="w-8 h-8 rounded-full border-4 border-red-500 bg-red-500/30 pointer-events-none animate-ping" />
-            ))}
-          </div>
+            {showHints ? "Hide hints" : "Need a hint? 💡"}
+          </button>
         </div>
+        <div className="space-y-3">
+          {scene.hints.map((hint, i) => (
+            <button
+              key={i}
+              onClick={() => toggleHint(i)}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition-all text-xl font-bold ${
+                found.includes(i)
+                  ? "bg-green-700 border-green-500 text-white"
+                  : "bg-card border-border text-foreground hover:border-primary"
+              }`}
+            >
+              <span className="text-2xl">{found.includes(i) ? "✅" : "⭕"}</span>
+              <span>{showHints || found.includes(i) ? hint : `Difference #${i + 1}`}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-center text-muted-foreground text-base mt-4">
+          Study both images, then tap each difference when you spot it!
+        </p>
       </div>
-
-      <p className="text-center text-muted-foreground text-base mt-3">
-        💡 Tap directly on each colored shape in the right image
-      </p>
     </div>
   );
 }
