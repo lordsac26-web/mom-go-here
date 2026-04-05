@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameInstructions from "../../components/GameInstructions";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -114,7 +115,22 @@ export default function Yahtzee() {
           <div className="text-2xl font-black text-primary">🎲 Yahtzee</div>
           <div className="text-muted-foreground">Turn {turn}/{totalTurns} | Score: {totalScore}</div>
         </div>
-        <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Yahtzee"
+            emoji="🎲"
+            steps={[
+              "Tap 'Roll Dice' to roll all five dice (3 rolls per turn).",
+              "After the first roll, tap any dice you want to HOLD (keep).",
+              "Roll again to re-roll the dice you didn't hold.",
+              "After rolling, tap a scoring category on the scorecard to lock in your points.",
+              "Upper section (Ones–Sixes): scores the sum of matching dice.",
+              "Lower section: 3/4 of a Kind, Full House (25 pts), Straights (30/40 pts), Yahtzee (50 pts!), or Chance.",
+              "Play 13 turns — score as high as you can!"
+            ]}
+          />
+          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       {/* Dice */}

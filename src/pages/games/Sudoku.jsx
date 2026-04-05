@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameInstructions from "../../components/GameInstructions";
 
 // Simple Sudoku puzzles (0 = empty)
 const PUZZLES = [
@@ -110,7 +111,21 @@ export default function Sudoku() {
       <div className="flex items-center justify-between px-2 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🔢 Sudoku</div>
-        <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Sudoku"
+            emoji="🔢"
+            steps={[
+              "The goal is to fill every empty cell with a number from 1 to 9.",
+              "Tap an empty cell to select it (it turns gold).",
+              "Then tap a number button at the bottom to place it.",
+              "Each row, column, and 3×3 box must contain all numbers 1–9 with no repeats.",
+              "Wrong numbers turn red — try a different one!",
+              "Tap the ✕ button to clear a cell."
+            ]}
+          />
+          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       <p className="text-center text-muted-foreground text-lg mb-4">Tap a cell, then tap a number</p>

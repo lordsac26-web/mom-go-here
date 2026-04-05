@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameInstructions from "../../components/GameInstructions";
 
 function initBoard() {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -125,7 +126,22 @@ export default function Checkers() {
       <div className="flex items-center justify-between px-2 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">⬛ Checkers</div>
-        <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Checkers"
+            emoji="⬛"
+            steps={[
+              "You play as the red pieces (🔴) at the bottom.",
+              "Tap one of your pieces to select it — possible moves light up in yellow.",
+              "Tap a highlighted square to move your piece diagonally forward.",
+              "Jump over the computer's pieces to capture them!",
+              "If a jump is available, you must take it.",
+              "Reach the far side to make your piece a King (👑) — kings can move backwards too!",
+              "Capture all of the computer's pieces to win."
+            ]}
+          />
+          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       <div className={`text-center text-2xl font-black mb-4 py-3 rounded-2xl mx-2 ${gameOver ? "bg-primary text-primary-foreground" : "bg-card text-foreground"}`}>

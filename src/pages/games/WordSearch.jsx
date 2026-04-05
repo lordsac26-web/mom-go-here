@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameInstructions from "../../components/GameInstructions";
 
 const WORD_LISTS = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
@@ -132,7 +133,20 @@ export default function WordSearch() {
       <div className="flex items-center justify-between px-2 mb-3">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🔤 Word Search</div>
-        <button onClick={startGame} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Word Search"
+            emoji="🔤"
+            steps={[
+              "Look at the word list at the top — those are the words to find.",
+              "Words are hidden in the grid in any direction (horizontal, vertical, diagonal, even backwards!).",
+              "Drag your finger across the letters to highlight a word.",
+              "If the highlighted letters match a word, it turns green!",
+              "Find all the words to win the puzzle."
+            ]}
+          />
+          <button onClick={startGame} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       {/* Words to find */}

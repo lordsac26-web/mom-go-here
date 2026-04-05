@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameInstructions from "../../components/GameInstructions";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -175,7 +176,22 @@ export default function Solitaire() {
       <div className="flex items-center justify-between px-2 mb-3">
         <Link to="/games" className="text-yellow-300 text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-yellow-300">♠ Solitaire</div>
-        <button onClick={() => { setGame(initGame()); setSelected(null); }} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Solitaire"
+            emoji="♠️"
+            steps={[
+              "Goal: Move all cards to the four foundation piles (top right), sorted by suit from Ace to King.",
+              "Tap the deck (top left) to draw a card to the waste pile.",
+              "Tap the waste card to select it, then tap a column or foundation to place it.",
+              "In columns, stack cards in descending order and alternating colors (red on black).",
+              "Only Kings can be placed on empty column spaces.",
+              "Tap a face-up card in a column to select it and its stack, then tap another column to move.",
+              "Keep going until all cards are on the foundations — you win!"
+            ]}
+          />
+          <button onClick={() => { setGame(initGame()); setSelected(null); }} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       {/* Top row: stock, waste, foundations */}

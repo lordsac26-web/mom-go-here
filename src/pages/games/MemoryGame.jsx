@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameInstructions from "../../components/GameInstructions";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -135,9 +136,22 @@ export default function MemoryGame() {
           <div className="text-2xl font-black text-primary">🧠 Memory</div>
           <div className="text-muted-foreground">Moves: {moves} | Pairs: {matched}/{SIZES[sizeIdx].pairs}</div>
         </div>
-        <button onClick={() => startGame()} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">
-          🔄 New
-        </button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Memory Match"
+            emoji="🧠"
+            steps={[
+              "Tap any tile to flip it over and reveal the emoji.",
+              "Tap a second tile — if both emojis match, they stay face up!",
+              "If they don't match, both tiles flip back. Remember where they are!",
+              "Keep matching until all pairs are found.",
+              "Try to finish in as few moves as possible!"
+            ]}
+          />
+          <button onClick={() => startGame()} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">
+            🔄 New
+          </button>
+        </div>
       </div>
       <div className={`grid gap-2 max-w-lg mx-auto`} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {cards.map(card => <Tile key={card.id} card={card} onClick={handleClick} />)}

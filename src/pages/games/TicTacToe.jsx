@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameInstructions from "../../components/GameInstructions";
 
 function checkWinner(board) {
   const lines = [
@@ -75,7 +76,20 @@ export default function TicTacToe() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
-      <Link to="/games" className="self-start ml-4 text-primary text-xl font-bold mb-4">← Back</Link>
+      <div className="flex items-center justify-between w-full px-4 mb-4">
+        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameInstructions
+          title="Tic Tac Toe"
+          emoji="❌"
+          steps={[
+            "You play as ❌ and the computer plays as ⭕.",
+            "Tap any empty square to place your X.",
+            "Get three in a row (horizontal, vertical, or diagonal) to win!",
+            "The computer will try to block you and win — think ahead!",
+            "If all squares fill up with no winner, it's a draw."
+          ]}
+        />
+      </div>
       <div className="text-6xl mb-2">❌⭕</div>
       <h1 className="text-4xl font-black text-primary mb-2">Tic Tac Toe</h1>
       <p className="text-xl text-muted-foreground mb-2">You are ❌ — Computer is ⭕</p>

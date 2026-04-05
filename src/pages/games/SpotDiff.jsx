@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Download, Share2, Mail, Facebook, Twitter } from "lucide-react";
 import { toast } from "sonner";
+import GameInstructions from "../../components/GameInstructions";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -39,7 +40,17 @@ export default function SpotDiff() {
       <div className="flex items-center justify-between mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🎨 AI Art Studio</div>
-        <div className="w-16" />
+        <GameInstructions
+          title="AI Art Studio"
+          emoji="🎨"
+          steps={[
+            "Type a description of what you'd like to see in the text box (be as detailed as you like!).",
+            "Choose an art style — Realistic, Watercolor, Cartoon, and more.",
+            "Tap 'Generate Image' and wait a few seconds for AI to create your artwork.",
+            "Download your image, or share it via social media or email!",
+            "Tap 'New Image' to start fresh with a new creation."
+          ]}
+        />
       </div>
 
       <div className="max-w-lg mx-auto">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameInstructions from "../../components/GameInstructions";
 
 const TILE_SYMBOLS = [
   "🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
@@ -115,7 +116,21 @@ export default function Mahjong() {
           <div className="text-2xl font-black text-primary">🀄 Mahjong</div>
           <div className="text-muted-foreground">Pairs: {matches}/{total} | Moves: {moves}</div>
         </div>
-        <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="flex gap-2">
+          <GameInstructions
+            title="Mahjong"
+            emoji="🀄"
+            steps={[
+              "Tap a tile to select it — it highlights in yellow.",
+              "Tap a second tile with the same symbol to make a match.",
+              "Matched tiles disappear from the board.",
+              "If the tiles don't match, they deselect — try again!",
+              "Remove all tiles from the board to win.",
+              "Try to finish in as few moves as possible!"
+            ]}
+          />
+          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        </div>
       </div>
 
       {message && (
