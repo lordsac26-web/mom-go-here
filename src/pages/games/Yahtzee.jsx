@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import Dice3DRoller from "../../components/Dice3DRoller";
+import { useGameStore } from "../../stores/gameStore";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -70,14 +71,38 @@ export default function Yahtzee() {
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const gameOver = Object.keys(scores).length === totalTurns;
 
+  // Zustand store integration
+  const initializeGame = useGameStore((state) => state.initializeGame);
+  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
+  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
+  const gameStatus = useGameStore((state) => state.gameStatus);
+
+  // Init Zustand on component mount
+  useEffect(() => {
+    if (gameStatus === "setup") {
+      initializeGame(
+        [{ id: "player-1", name: "Player" }],
+        totalTurns
+      );
+    }
+  }, [gameStatus, initializeGame, totalTurns]);
+
   function roll() {
     if (rollsLeft === 0) return;
     tapVibrate();
     setIsRolling(true);
     setTimeout(() => {
-      setDice(prev => prev.map((d, i) => held[i] ? d : rollDie()));
+      const newDice = dice.map((d, i) => held[i] ? d : rollDie());
+      setDice(newDice);
       setRollsLeft(r => r - 1);
       setIsRolling(false);
+      addHistoryEntry({
+        round: turn,
+        playerId: "player-1",
+        playerName: "Player",
+        action: "roll",
+        result: { dice: newDice, rollNumber: 4 - (rollsLeft - 1) },
+      });
     }, 600);
   }
 
@@ -92,7 +117,17 @@ export default function Yahtzee() {
     if (s > 0) successVibrate(); else tapVibrate();
     setScores(prev => {
       const next = { ...prev, [key]: s };
-      if (Object.keys(next).length === totalTurns) winVibrate();
+      addHistoryEntry({
+        round: turn,
+        playerId: "player-1",
+        playerName: "Player",
+        action: "score",
+        result: { category: key, score: s, totalScore: Object.values(next).reduce((a, b) => a + b, 0) },
+      });
+      if (Object.keys(next).length === totalTurns) {
+        winVibrate();
+        setPlayerScore("player-1", Object.values(next).reduce((a, b) => a + b, 0));
+      }
       return next;
     });
     setDice([1, 1, 1, 1, 1]);
