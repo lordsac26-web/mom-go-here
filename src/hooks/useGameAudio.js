@@ -30,7 +30,7 @@ export function useGameAudio() {
 
   // Play synth tone for sound effects
   const playTone = (frequency, duration, type = 'sine', volume = 1) => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     
     const ctx = initAudioContext();
     if (!ctx) return;
@@ -56,7 +56,7 @@ export function useGameAudio() {
 
   // Dice shake sound (woosh + impact)
   const diceshakeSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     // Ascending frequency sweep (cup shaking)
     const ctx = initAudioContext();
     if (!ctx) return;
@@ -82,7 +82,7 @@ export function useGameAudio() {
 
   // Dice collision sound (impact + resonance)
   const diceCollideSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     
     const ctx = initAudioContext();
     if (!ctx) return;
@@ -119,7 +119,7 @@ export function useGameAudio() {
 
   // Checker flip sound (snap + placement)
   const checkerFlipSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     
     const ctx = initAudioContext();
     if (!ctx) return;
@@ -146,7 +146,7 @@ export function useGameAudio() {
 
   // Mahjong tile slide/place sound
   const mahjongTileSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     
     const ctx = initAudioContext();
     if (!ctx) return;
@@ -174,20 +174,20 @@ export function useGameAudio() {
 
   // Memory card flip
   const cardFlipSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     playTone(500, 0.1, 'sine', 0.3);
   };
 
   // Match success
   const matchSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     playTone(600, 0.15, 'sine', 0.4);
     setTimeout(() => playTone(800, 0.15, 'sine', 0.4), 100);
   };
 
   // Game win
   const winSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     playTone(400, 0.2, 'sine', 0.5);
     setTimeout(() => playTone(500, 0.2, 'sine', 0.5), 150);
     setTimeout(() => playTone(600, 0.3, 'sine', 0.5), 300);
@@ -195,7 +195,7 @@ export function useGameAudio() {
 
   // UI click
   const uiClickSound = () => {
-    if (muteAll) return;
+    if (muteAll || sfxVolume === 0) return;
     playTone(350, 0.08, 'sine', 0.2);
   };
 
