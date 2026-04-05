@@ -6,6 +6,17 @@ import HistoryFact from "../components/HistoryFact";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import MagneticCard from "../components/MagneticCard";
 import { ALL_GAMES } from "../components/GameTileManager";
+import IslandScene from "@/components/FloatingIslands/IslandScene";
+import IslandLabels from "@/components/FloatingIslands/IslandLabels";
+
+const NAV_ISLANDS = [
+  { path: "/games", label: "Games", emoji: "🎮", beaconColor: "#a855f7", pos: [-2.8, 0.5, 0], scale: 1.1 },
+  { path: "/daily", label: "Daily", emoji: "⭐", beaconColor: "#fbbf24", pos: [0, 1.2, -1], scale: 1.15 },
+  { path: "/memories", label: "Memories", emoji: "📔", beaconColor: "#3b82f6", pos: [2.8, 0.3, 0.5], scale: 1 },
+  { path: "/progress", label: "Progress", emoji: "📊", beaconColor: "#22c55e", pos: [-1.5, -0.4, 2], scale: 0.9 },
+  { path: "/settings", label: "Settings", emoji: "⚙️", beaconColor: "#f97316", pos: [1.5, -0.2, 2.2], scale: 0.9 },
+  { path: "/games/memory", label: "Memory", emoji: "🧠", beaconColor: "#ec4899", pos: [0, -0.8, 3], scale: 0.85 },
+];
 
 const MOTIVATIONAL_QUOTES = [
   { quote: "Every day is a new beginning. Take a deep breath and start again.", author: "Unknown" },
@@ -90,12 +101,18 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background px-4 py-6 pb-24">
       {/* Greeting */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-4">
         <h1 className="text-4xl font-black text-primary mb-1">
           {greeting()}, {profile?.display_name || user?.full_name?.split(" ")[0] || "Friend"}! 👋
         </h1>
-        <p className="text-muted-foreground text-xl">What would you like to do today?</p>
+        <p className="text-muted-foreground text-lg">Explore the islands below!</p>
       </div>
+
+      {/* 3D Floating Islands Navigation */}
+      <IslandScene islands={NAV_ISLANDS} />
+      <IslandLabels islands={NAV_ISLANDS} />
+
+      <div className="my-6" />
 
       {/* Quote of the Day — compact */}
       {quote && (
