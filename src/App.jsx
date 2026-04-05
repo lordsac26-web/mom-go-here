@@ -20,6 +20,7 @@ import Mahjong from './pages/games/Mahjong';
 import Solitaire from './pages/games/Solitaire';
 import SpotDiff from './pages/games/SpotDiff';
 import Progress from './pages/Progress';
+import Onboarding from './pages/Onboarding';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -62,6 +63,7 @@ const AuthenticatedApp = () => {
         <Route path="/games/solitaire" element={<Solitaire />} />
         <Route path="/games/spotdiff" element={<SpotDiff />} />
         <Route path="/progress" element={<Progress />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

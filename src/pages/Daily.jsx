@@ -69,6 +69,16 @@ const VERSES = {
   ],
 };
 
+const READING_LABEL = {
+  Christianity: "Today's Scripture",
+  Catholicism: "Today's Scripture",
+  Judaism: "Today's Torah Reading",
+  Islam: "Today's Quranic Verse",
+  Hinduism: "Today's Gita Teaching",
+  Buddhism: "Today's Dharma Teaching",
+  Sikhism: "Today's Hukamnama",
+};
+
 const RELIGION_EMOJI = {
   Christianity: "✝️", Catholicism: "⛪", Judaism: "✡️",
   Islam: "☪️", Hinduism: "🕉️", Buddhism: "☸️", Sikhism: "🪯",
@@ -126,7 +136,7 @@ export default function Daily() {
       <div className="max-w-lg w-full">
         <div className="text-center mb-6">
           <div className="text-7xl mb-2">{RELIGION_EMOJI[religion]}</div>
-          <h1 className="text-4xl font-black text-primary">Today's {religion} Verse</h1>
+          <h1 className="text-4xl font-black text-primary">{READING_LABEL[religion] || `Today's ${religion} Reading`}</h1>
           <p className="text-muted-foreground text-xl mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
 

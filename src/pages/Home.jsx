@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import HistoryFact from "../components/HistoryFact";
 
 const MOTIVATIONAL_QUOTES = [
   { quote: "Every day is a new beginning. Take a deep breath and start again.", author: "Unknown" },
@@ -15,13 +16,10 @@ const MOTIVATIONAL_QUOTES = [
   { quote: "When you reach the end of your rope, tie a knot in it and hang on.", author: "Franklin D. Roosevelt" },
   { quote: "Always remember that you are absolutely unique. Just like everyone else.", author: "Margaret Mead" },
   { quote: "Don't go through life, grow through life.", author: "Eric Butterworth" },
-  { quote: "If life were predictable it would cease to be life, and be without flavor.", author: "Eleanor Roosevelt" },
   { quote: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
-  { quote: "You have brains in your head. You have feet in your shoes.", author: "Dr. Seuss" },
-  { quote: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle" },
 ];
 
-const GAMES = [
+const ALL_GAMES = [
   { name: "Memory Match", emoji: "🧠", path: "/games/memory", color: "from-purple-600 to-purple-800", desc: "Flip the tiles!" },
   { name: "Mahjong", emoji: "🀄", path: "/games/mahjong", color: "from-red-600 to-red-800", desc: "Match the tiles" },
   { name: "Solitaire", emoji: "♠️", path: "/games/solitaire", color: "from-green-600 to-green-800", desc: "Classic cards" },
@@ -33,10 +31,22 @@ const GAMES = [
   { name: "Spot the Diff", emoji: "🔍", path: "/games/spotdiff", color: "from-teal-600 to-teal-800", desc: "Find 5 differences" },
 ];
 
+const RELIGION_LABELS = {
+  Christianity: { label: "Daily Scripture", emoji: "✝️" },
+  Catholicism: { label: "Daily Scripture", emoji: "⛪" },
+  Judaism: { label: "Daily Torah Reading", emoji: "✡️" },
+  Islam: { label: "Daily Quranic Verse", emoji: "☪️" },
+  Hinduism: { label: "Daily Gita Teaching", emoji: "🕉️" },
+  Buddhism: { label: "Daily Dharma", emoji: "☸️" },
+  Sikhism: { label: "Daily Hukamnama", emoji: "🪯" },
+};
+
 export default function Home() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [quote, setQuote] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -44,25 +54,25 @@ export default function Home() {
 
   async function loadData() {
     if (!user) return;
-    try {
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      const prof = profiles[0] || null;
-      setProfile(prof);
+    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+    const prof = profiles[0] || null;
 
-      const today = new Date().toDateString();
-      let idx = prof?.last_quote_index ?? 0;
-      if (prof?.last_quote_date !== today) {
-        idx = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
-        if (prof) {
-          await base44.entities.UserProfile.update(prof.id, { last_quote_date: today, last_quote_index: idx });
-        } else {
-          await base44.entities.UserProfile.create({ user_email: user.email, last_quote_date: today, last_quote_index: idx });
-        }
-      }
-      setQuote(MOTIVATIONAL_QUOTES[idx]);
-    } catch (e) {
-      setQuote(MOTIVATIONAL_QUOTES[0]);
+    // Redirect to onboarding if first time
+    if (!prof?.display_name) {
+      navigate("/onboarding");
+      return;
     }
+
+    setProfile(prof);
+
+    const today = new Date().toDateString();
+    let idx = prof?.last_quote_index ?? 0;
+    if (prof?.last_quote_date !== today) {
+      idx = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+      await base44.entities.UserProfile.update(prof.id, { last_quote_date: today, last_quote_index: idx });
+    }
+    setQuote(MOTIVATIONAL_QUOTES[idx]);
+    setLoading(false);
   }
 
   const greeting = () => {
@@ -72,19 +82,31 @@ export default function Home() {
     return "Good Evening";
   };
 
+  const visibleGames = profile?.favorite_games?.length
+    ? ALL_GAMES.filter(g => profile.favorite_games.includes(g.path))
+    : ALL_GAMES;
+
+  const religionInfo = profile?.religion && RELIGION_LABELS[profile.religion];
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background px-4 py-6 pb-24">
       {/* Greeting */}
       <div className="text-center mb-6">
         <h1 className="text-4xl font-black text-primary mb-1">
-          {greeting()}, {user?.full_name?.split(" ")[0] || "Friend"}! 👋
+          {greeting()}, {profile?.display_name || user?.full_name?.split(" ")[0] || "Friend"}! 👋
         </h1>
         <p className="text-muted-foreground text-xl">What would you like to do today?</p>
       </div>
 
       {/* Quote of the Day */}
       {quote && (
-        <div className="bg-card border-2 border-primary rounded-2xl p-6 mb-8 shadow-xl">
+        <div className="bg-card border-2 border-primary rounded-2xl p-6 mb-6 shadow-xl">
           <div className="text-center mb-3">
             <span className="text-4xl">💛</span>
             <h2 className="text-2xl font-black text-primary mt-1">Quote of the Day</h2>
@@ -96,12 +118,27 @@ export default function Home() {
         </div>
       )}
 
+      {/* This Day in History */}
+      <HistoryFact birthday={profile?.birthday} />
+
+      {/* Daily Inspiration link */}
+      {religionInfo && (
+        <Link
+          to="/daily"
+          className="block bg-card border-2 border-primary rounded-2xl p-5 text-center shadow-xl mb-6"
+        >
+          <span className="text-4xl">{religionInfo.emoji}</span>
+          <p className="text-2xl font-black text-primary mt-2">{religionInfo.label}</p>
+          <p className="text-muted-foreground text-lg">Tap to read today's reading</p>
+        </Link>
+      )}
+
       {/* Games Grid */}
       <h2 className="text-3xl font-black text-foreground mb-4 text-center">🎮 Play a Game</h2>
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        {GAMES.map((game) => (
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        {visibleGames.map((game) => (
           <Link
-            key={game.name}
+            key={game.path}
             to={game.path}
             className={`bg-gradient-to-br ${game.color} rounded-2xl p-5 shadow-xl flex flex-col items-center gap-2 active:scale-95 transition-transform`}
           >
@@ -111,18 +148,6 @@ export default function Home() {
           </Link>
         ))}
       </div>
-
-      {/* Daily Inspiration link */}
-      {profile?.religion && profile.religion !== "None" && (
-        <Link
-          to="/daily"
-          className="block bg-card border-2 border-primary rounded-2xl p-5 text-center shadow-xl"
-        >
-          <span className="text-4xl">📖</span>
-          <p className="text-2xl font-black text-primary mt-2">Daily {profile.religion} Verse</p>
-          <p className="text-muted-foreground text-lg">Tap to read today's verse</p>
-        </Link>
-      )}
     </div>
   );
 }

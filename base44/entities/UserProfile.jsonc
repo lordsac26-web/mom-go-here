@@ -8,6 +8,15 @@
     "display_name": {
       "type": "string"
     },
+    "birthday": {
+      "type": "string"
+    },
+    "favorite_games": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "religion": {
       "type": "string",
       "enum": [
