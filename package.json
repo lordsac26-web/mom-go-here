@@ -82,6 +82,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.171.0",
+    "vanilla-tilt": "^1.8.1",
     "vaul": "^1.1.2",
     "zod": "^3.24.2",
     "zustand": "^4.5.7"
