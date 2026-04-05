@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 
@@ -40,6 +41,7 @@ const SCENARIOS = [
 ];
 
 export default function SpotDiff() {
+  useGameTimer();
   const [scenario] = useState(SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)]);
   const [found, setFound] = useState([]);
   const [clicks, setClicks] = useState([]);

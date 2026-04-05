@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
@@ -60,6 +61,7 @@ function CardView({ card, onClick, small, selected }) {
 }
 
 export default function Solitaire() {
+  useGameTimer();
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null); // { source: 'tableau'|'waste', colIdx, cardIdx }
   const [won, setWon] = useState(false);

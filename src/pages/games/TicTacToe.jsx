@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 
 function checkWinner(board) {
@@ -34,6 +35,7 @@ function bestMove(board) {
 }
 
 export default function TicTacToe() {
+  useGameTimer();
   const [board, setBoard] = useState(Array(9).fill(null));
   const [xIsNext, setXIsNext] = useState(true);
   const [gameOver, setGameOver] = useState(false);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useGameTimer } from "../../hooks/useGameTimer";
 
 // Simple Sudoku puzzles (0 = empty)
 const PUZZLES = [
@@ -54,6 +55,7 @@ const PUZZLES = [
 ];
 
 export default function Sudoku() {
+  useGameTimer();
   const [puzzleIdx] = useState(Math.floor(Math.random() * PUZZLES.length));
   const puzzle = PUZZLES[puzzleIdx];
   const [grid, setGrid] = useState(puzzle.puzzle.map(r => [...r]));

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useGameTimer } from "../../hooks/useGameTimer";
 
 const TILE_SYMBOLS = [
   "🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
@@ -41,6 +42,7 @@ function Tile3D({ tile, onClick }) {
 }
 
 export default function Mahjong() {
+  useGameTimer();
   const [tiles, setTiles] = useState(buildTiles());
   const [selectedId, setSelectedId] = useState(null);
   const [matches, setMatches] = useState(0);

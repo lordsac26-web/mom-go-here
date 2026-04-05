@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 
 const WORD_LISTS = [
@@ -45,6 +46,7 @@ function generateGrid(size, words) {
 }
 
 export default function WordSearch() {
+  useGameTimer();
   const [started, setStarted] = useState(false);
   const [size] = useState(10);
   const [gridData, setGridData] = useState(null);

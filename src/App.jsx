@@ -19,6 +19,7 @@ import Checkers from './pages/games/Checkers';
 import Mahjong from './pages/games/Mahjong';
 import Solitaire from './pages/games/Solitaire';
 import SpotDiff from './pages/games/SpotDiff';
+import Progress from './pages/Progress';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
         <Route path="/games/mahjong" element={<Mahjong />} />
         <Route path="/games/solitaire" element={<Solitaire />} />
         <Route path="/games/spotdiff" element={<SpotDiff />} />
+        <Route path="/progress" element={<Progress />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

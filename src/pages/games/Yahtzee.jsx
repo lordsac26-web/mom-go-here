@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
@@ -53,6 +54,7 @@ function calcScore(key, dice) {
 }
 
 export default function Yahtzee() {
+  useGameTimer();
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
   const [rollsLeft, setRollsLeft] = useState(3);

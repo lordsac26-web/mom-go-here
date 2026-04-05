@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useGameTimer } from "../../hooks/useGameTimer";
 
 function initBoard() {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -64,6 +65,7 @@ function computerMove(board) {
 }
 
 export default function Checkers() {
+  useGameTimer();
   const [board, setBoard] = useState(initBoard());
   const [selected, setSelected] = useState(null);
   const [turn, setTurn] = useState(1);

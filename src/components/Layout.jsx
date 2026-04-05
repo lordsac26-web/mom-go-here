@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { Home, Gamepad2, Settings, Menu, X, Star } from "lucide-react";
+import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function Layout() {
@@ -12,6 +12,7 @@ export default function Layout() {
     { to: "/", label: "🏠 Home", icon: Home },
     { to: "/games", label: "🎮 Games", icon: Gamepad2 },
     { to: "/daily", label: "⭐ Daily", icon: Star },
+    { to: "/progress", label: "📊 Progress", icon: BarChart2 },
     { to: "/settings", label: "⚙️ Settings", icon: Settings },
   ];
 

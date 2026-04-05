@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
@@ -44,6 +45,7 @@ export default function MemoryGame() {
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
   const [started, setStarted] = useState(false);
+  useGameTimer();
   const lockRef = useRef(false);
 
   function startGame(idx = sizeIdx) {

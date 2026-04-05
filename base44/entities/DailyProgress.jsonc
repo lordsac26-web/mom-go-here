@@ -1,0 +1,19 @@
+{
+  "name": "DailyProgress",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string"
+    },
+    "minutes_played": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email",
+    "date"
+  ]
+}
