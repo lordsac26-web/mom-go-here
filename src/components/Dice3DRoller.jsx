@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useGesture } from "@use-gesture/react";
 
 export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
   const canvasRef = useRef(null);
@@ -12,6 +11,7 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
 
   const ROLL_DURATION = 0.6;
   const DAMPING = 0.93;
+  const dragStateRef = useRef({ x: 0, y: 0 });
 
   // Create pip texture for a die face
   const createPipTexture = (number) => {
@@ -50,31 +50,34 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
     return new THREE.CanvasTexture(canvas);
   };
 
-  useGesture(
-    {
-      onDrag: ({ offset: [dx, dy], velocity: [vx, vy], last }) => {
-        if (!diceRef.current.length) return;
+  // Handle drag-to-shake via mouse/touch
+  const handlePointerDown = (e) => {
+    dragStateRef.current = { x: e.clientX || e.touches?.[0]?.clientX || 0, y: e.clientY || e.touches?.[0]?.clientY || 0 };
+  };
 
-        const magnitude = Math.sqrt(dx * dx + dy * dy);
-        if (magnitude < 10) return; // Minimum drag distance
+  const handlePointerMove = (e) => {
+    if (!shaking) return;
+    const currentX = e.clientX || e.touches?.[0]?.clientX || 0;
+    const currentY = e.clientY || e.touches?.[0]?.clientY || 0;
+    const dx = currentX - dragStateRef.current.x;
+    const dy = currentY - dragStateRef.current.y;
+    dragStateRef.current = { x: currentX, y: currentY };
 
-        if (!last) {
-          setShaking(true);
-          diceRef.current.forEach((die, i) => {
-            velocitiesRef.current[i] = {
-              x: (dy / 100) * 30 + vx * 10,
-              y: (dx / 100) * 30 + vy * 10,
-              z: (Math.random() - 0.5) * 20,
-            };
-          });
-        } else {
-          setShaking(false);
-          rollTimeRef.current = 0;
-        }
-      },
-    },
-    { target: canvasRef }
-  );
+    if (diceRef.current.length) {
+      diceRef.current.forEach((die, i) => {
+        velocitiesRef.current[i] = {
+          x: (dy / 100) * 30,
+          y: (dx / 100) * 30,
+          z: (Math.random() - 0.5) * 20,
+        };
+      });
+    }
+  };
+
+  const handlePointerUp = () => {
+    setShaking(false);
+    rollTimeRef.current = 0;
+  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -203,7 +206,15 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
   }, [dice, isRolling, onRollComplete, shaking]);
 
   return (
-    <div className="w-full select-none">
+    <div className="w-full select-none"
+      onMouseDown={handlePointerDown}
+      onTouchStart={handlePointerDown}
+      onMouseMove={handlePointerMove}
+      onTouchMove={handlePointerMove}
+      onMouseUp={handlePointerUp}
+      onTouchEnd={handlePointerUp}
+      onMouseLeave={handlePointerUp}
+    >
       <canvas ref={canvasRef} className="w-full h-64 rounded-2xl cursor-grab active:cursor-grabbing" />
       <p className="text-center text-xs text-muted-foreground mt-2">Drag and fling to shake the dice 👇</p>
     </div>
