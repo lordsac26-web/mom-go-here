@@ -8,7 +8,8 @@ import { useAudioStore } from '@/stores/audioStore';
 export default function AmbientMusicPlayer() {
   const audioContextRef = useRef(null);
   const oscillatorsRef = useRef([]);
-  const gainsRef = useRef([]);
+  const activeNotesRef = useRef([]);
+  const timeoutIdsRef = useRef([]);
   const isPlayingRef = useRef(false);
 
   const musicVolume = useAudioStore((state) => state.musicVolume);
@@ -52,43 +53,49 @@ export default function AmbientMusicPlayer() {
       ];
 
       const playMelody = (startTime) => {
-        let currentTime = startTime;
+       let currentTime = startTime;
+       const noteList = [];
 
-        notes.forEach(({ freq, dur }) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
+       notes.forEach(({ freq, dur }) => {
+         const osc = ctx.createOscillator();
+         const gain = ctx.createGain();
 
-          osc.type = 'sine';
-          osc.frequency.value = freq;
+         osc.type = 'sine';
+         osc.frequency.value = freq;
 
-          gain.gain.setValueAtTime(0, currentTime);
-          gain.gain.linearRampToValueAtTime(
-            (musicVolume * 0.2) / 2,
-            currentTime + 0.05
-          );
-          gain.gain.linearRampToValueAtTime(
-            (musicVolume * 0.15) / 2,
-            currentTime + dur - 0.1
-          );
-          gain.gain.linearRampToValueAtTime(0, currentTime + dur);
+         gain.gain.setValueAtTime(0, currentTime);
+         gain.gain.linearRampToValueAtTime(
+           (musicVolume * 0.2) / 2,
+           currentTime + 0.05
+         );
+         gain.gain.linearRampToValueAtTime(
+           (musicVolume * 0.15) / 2,
+           currentTime + dur - 0.1
+         );
+         gain.gain.linearRampToValueAtTime(0, currentTime + dur);
 
-          osc.connect(gain);
-          gain.connect(ctx.destination);
+         osc.connect(gain);
+         gain.connect(ctx.destination);
 
-          osc.start(currentTime);
-          osc.stop(currentTime + dur);
+         osc.start(currentTime);
+         osc.stop(currentTime + dur);
 
-          currentTime += dur;
-        });
+         noteList.push({ osc, gain });
 
-        // Loop the melody
-        const totalDuration = notes.reduce((sum, n) => sum + n.dur, 0);
-        if (isPlayingRef.current) {
-          setTimeout(
-            () => playMelody(ctx.currentTime),
-            totalDuration * 1000
-          );
-        }
+         currentTime += dur;
+       });
+
+       activeNotesRef.current = noteList;
+
+       // Loop the melody
+       const totalDuration = notes.reduce((sum, n) => sum + n.dur, 0);
+       if (isPlayingRef.current) {
+         const timeoutId = setTimeout(
+           () => playMelody(ctx.currentTime),
+           totalDuration * 1000
+         );
+         timeoutIdsRef.current.push(timeoutId);
+       }
       };
 
       playMelody(ctx.currentTime);
@@ -101,14 +108,20 @@ export default function AmbientMusicPlayer() {
   // Stop music
   const stopAmbientMusic = () => {
     isPlayingRef.current = false;
-    oscillatorsRef.current.forEach((osc) => {
+    
+    // Clear pending timeouts
+    timeoutIdsRef.current.forEach(id => clearTimeout(id));
+    timeoutIdsRef.current = [];
+    
+    // Stop all active notes
+    activeNotesRef.current.forEach(({ osc }) => {
       try {
         osc.stop();
       } catch (e) {
         // Already stopped
       }
     });
-    oscillatorsRef.current = [];
+    activeNotesRef.current = [];
   };
 
   // Control music playback based on settings
