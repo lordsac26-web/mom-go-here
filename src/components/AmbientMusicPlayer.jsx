@@ -124,18 +124,6 @@ export default function AmbientMusicPlayer() {
     activeNotesRef.current = [];
   };
 
-  // Update gain on active notes when volume changes
-  useEffect(() => {
-    activeNotesRef.current.forEach(({ gain }) => {
-      if (gain && gain.gain) {
-        const ctx = audioContextRef.current;
-        if (ctx) {
-          gain.gain.setValueAtTime((musicVolume * 0.2) / 2, ctx.currentTime);
-        }
-      }
-    });
-  }, [musicVolume]);
-
   // Control music playback based on settings
   useEffect(() => {
     const shouldPlay = !muteAll && !muteMusic && musicVolume > 0;
