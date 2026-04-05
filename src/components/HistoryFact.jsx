@@ -28,17 +28,22 @@ export default function HistoryFact({ birthday, location }) {
           }
         }
       }),
-      birthday ? base44.integrations.Core.InvokeLLM({
-        prompt: `Give me one fascinating historical event that happened on ${new Date(birthday).toLocaleDateString("en-US", { month: "long", day: "numeric" })} in any year in history. Write 2 sentences, friendly and easy to read for an older adult.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            fact: { type: "string" },
-            year: { type: "string" }
+      birthday ? (() => {
+        const [year, month, day] = birthday.split('-').map(Number);
+        const bdayDate = new Date(year, month - 1, day);
+        const bdayLabel = bdayDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+        return base44.integrations.Core.InvokeLLM({
+          prompt: `Give me one fascinating historical event that happened on ${bdayLabel} in any year in history. Write 2 sentences, friendly and easy to read for an older adult.`,
+          add_context_from_internet: true,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              fact: { type: "string" },
+              year: { type: "string" }
+            }
           }
-        }
-      }) : Promise.reject()
+        });
+      })() : Promise.reject()
     ]);
 
     if (todayRes.status === "fulfilled") setTodayFact(todayRes.value);
