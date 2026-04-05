@@ -5,6 +5,7 @@ import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import MahjongTile from "../../components/MahjongTile";
+import useConfetti from "../../hooks/useConfetti";
 
 // Authentic Mahjong tile definitions with suits
 const TILE_DEFS = [
@@ -44,6 +45,7 @@ export default function Mahjong() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { mahjongTileSound, matchSound, winSound, uiClickSound } = useGameAudio();
+  const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
   const [tiles, setTiles] = useState(buildTiles());
   const [selectedId, setSelectedId] = useState(null);
   const [matches, setMatches] = useState(0);
@@ -73,7 +75,15 @@ export default function Mahjong() {
     if (first.key === second.key) {
       const newMatches = matches + 1;
       matchSound();
-      if (newMatches === total) { winVibrate(); winSound(); setWon(true); setMessage(""); } else { successVibrate(); setMessage("✅ Match!"); }
+      spark();
+      if (newMatches === total) {
+        winVibrate(); winSound(); fireworks(); emojiRain(["🀄", "🎉", "⭐"]); setWon(true); setMessage("");
+      } else {
+        // Milestone bursts at 25%, 50%, 75%
+        const pct = newMatches / total;
+        if (pct === 0.25 || pct === 0.5 || pct === 0.75) burst();
+        successVibrate(); setMessage("✅ Match!");
+      }
       setTiles(prev => prev.map(t => [selectedId, id].includes(t.id) ? { ...t, matched: true, selected: false } : t));
       setMatches(newMatches);
       setSelectedId(null);

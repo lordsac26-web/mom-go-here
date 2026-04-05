@@ -5,6 +5,7 @@ import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
+import useConfetti from "../../hooks/useConfetti";
 
 function initBoard() {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -72,6 +73,7 @@ export default function Checkers() {
   useGameTimer();
   const { tapVibrate, moveMade, pieceJumped, winVibrate, lossVibrate } = useHaptics();
   const { checkerFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
+  const { spark, shower, fireworks, emojiRain } = useConfetti();
   const [board, setBoard] = useState(initBoard());
   const [selected, setSelected] = useState(null);
   const [turn, setTurn] = useState(1);
@@ -104,7 +106,7 @@ export default function Checkers() {
       const move = playerMoves.find(m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c);
       if (move) {
         checkerFlipSound();
-        if (move.jump) pieceJumped(); else moveMade();
+        if (move.jump) { pieceJumped(); spark(); } else moveMade();
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
         setSelected(null);
@@ -121,6 +123,8 @@ export default function Checkers() {
         if (!compMoves.length) { 
           winVibrate();
           winSound();
+          fireworks();
+          emojiRain(["👑", "🏆", "⭐"]);
           setMessage("🎉 You win!");
           setGameOver(true);
           setPlayerScore("player-1", moveCount + 1);
@@ -133,6 +137,8 @@ export default function Checkers() {
           if (!cm) { 
              winVibrate();
              winSound();
+             fireworks();
+             emojiRain(["👑", "🏆", "⭐"]);
              setMessage("🎉 You win!");
              setGameOver(true);
              setPlayerScore("player-1", moveCount + 1);

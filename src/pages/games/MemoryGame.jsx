@@ -6,6 +6,7 @@ import FlipCard from "../../components/FlipCard";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
+import useConfetti from "../../hooks/useConfetti";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -63,6 +64,7 @@ export default function MemoryGame() {
   const lockRef = useRef(false);
   const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
   const { cardFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
+  const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
 
   // Zustand store integration
   const initializeGame = useGameStore((state) => state.initializeGame);
@@ -124,6 +126,7 @@ export default function MemoryGame() {
         setTimeout(() => {
           matchVibrate();
           matchSound();
+          spark();
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
           setMatched(prev => {
             const newMatched = prev + 1;
@@ -134,9 +137,16 @@ export default function MemoryGame() {
               action: "match_found",
               result: { pair: newMatched, totalPairs: SIZES[sizeIdx].pairs },
             });
+            // Milestone bursts at 25%, 50%, 75%
+            const pct = newMatched / SIZES[sizeIdx].pairs;
+            if (pct === 0.25 || pct === 0.5 || pct === 0.75) {
+              burst();
+            }
             if (newMatched === SIZES[sizeIdx].pairs) { 
               winVibrate();
               winSound();
+              fireworks();
+              emojiRain(["🧠", "🎉", "⭐"]);
               setWon(true);
               setPlayerScore("player-1", moves + 1);
             }

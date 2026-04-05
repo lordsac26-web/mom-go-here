@@ -8,6 +8,7 @@ import { useGameAudio } from "../../hooks/useGameAudio";
 import LetterHoneycomb from "../../components/wordwhomp/LetterHoneycomb";
 import WordList from "../../components/wordwhomp/WordList";
 import PUZZLES from "../../components/wordwhomp/wordData";
+import useConfetti from "../../hooks/useConfetti";
 
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -17,6 +18,7 @@ export default function WordWhomp() {
   useGameTimer();
   const { tapVibrate, matchVibrate, winVibrate, scoreHit } = useHaptics();
   const { matchSound, winSound, uiClickSound, cardFlipSound } = useGameAudio();
+  const { spark, burst, shower, fireworks, sideCannons, emojiRain } = useConfetti();
 
   const [puzzleIndex, setPuzzleIndex] = useState(() => Math.floor(Math.random() * PUZZLES.length));
   const [letters, setLetters] = useState(() => {
@@ -53,10 +55,21 @@ export default function WordWhomp() {
     if (foundWords.length === allWords.length && allWords.length > 0) {
       winVibrate();
       winSound();
+      fireworks();
+      emojiRain(["🐝", "🏆", "⭐"]);
       setGameOver(true);
       setTimerActive(false);
     }
   }, [foundWords, allWords]);
+
+  // Milestone celebration at 25%, 50%, 75%
+  useEffect(() => {
+    if (allWords.length === 0 || gameOver) return;
+    const pct = foundWords.length / allWords.length;
+    if (foundWords.length > 0 && (pct === 0.25 || pct === 0.5 || pct === 0.75)) {
+      burst();
+    }
+  }, [foundWords, allWords, gameOver]);
 
   const showMessage = useCallback((text, type = "info") => {
     setMessage(text);
@@ -128,10 +141,13 @@ export default function WordWhomp() {
 
       if (word.length >= 7) {
         showMessage(`🐝 WHOMP! +${points} pts!`, "success");
+        sideCannons();
       } else if (word.length >= 5) {
         showMessage(`✨ Great! +${points} pts!`, "success");
+        burst();
       } else {
         showMessage(`✅ +${points} pts`, "success");
+        spark();
       }
     } else {
       showMessage("Not a valid word", "error");
