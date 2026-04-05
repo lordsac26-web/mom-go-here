@@ -60,7 +60,7 @@ function calcScore(key, dice) {
 
 export default function Yahtzee() {
   useGameTimer();
-  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { tapVibrate, scoreHit, scoreMilestone, bonusPoints, winVibrate } = useHaptics();
   const { diceshakeSound, diceCollideSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
@@ -117,7 +117,16 @@ export default function Yahtzee() {
   function scoreCategory(key) {
     if (scores[key] !== undefined || rollsLeft === 3) return;
     const s = calcScore(key, dice);
-    if (s > 0) { successVibrate(); matchSound(); } else { tapVibrate(); uiClickSound(); }
+    if (s > 50) {
+      scoreMilestone();
+      matchSound();
+    } else if (s > 0) {
+      scoreHit();
+      matchSound();
+    } else {
+      tapVibrate();
+      uiClickSound();
+    }
     setScores(prev => {
       const next = { ...prev, [key]: s };
       addHistoryEntry({
@@ -154,8 +163,14 @@ export default function Yahtzee() {
       <div className="text-8xl mb-4">🎲</div>
       <h1 className="text-4xl font-black text-primary mb-4">Game Over!</h1>
       <p className="text-3xl text-foreground mb-2">Final Score: <span className="text-primary font-black">{totalScore}</span></p>
-      <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mt-6 mb-4">
-        🔄 Play Again
+      <button
+       onClick={() => {
+         tapVibrate();
+         reset();
+       }}
+       className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mt-6 mb-4"
+      >
+       🔄 Play Again
       </button>
       <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
     </div>
@@ -183,7 +198,15 @@ export default function Yahtzee() {
               "Play 13 turns — score as high as you can!"
             ]}
           />
-          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+          <button
+           onClick={() => {
+             tapVibrate();
+             reset();
+           }}
+           className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
+          >
+           🔄
+          </button>
         </div>
       </div>
 

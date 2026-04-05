@@ -70,7 +70,7 @@ function computerMove(board) {
 
 export default function Checkers() {
   useGameTimer();
-  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { tapVibrate, moveMade, pieceJumped, winVibrate, lossVibrate } = useHaptics();
   const { checkerFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const [board, setBoard] = useState(initBoard());
   const [selected, setSelected] = useState(null);
@@ -104,7 +104,7 @@ export default function Checkers() {
       const move = playerMoves.find(m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c);
       if (move) {
         checkerFlipSound();
-        if (move.jump) successVibrate(); else tapVibrate();
+        if (move.jump) pieceJumped(); else moveMade();
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
         setSelected(null);
@@ -119,10 +119,11 @@ export default function Checkers() {
         // Check if computer has moves
         const compMoves = getAllMoves(newBoard, 2);
         if (!compMoves.length) { 
+          winVibrate();
+          winSound();
           setMessage("🎉 You win!");
           setGameOver(true);
           setPlayerScore("player-1", moveCount + 1);
-          winVibrate();
           return;
         }
         setTurn(2);
@@ -130,11 +131,13 @@ export default function Checkers() {
         setTimeout(() => {
           const cm = computerMove(newBoard);
           if (!cm) { 
-            setMessage("🎉 You win!");
-            setGameOver(true);
-            setPlayerScore("player-1", moveCount + 1);
-            return;
-          }
+             winVibrate();
+             winSound();
+             setMessage("🎉 You win!");
+             setGameOver(true);
+             setPlayerScore("player-1", moveCount + 1);
+             return;
+           }
           const b2 = applyMove(newBoard, cm);
           setBoard(b2);
           addHistoryEntry({
@@ -146,10 +149,10 @@ export default function Checkers() {
           });
           const playerMovesAfter = getAllMoves(b2, 1);
           if (!playerMovesAfter.length) { 
+            lossVibrate();
             setMessage("😔 Computer wins!");
             setGameOver(true);
             setPlayerScore("computer", moveCount + 1);
-            winSound();
             return;
           }
           setTurn(1);
@@ -167,6 +170,7 @@ export default function Checkers() {
   }
 
   function reset() {
+    tapVibrate();
     uiClickSound();
     setBoard(initBoard());
     setSelected(null);
@@ -198,7 +202,12 @@ export default function Checkers() {
               "Capture all of the computer's pieces to win."
             ]}
           />
-          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+          <button
+           onClick={reset}
+           className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
+          >
+           🔄
+          </button>
         </div>
       </div>
 

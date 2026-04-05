@@ -61,7 +61,7 @@ export default function MemoryGame() {
   const [started, setStarted] = useState(false);
   useGameTimer();
   const lockRef = useRef(false);
-  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
   const { cardFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
 
   // Zustand store integration
@@ -122,7 +122,7 @@ export default function MemoryGame() {
       const [a, b] = newFlipped.map(fid => newCards.find(c => c.id === fid));
       if (a.emoji === b.emoji) {
         setTimeout(() => {
-          successVibrate();
+          matchVibrate();
           matchSound();
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
           setMatched(prev => {
@@ -185,8 +185,14 @@ export default function MemoryGame() {
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
       <p className="text-2xl text-foreground mb-2">Matched all {SIZES[sizeIdx].pairs} pairs!</p>
       <p className="text-xl text-muted-foreground mb-8">Total moves: {moves}</p>
-      <button onClick={() => startGame()} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-        🔄 Play Again
+      <button
+      onClick={() => {
+      tapVibrate();
+      startGame();
+      }}
+      className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4"
+      >
+      🔄 Play Again
       </button>
       <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
     </div>
@@ -213,8 +219,14 @@ export default function MemoryGame() {
               "Try to finish in as few moves as possible!"
             ]}
           />
-          <button onClick={() => startGame()} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">
-            🔄 New
+          <button
+           onClick={() => {
+             tapVibrate();
+             startGame();
+           }}
+           className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
+          >
+           🔄 New
           </button>
         </div>
       </div>
