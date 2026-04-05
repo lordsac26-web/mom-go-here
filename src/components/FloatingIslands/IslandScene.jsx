@@ -82,40 +82,31 @@ function IslandMesh({ position, color, scale = 1, label, emoji, path, index, onH
 // ─── Floating particles / fireflies ───
 function Particles({ count = 60 }) {
   const meshRef = useRef();
-  const data = useMemo(() => {
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
-    const speeds = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 14;
       positions[i * 3 + 1] = Math.random() * 8 - 2;
       positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
-      speeds[i] = 0.2 + Math.random() * 0.5;
     }
-    return { positions, speeds };
+    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return g;
   }, [count]);
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
-    const geo = meshRef.current.geometry;
-    const pos = geo.attributes.position.array;
+    const pos = meshRef.current.geometry.attributes.position.array;
     const t = clock.getElapsedTime();
     for (let i = 0; i < count; i++) {
-      pos[i * 3 + 1] += Math.sin(t * data.speeds[i] + i) * 0.003;
+      pos[i * 3 + 1] += Math.sin(t * (0.2 + (i % 5) * 0.1) + i) * 0.003;
       pos[i * 3] += Math.cos(t * 0.3 + i) * 0.001;
     }
-    geo.attributes.position.needsUpdate = true;
+    meshRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
   return (
-    <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          array={data.positions}
-          count={count}
-          itemSize={3}
-        />
-      </bufferGeometry>
+    <points ref={meshRef} geometry={geo}>
       <pointsMaterial size={0.06} color="#fbbf24" transparent opacity={0.7} sizeAttenuation />
     </points>
   );
