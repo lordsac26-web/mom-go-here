@@ -24,7 +24,7 @@ function Tile3D({ tile, onClick }) {
     <button
       onClick={() => !tile.matched && onClick(tile.id)}
       disabled={tile.matched}
-      className={`mahjong-tile w-14 h-16 rounded-lg text-3xl flex items-center justify-center font-bold transition-all select-none
+      className={`mahjong-tile aspect-[7/8] rounded-lg text-2xl sm:text-3xl flex items-center justify-center font-bold transition-all select-none
         ${tile.matched
           ? "opacity-0 pointer-events-none"
           : tile.selected
@@ -139,7 +139,7 @@ export default function Mahjong() {
 
       <p className="text-center text-muted-foreground text-lg mb-4">Tap two matching tiles to remove them</p>
 
-      <div className="grid gap-2 justify-center" style={{ gridTemplateColumns: "repeat(6, auto)" }}>
+      <div className="grid gap-1.5 sm:gap-2 px-2 max-w-md mx-auto" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
         {tiles.map(tile => <Tile3D key={tile.id} tile={tile} onClick={handleClick} />)}
       </div>
     </div>

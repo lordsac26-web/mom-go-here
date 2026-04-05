@@ -148,8 +148,8 @@ export default function Checkers() {
         {message}
       </div>
 
-      <div className="flex justify-center">
-        <div className="border-4 border-foreground rounded-xl overflow-hidden">
+      <div className="flex justify-center px-2">
+        <div className="border-4 border-foreground rounded-xl overflow-hidden w-full max-w-sm">
           {board.map((row, r) => (
             <div key={r} className="flex">
               {row.map((piece, c) => {
@@ -158,11 +158,11 @@ export default function Checkers() {
                 const isTarget = dark && validTargets.has(`${r},${c}`);
                 return (
                   <button key={c} onClick={() => handleClick(r, c)}
-                    className={`w-11 h-11 flex items-center justify-center transition-all ${
+                    className={`flex-1 aspect-square flex items-center justify-center transition-all ${
                       dark ? "bg-amber-900" : "bg-amber-100"
                     } ${isTarget ? "ring-4 ring-inset ring-yellow-400" : ""}`}>
                     {piece && (
-                      <div className={`checker-piece w-8 h-8 flex items-center justify-center text-lg font-black ${
+                      <div className={`checker-piece w-[75%] aspect-square flex items-center justify-center text-xs sm:text-lg font-black ${
                         piece.player === 1 ? "bg-red-600" : "bg-gray-800"
                       } ${isSel ? "ring-4 ring-yellow-300" : ""}`}>
                         {piece.king ? "👑" : ""}

@@ -150,17 +150,17 @@ export default function WordSearch() {
       </div>
 
       {/* Words to find */}
-      <div className="flex flex-wrap gap-2 justify-center mb-4 px-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-4 px-2">
         {words.map(w => (
-          <span key={w} className={`px-3 py-2 rounded-xl text-lg font-black border-2 ${foundWords.includes(w) ? "bg-green-700 border-green-500 text-white line-through" : "bg-card border-border text-foreground"}`}>
+          <span key={w} className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-sm sm:text-lg font-black border-2 ${foundWords.includes(w) ? "bg-green-700 border-green-500 text-white line-through" : "bg-card border-border text-foreground"}`}>
             {w}
           </span>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="overflow-auto flex justify-center">
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}
+      <div className="flex justify-center px-1">
+        <div className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}
           onMouseLeave={() => { if (selecting) handleUp(); }}>
           {gridData.grid.map((row, r) =>
             row.map((letter, c) => {
@@ -178,7 +178,7 @@ export default function WordSearch() {
                     if (el?.dataset?.r && el?.dataset?.c) handleCellEnter(+el.dataset.r, +el.dataset.c);
                   }}
                   data-r={r} data-c={c}
-                  className={`w-9 h-9 flex items-center justify-center text-lg font-black rounded cursor-pointer transition-colors ${
+                  className={`aspect-square flex items-center justify-center text-sm sm:text-lg font-black rounded cursor-pointer transition-colors ${
                     isFound ? "bg-green-600 text-white" :
                     isSelected ? "bg-primary text-primary-foreground" :
                     "bg-card text-foreground"

@@ -131,8 +131,8 @@ export default function Sudoku() {
       <p className="text-center text-muted-foreground text-lg mb-4">Tap a cell, then tap a number</p>
 
       {/* Grid */}
-      <div className="flex justify-center mb-6">
-        <div className="border-4 border-foreground rounded-xl overflow-hidden">
+      <div className="flex justify-center mb-6 px-2">
+        <div className="border-4 border-foreground rounded-xl overflow-hidden w-full max-w-sm">
           {grid.map((row, r) => (
             <div key={r} className={`flex ${r === 2 || r === 5 ? "border-b-4 border-foreground" : ""}`}>
               {row.map((val, c) => {
@@ -141,7 +141,7 @@ export default function Sudoku() {
                 const err = errors.has(`${r},${c}`);
                 return (
                   <button key={c} onClick={() => handleSelect(r, c)}
-                    className={`w-10 h-10 text-xl font-black flex items-center justify-center border border-border
+                    className={`flex-1 aspect-square text-base sm:text-xl font-black flex items-center justify-center border border-border
                       ${c === 2 || c === 5 ? "border-r-4 border-r-foreground" : ""}
                       ${fix ? "bg-muted text-foreground" : sel ? "bg-primary text-primary-foreground" : err ? "bg-red-800 text-white" : "bg-card text-foreground hover:bg-secondary"}
                     `}>
@@ -155,15 +155,15 @@ export default function Sudoku() {
       </div>
 
       {/* Number pad */}
-      <div className="flex justify-center gap-2 flex-wrap max-w-sm mx-auto">
+      <div className="grid grid-cols-5 gap-2 max-w-xs mx-auto px-2">
         {[1,2,3,4,5,6,7,8,9].map(n => (
           <button key={n} onClick={() => handleNumber(n)}
-            className="w-16 h-16 bg-card border-2 border-border rounded-xl text-3xl font-black text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shadow-lg">
+            className="aspect-square bg-card border-2 border-border rounded-xl text-2xl sm:text-3xl font-black text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shadow-lg">
             {n}
           </button>
         ))}
         <button onClick={() => handleNumber(0)}
-          className="w-16 h-16 bg-secondary border-2 border-border rounded-xl text-xl font-black text-foreground hover:bg-destructive hover:text-white transition-colors shadow-lg">
+          className="aspect-square bg-secondary border-2 border-border rounded-xl text-lg sm:text-xl font-black text-foreground hover:bg-destructive hover:text-white transition-colors shadow-lg">
           ✕
         </button>
       </div>

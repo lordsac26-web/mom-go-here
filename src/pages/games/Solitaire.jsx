@@ -40,11 +40,11 @@ function initGame() {
   return { tableau, stock: deck, waste: [], foundations: [[], [], [], []] };
 }
 
-function CardView({ card, onClick, small, selected }) {
+function CardView({ card, onClick, selected }) {
   if (!card) return null;
   return (
     <div onClick={onClick}
-      className={`${small ? "w-12 h-16 text-sm" : "w-14 h-20 text-base"} border-2 rounded-xl flex flex-col items-center justify-center font-black cursor-pointer transition-all select-none shadow-md
+      className={`w-full aspect-[5/7] border-2 rounded-lg sm:rounded-xl flex flex-col items-center justify-center font-black cursor-pointer transition-all select-none shadow-md text-xs sm:text-base
         ${!card.faceUp ? "bg-gradient-to-br from-blue-800 to-blue-900 border-blue-600" :
           isRed(card) ? "bg-white text-red-600 border-gray-300" : "bg-white text-gray-900 border-gray-300"}
         ${selected ? "ring-4 ring-yellow-400 scale-105" : ""}
@@ -52,10 +52,10 @@ function CardView({ card, onClick, small, selected }) {
       {card.faceUp ? (
         <>
           <span className="leading-none">{card.val}</span>
-          <span className="leading-none text-lg">{card.suit}</span>
+          <span className="leading-none text-sm sm:text-lg">{card.suit}</span>
         </>
       ) : (
-        <span className="text-2xl">🂠</span>
+        <span className="text-lg sm:text-2xl">🂠</span>
       )}
     </div>
   );
@@ -195,15 +195,15 @@ export default function Solitaire() {
       </div>
 
       {/* Top row: stock, waste, foundations */}
-      <div className="flex gap-2 justify-center mb-4 px-1">
+      <div className="flex gap-1 sm:gap-2 justify-center mb-3 sm:mb-4 px-1">
         {/* Stock */}
-        <div onClick={drawCard} className="w-14 h-20 border-2 border-dashed border-green-500 rounded-xl flex items-center justify-center cursor-pointer">
-          {game.stock.length ? <span className="text-3xl">🂠</span> : <span className="text-2xl text-green-500">↩</span>}
+        <div onClick={drawCard} className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer">
+          {game.stock.length ? <span className="text-xl sm:text-3xl">🂠</span> : <span className="text-lg sm:text-2xl text-green-500">↩</span>}
         </div>
         {/* Waste */}
-        <div className="w-14 h-20" onClick={handleWasteClick}>
-          {wasteTop ? <CardView card={wasteTop} small={false} selected={selected?.source === 'waste'} /> :
-            <div className="w-14 h-20 border-2 border-dashed border-green-500 rounded-xl" />}
+        <div className="w-[12%] max-w-14" onClick={handleWasteClick}>
+          {wasteTop ? <CardView card={wasteTop} selected={selected?.source === 'waste'} /> :
+            <div className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl" />}
         </div>
         <div className="flex-1" />
         {/* Foundations */}
@@ -211,17 +211,17 @@ export default function Solitaire() {
           const top = f.length ? f[f.length - 1] : null;
           return (
             <div key={i} onClick={() => handleFoundationClick(i)}
-              className="w-14 h-20 border-2 border-dashed border-green-500 rounded-xl flex items-center justify-center cursor-pointer">
-              {top ? <CardView card={top} small={false} /> : <span className="text-2xl text-green-600">{SUIT_ORDER[i]}</span>}
+              className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer">
+              {top ? <CardView card={top} /> : <span className="text-lg sm:text-2xl text-green-600">{SUIT_ORDER[i]}</span>}
             </div>
           );
         })}
       </div>
 
       {/* Tableau */}
-      <div className="flex gap-1 justify-center px-1">
+      <div className="flex gap-0.5 sm:gap-1 justify-center px-1">
         {game.tableau.map((col, ci) => (
-          <div key={ci} className="flex flex-col" style={{ minWidth: "56px" }}>
+          <div key={ci} className="flex flex-col flex-1" style={{ maxWidth: "60px" }}>
             {col.length === 0 ? (
               <div onClick={() => {
                 if (selected && canPlaceOnTableau(
@@ -238,11 +238,11 @@ export default function Solitaire() {
                   setSelected(null);
                 }
               }}
-                className="w-14 h-20 border-2 border-dashed border-green-500 rounded-xl" />
+                className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl" />
             ) : (
               col.map((card, ci2) => (
-                <div key={ci2} style={{ marginTop: ci2 > 0 ? "-52px" : 0, zIndex: ci2 }} className="relative">
-                  <CardView card={card} small={false}
+                <div key={ci2} style={{ marginTop: ci2 > 0 ? "-65%" : 0, zIndex: ci2 }} className="relative">
+                  <CardView card={card}
                     selected={selected?.source === 'tableau' && selected.colIdx === ci && selected.cardIdx === ci2}
                     onClick={() => handleTableauClick(ci, ci2)} />
                 </div>

@@ -102,12 +102,12 @@ export default function TicTacToe() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-8 max-w-xs mx-auto w-full px-4">
         {board.map((val, i) => (
           <button
             key={i}
             onClick={() => handleClick(i)}
-            className={`w-28 h-28 text-6xl font-black rounded-2xl border-4 shadow-xl transition-all ${
+            className={`aspect-square text-4xl sm:text-6xl font-black rounded-2xl border-4 shadow-xl transition-all ${
               result?.line?.includes(i) ? "bg-primary border-primary text-primary-foreground" :
               val === "X" ? "bg-blue-700 border-blue-400 text-white" :
               val === "O" ? "bg-red-700 border-red-400 text-white" :
