@@ -113,7 +113,7 @@ export default function AmbientMusicPlayer() {
 
   // Control music playback based on settings
   useEffect(() => {
-    const shouldPlay = !muteAll && !muteMusic;
+    const shouldPlay = !muteAll && !muteMusic && musicVolume > 0;
 
     if (shouldPlay && !isPlayingRef.current) {
       playAmbientMusic();
