@@ -150,6 +150,15 @@ function CameraRig() {
   return null;
 }
 
+// ─── Scene fog setup ───
+function SceneFog() {
+  const { scene } = useThree();
+  useMemo(() => {
+    scene.fog = new THREE.Fog("#0f172a", 8, 20);
+  }, [scene]);
+  return null;
+}
+
 // ─── Main scene content ───
 function SceneContent({ islands, onNavigate }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
@@ -157,13 +166,11 @@ function SceneContent({ islands, onNavigate }) {
   return (
     <>
       <CameraRig />
+      <SceneFog />
       <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 8, 5]} intensity={1.2} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <directionalLight position={[5, 8, 5]} intensity={1.2} castShadow />
       <pointLight position={[-4, 6, -2]} intensity={0.6} color="#fbbf24" />
       <pointLight position={[3, -2, 4]} intensity={0.3} color="#7c3aed" />
-
-      {/* Fog */}
-      <primitive object={new THREE.Fog("#0f172a", 8, 20)} attach="fog" />
 
       {islands.map((island, i) => (
         <IslandMesh
