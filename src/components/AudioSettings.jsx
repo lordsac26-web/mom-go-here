@@ -1,11 +1,13 @@
 import { useAudioStore } from '@/stores/audioStore';
 import { Volume2, Volume, VolumeX } from 'lucide-react';
+import { useGameAudio } from '@/hooks/useGameAudio';
 
 /**
  * Audio settings panel for volume sliders and mute toggles.
  * Appears in the Settings page.
  */
 export default function AudioSettings() {
+  const { uiClickSound } = useGameAudio();
   const sfxVolume = useAudioStore((state) => state.sfxVolume);
   const musicVolume = useAudioStore((state) => state.musicVolume);
   const muteAll = useAudioStore((state) => state.muteAll);
@@ -29,7 +31,10 @@ export default function AudioSettings() {
           <p className="text-sm text-muted-foreground">Turn off all audio</p>
         </div>
         <button
-          onClick={toggleMuteAll}
+          onClick={() => {
+            uiClickSound();
+            toggleMuteAll();
+          }}
           className={`px-6 py-3 rounded-lg font-black text-lg transition-all ${
             muteAll
               ? 'bg-red-600 text-white'
@@ -50,7 +55,10 @@ export default function AudioSettings() {
           min="0"
           max="100"
           value={sfxVolume * 100}
-          onChange={(e) => setSfxVolume(e.target.value / 100)}
+          onChange={(e) => {
+            uiClickSound();
+            setSfxVolume(e.target.value / 100);
+          }}
           disabled={muteAll}
           className={`w-full h-3 rounded-lg appearance-none bg-muted cursor-pointer ${
             muteAll ? 'opacity-50' : ''
@@ -75,7 +83,10 @@ export default function AudioSettings() {
             <Volume size={24} /> Ambient Music
           </label>
           <button
-            onClick={toggleMuteMusic}
+            onClick={() => {
+              uiClickSound();
+              toggleMuteMusic();
+            }}
             disabled={muteAll}
             className={`px-4 py-2 rounded-lg font-bold transition-all ${
               muteMusic
@@ -91,7 +102,10 @@ export default function AudioSettings() {
           min="0"
           max="100"
           value={musicVolume * 100}
-          onChange={(e) => setMusicVolume(e.target.value / 100)}
+          onChange={(e) => {
+            uiClickSound();
+            setMusicVolume(e.target.value / 100);
+          }}
           disabled={muteAll || muteMusic}
           className={`w-full h-3 rounded-lg appearance-none bg-muted cursor-pointer ${
             muteAll || muteMusic ? 'opacity-50' : ''
