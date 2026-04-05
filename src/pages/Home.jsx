@@ -32,6 +32,7 @@ const ALL_GAMES = [
   { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll the dice!" },
   { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI artwork" },
   { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Spell words!" },
+  { name: "Lucky Slots", emoji: "🎰", path: "/games/slots", color: "from-yellow-600 to-red-700", desc: "Spin to win!" },
 ];
 
 const RELIGION_LABELS = {
