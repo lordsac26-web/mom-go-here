@@ -1,19 +1,18 @@
 /**
  * AmbientMusicPlayerV2.js
  *
- * Streams real ambient / relaxation radio stations via the free Radio Browser API.
- * Falls back to a curated list of public internet radio streams.
+ * Streams real radio stations via the free Radio Browser API by genre tag.
+ * Falls back to curated public internet radio streams per genre.
  * Manages browser audio-unlock, volume, and mute state.
  */
 
-// Curated fallback streams — public internet radio stations with ambient/relaxation music
-const FALLBACK_STREAMS = [
-  "https://streams.calmradio.com/api/39/128/stream",
-  "https://radio.stereoscenic.com/asp-s",
+import MUSIC_GENRES from "./MusicGenreData";
+
+// Default fallbacks if genre not found
+const DEFAULT_FALLBACKS = [
   "https://ice6.somafm.com/dronezone-128-mp3",
-  "https://ice6.somafm.com/deepspaceone-128-mp3",
-  "https://ice4.somafm.com/spacestation-128-mp3",
   "https://ice2.somafm.com/ambient-128-mp3",
+  "https://radio.stereoscenic.com/asp-s",
 ];
 
 export default class AmbientMusicPlayerV2 {
@@ -23,16 +22,18 @@ export default class AmbientMusicPlayerV2 {
   #muteAll = false;
   #muteMusic = false;
   #unlockListenersAttached = false;
-  #streams = [...FALLBACK_STREAMS];
+  #streams = [];
   #currentIndex = 0;
   #retryCount = 0;
-  #fetchedStreams = false;
+  #genre = "ambient";
+  #fetchController = null;
 
-  constructor({ musicVolume = 0.5, muteAll = false, muteMusic = false } = {}) {
+  constructor({ musicVolume = 0.5, muteAll = false, muteMusic = false, genre = "ambient" } = {}) {
     this.#musicVolume = musicVolume;
     this.#muteAll = muteAll;
     this.#muteMusic = muteMusic;
-    this.#fetchRadioStreams();
+    this.#genre = genre;
+    this.#loadGenreStreams(genre);
     this.#attachUnlockListeners();
   }
 
@@ -54,9 +55,17 @@ export default class AmbientMusicPlayerV2 {
     this.#syncPlayback();
   }
 
+  setGenre(genre) {
+    if (genre === this.#genre) return;
+    this.#genre = genre;
+    this.#stop();
+    this.#loadGenreStreams(genre);
+  }
+
   destroy() {
     this.#stop();
     this.#detachUnlockListeners();
+    if (this.#fetchController) this.#fetchController.abort();
   }
 
   // ─── Private ───────────────────────────────────────────────
@@ -76,25 +85,41 @@ export default class AmbientMusicPlayerV2 {
     }
   }
 
-  // Fetch real ambient radio streams from Radio Browser API
-  async #fetchRadioStreams() {
-    if (this.#fetchedStreams) return;
-    this.#fetchedStreams = true;
+  #getGenreConfig(genre) {
+    return MUSIC_GENRES.find(g => g.key === genre) || MUSIC_GENRES[0];
+  }
+
+  async #loadGenreStreams(genre) {
+    const config = this.#getGenreConfig(genre);
+    this.#streams = [...config.fallbacks, ...DEFAULT_FALLBACKS];
+    this.#currentIndex = 0;
+    this.#retryCount = 0;
+
+    // Try to fetch live streams from Radio Browser API
+    if (this.#fetchController) this.#fetchController.abort();
+    this.#fetchController = new AbortController();
+
     try {
       const res = await fetch(
-        "https://de1.api.radio-browser.info/json/stations/bytag/ambient?limit=10&order=clickcount&reverse=true&hidebroken=true"
+        `https://de1.api.radio-browser.info/json/stations/bytag/${encodeURIComponent(config.tag)}?limit=12&order=clickcount&reverse=true&hidebroken=true`,
+        { signal: this.#fetchController.signal }
       );
       if (res.ok) {
         const stations = await res.json();
         const urls = stations
-          .filter(s => s.url_resolved && s.codec === "MP3")
+          .filter(s => s.url_resolved && (s.codec === "MP3" || s.codec === "AAC"))
           .map(s => s.url_resolved);
         if (urls.length > 0) {
-          this.#streams = [...urls, ...FALLBACK_STREAMS];
+          this.#streams = [...urls, ...config.fallbacks, ...DEFAULT_FALLBACKS];
         }
       }
     } catch (_) {
       // Fallback streams are already set
+    }
+
+    // If we should be playing, restart with new streams
+    if (this.#shouldPlay()) {
+      this.#play();
     }
   }
 
@@ -131,7 +156,6 @@ export default class AmbientMusicPlayerV2 {
   #tryStream() {
     if (!this.#isPlaying) return;
 
-    // Clean up old audio element
     if (this.#audio) {
       this.#audio.pause();
       this.#audio.removeAttribute("src");
@@ -154,7 +178,6 @@ export default class AmbientMusicPlayerV2 {
       }
     });
 
-    // If stream stalls, try next
     audio.addEventListener("stalled", () => {
       setTimeout(() => {
         if (this.#audio === audio && audio.paused && this.#isPlaying) {
@@ -168,7 +191,6 @@ export default class AmbientMusicPlayerV2 {
     this.#audio = audio;
 
     audio.play().catch(() => {
-      // Auto-play blocked or stream failed — try next
       this.#currentIndex = (this.#currentIndex + 1) % this.#streams.length;
       this.#retryCount++;
       if (this.#retryCount < this.#streams.length + 3) {

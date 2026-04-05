@@ -20,6 +20,7 @@ export default function Layout() {
   const musicVolume = useAudioStore((state) => state.musicVolume);
   const muteAll = useAudioStore((state) => state.muteAll);
   const muteMusic = useAudioStore((state) => state.muteMusic);
+  const musicGenre = useAudioStore((state) => state.musicGenre);
 
   // Initialize and manage AmbientMusicPlayerV2 instance
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function Layout() {
         musicVolume,
         muteAll,
         muteMusic,
+        genre: musicGenre,
       });
     }
 
@@ -45,8 +47,9 @@ export default function Layout() {
       playerRef.current.setVolume(musicVolume);
       playerRef.current.setMuteAll(muteAll);
       playerRef.current.setMuteMusic(muteMusic);
+      playerRef.current.setGenre(musicGenre);
     }
-  }, [musicVolume, muteAll, muteMusic]);
+  }, [musicVolume, muteAll, muteMusic, musicGenre]);
 
   const navItems = [
     { to: "/", label: "🏠 Home", icon: Home },

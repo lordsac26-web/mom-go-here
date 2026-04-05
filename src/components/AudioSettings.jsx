@@ -3,6 +3,7 @@ import { Volume2 } from 'lucide-react';
 import { useGameAudio } from '@/hooks/useGameAudio';
 import useHaptics from '@/hooks/useHaptics';
 import VolumeSlider from './VolumeSlider';
+import MusicGenrePicker from './MusicGenrePicker';
 
 /**
  * Audio settings panel for volume sliders and mute toggles.
@@ -78,6 +79,9 @@ export default function AudioSettings() {
           toggleMuteMusic();
         }}
       />
+
+      {/* Music Genre Picker */}
+      <MusicGenrePicker />
 
       {/* Info */}
       <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">

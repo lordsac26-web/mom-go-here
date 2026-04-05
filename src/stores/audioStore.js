@@ -6,12 +6,14 @@ export const useAudioStore = create((set) => ({
   musicVolume: 0.5,
   muteAll: true,
   muteMusic: true,
+  musicGenre: 'ambient',
 
   // Actions
   setSfxVolume: (vol) => set({ sfxVolume: Math.max(0, Math.min(1, vol)) }),
   setMusicVolume: (vol) => set({ musicVolume: Math.max(0, Math.min(1, vol)) }),
   toggleMuteAll: () => set((state) => ({ muteAll: !state.muteAll })),
   toggleMuteMusic: () => set((state) => ({ muteMusic: !state.muteMusic })),
+  setMusicGenre: (genre) => set({ musicGenre: genre }),
   
   // Derived: Is SFX enabled?
   isSfxEnabled: () => {
