@@ -28,8 +28,13 @@ const TILE_DEFS = [
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
-function buildTiles() {
-  const selected = shuffle(TILE_DEFS).slice(0, 18);
+const DIFFICULTIES = [
+  { label: "Easy (12 pairs)", pairs: 12, cols: 6 },
+  { label: "Hard (24 pairs)", pairs: 24, cols: 8 },
+];
+
+function buildTiles(pairCount) {
+  const selected = shuffle(TILE_DEFS).slice(0, pairCount);
   const pairs = [...selected, ...selected];
   return shuffle(pairs).map((def, i) => ({
     id: i,
@@ -46,13 +51,15 @@ export default function Mahjong() {
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { mahjongTileSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
-  const [tiles, setTiles] = useState(buildTiles());
+  const [diffIdx, setDiffIdx] = useState(null);
+  const [tiles, setTiles] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [matches, setMatches] = useState(0);
   const [message, setMessage] = useState("");
   const [won, setWon] = useState(false);
   const [moves, setMoves] = useState(0);
 
+  const diff = diffIdx !== null ? DIFFICULTIES[diffIdx] : null;
   const total = tiles.length / 2;
 
   function handleClick(id) {
@@ -99,9 +106,10 @@ export default function Mahjong() {
     }
   }
 
-  function reset() {
+  function startGame(idx) {
     uiClickSound();
-    setTiles(buildTiles());
+    setDiffIdx(idx);
+    setTiles(buildTiles(DIFFICULTIES[idx].pairs));
     setSelectedId(null);
     setMatches(0);
     setMessage("");
@@ -109,14 +117,51 @@ export default function Mahjong() {
     setMoves(0);
   }
 
+  function reset() {
+    if (diffIdx === null) return;
+    startGame(diffIdx);
+  }
+
+  function backToMenu() {
+    uiClickSound();
+    setDiffIdx(null);
+    setTiles([]);
+    setWon(false);
+    setMoves(0);
+    setMatches(0);
+  }
+
+  // Difficulty selection screen
+  if (diffIdx === null) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
+      <div className="text-8xl mb-4">🀄</div>
+      <h1 className="text-4xl font-black text-primary mb-2 text-center">Mahjong</h1>
+      <p className="text-xl text-muted-foreground text-center mb-8">Match pairs of tiles to clear the board!</p>
+      <div className="space-y-4 w-full max-w-sm">
+        {DIFFICULTIES.map((d, i) => (
+          <button
+            key={i}
+            onClick={() => startGame(i)}
+            className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white text-2xl font-black py-5 rounded-2xl shadow-xl"
+          >
+            {d.label}
+          </button>
+        ))}
+      </div>
+      <Link to="/games" className="mt-8 text-primary text-xl font-bold">← Back to Games</Link>
+    </div>
+  );
+
   if (won) return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">All Tiles Matched!</h1>
+      <p className="text-2xl text-foreground mb-1">Difficulty: {diff.label}</p>
       <p className="text-2xl text-foreground mb-2">Moves: {moves}</p>
       <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
         🔄 Play Again
       </button>
+      <button onClick={backToMenu} className="text-primary text-xl font-bold mb-2">Choose Difficulty</button>
       <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
     </div>
   );
@@ -152,7 +197,7 @@ export default function Mahjong() {
 
       <p className="text-center text-muted-foreground text-lg mb-4">Tap two matching tiles to remove them</p>
 
-      <div className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+      <div className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto" style={{ gridTemplateColumns: `repeat(${diff.cols}, 1fr)` }}>
         {tiles.map(tile => <MahjongTile key={tile.id} tile={tile} onClick={handleClick} />)}
       </div>
     </div>
