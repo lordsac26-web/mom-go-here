@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
@@ -64,9 +64,11 @@ export default function Yahtzee() {
   const { tapVibrate, scoreHit, scoreMilestone, bonusPoints, winVibrate } = useHaptics();
   const { diceshakeSound, diceCollideSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, sideCannons, fireworks, emojiRain } = useConfetti();
+  const rollerRef = useRef(null);
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
   const [rollsLeft, setRollsLeft] = useState(3);
+  const [isRolling, setIsRolling] = useState(false);
   const [scores, setScores] = useState({});
   const [turn, setTurn] = useState(1);
 
@@ -91,23 +93,20 @@ export default function Yahtzee() {
   }, [gameStatus, initializeGame, totalTurns]);
 
   // Handle physics roller results
-  const handleRollComplete = (results) => {
+  const handleRollComplete = useCallback((results) => {
     diceCollideSound();
-    setDice(results);
+    // Merge: keep held dice values, use physics results for free dice
+    setDice(prev => prev.map((d, i) => held[i] ? d : results[i]));
     setRollsLeft(r => r - 1);
-    addHistoryEntry({
-      round: turn,
-      playerId: "player-1",
-      playerName: "Player",
-      action: "roll",
-      result: { dice: results, rollNumber: 4 - (rollsLeft - 1) },
-    });
-  };
+    setIsRolling(false);
+  }, [held, diceCollideSound]);
 
   function roll() {
-    if (rollsLeft === 0) return;
+    if (rollsLeft === 0 || isRolling) return;
     tapVibrate();
     diceshakeSound();
+    setIsRolling(true);
+    rollerRef.current?.roll();
   }
 
   function toggleHold(i) {
@@ -222,9 +221,29 @@ export default function Yahtzee() {
       </div>
 
       {/* 3D Physics Dice Roller */}
-      <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden">
-        <Dice3DPhysicsRoller onRollComplete={handleRollComplete} />
-        <div className="flex justify-center gap-2 mt-3 flex-wrap">
+      <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden space-y-3">
+        {/* Cup Container */}
+        <div className="bg-gradient-to-b from-red-600 to-red-700 rounded-3xl p-3 shadow-2xl border-4 border-red-800">
+          <div className="bg-gradient-to-b from-yellow-100 to-yellow-50 rounded-full h-5 mb-2 shadow-inner border-2 border-yellow-200" />
+          <Dice3DPhysicsRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} />
+          <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-full h-3 mt-2 shadow-inner border-2 border-yellow-200" />
+        </div>
+
+        {/* Roll Button */}
+        <button
+          onClick={roll}
+          disabled={rollsLeft === 0 || isRolling}
+          className={`w-full text-2xl font-black py-4 rounded-2xl transition-all shadow-lg ${
+            rollsLeft === 0 || isRolling
+              ? "bg-muted text-muted-foreground"
+              : "bg-red-600 text-white hover:bg-red-700 active:scale-95"
+          }`}
+        >
+          {isRolling ? "🎲 Shaking..." : rollsLeft === 0 ? "🎲 No rolls left" : `🎲 Shake Cup (${rollsLeft} left)`}
+        </button>
+
+        {/* Hold buttons */}
+        <div className="flex justify-center gap-2 flex-wrap">
           {dice.map((d, i) => (
             <button key={i} onClick={() => toggleHold(i)}
               className={`text-sm px-3 py-2 rounded-lg border-2 transition-all ${held[i] ? "border-primary bg-primary/20 text-primary font-black" : "border-border bg-secondary text-foreground"}`}>
@@ -232,7 +251,7 @@ export default function Yahtzee() {
             </button>
           ))}
         </div>
-        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm mt-2">Hold dice to keep them 👆</p>}
+        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm">Hold dice to keep them 👆</p>}
       </div>
 
       {/* Scorecard */}
