@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, Send, MessageCircle } from "lucide-react";
+import { X, Send, MessageCircle, GripHorizontal } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useUIStore } from "@/stores/uiStore";
 
 export default function AIChatBot() {
   const [open, setOpen] = useState(false);
@@ -11,6 +12,13 @@ export default function AIChatBot() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const bubbleRef = useRef(null);
+
+  const chatBubbleEnabled = useUIStore((state) => state.chatBubbleEnabled);
+  const chatBubblePosition = useUIStore((state) => state.chatBubblePosition);
+  const setChatBubblePosition = useUIStore((state) => state.setChatBubblePosition);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -65,15 +73,57 @@ export default function AIChatBot() {
     }
   }
 
+  function handleBubbleMouseDown(e) {
+    if (e.button !== 0) return; // Only left click
+    if (!bubbleRef.current) return;
+    setDragging(true);
+    const rect = bubbleRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    function handleMouseMove(e) {
+      if (!bubbleRef.current) return;
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      setChatBubblePosition(x, y);
+    }
+
+    function handleMouseUp() {
+      setDragging(false);
+    }
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragging, dragOffset, setChatBubblePosition]);
+
   const visibleMessages = messages.filter(m => (m.role === "user" || m.role === "assistant") && m.content);
+
+  if (!chatBubbleEnabled) return null;
 
   return (
     <>
       {/* Floating button */}
       {!open && (
         <button
+          ref={bubbleRef}
+          onMouseDown={handleBubbleMouseDown}
           onClick={handleOpen}
-          className="fixed bottom-24 right-4 z-50 bg-primary text-primary-foreground w-16 h-16 rounded-full shadow-2xl flex items-center justify-center animate-pulse-gold"
+          className="fixed z-50 bg-primary text-primary-foreground w-16 h-16 rounded-full shadow-2xl flex items-center justify-center animate-pulse-gold cursor-grab active:cursor-grabbing"
+          style={{
+            left: chatBubblePosition.x > 0 ? `${chatBubblePosition.x}px` : "auto",
+            right: chatBubblePosition.x === 0 ? "1rem" : "auto",
+            bottom: chatBubblePosition.y > 0 ? `${chatBubblePosition.y}px` : "6rem",
+          }}
           aria-label="Chat with AI"
         >
           <MessageCircle size={32} />
@@ -84,8 +134,9 @@ export default function AIChatBot() {
       {open && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:inset-auto sm:bottom-24 sm:right-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:border-2 sm:border-border sm:shadow-2xl">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl shrink-0">
+          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl shrink-0 cursor-grab active:cursor-grabbing" onMouseDown={handleBubbleMouseDown}>
             <div className="flex items-center gap-3">
+              <GripHorizontal size={20} className="opacity-70" />
               <span className="text-3xl">🌸</span>
               <div>
                 <p className="text-lg font-black leading-tight">Mom's Helper</p>

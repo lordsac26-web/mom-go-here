@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AudioSettings from "@/components/AudioSettings";
+import { useUIStore } from "@/stores/uiStore";
 
 const RELIGIONS = [
   { value: "None", label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -13,6 +14,46 @@ const RELIGIONS = [
   { value: "Buddhism", label: "Buddhism", emoji: "☸️", sub: "Dharma Teachings" },
   { value: "Sikhism", label: "Sikhism", emoji: "🪯", sub: "Hukamnama" },
 ];
+
+function ChatBubbleSettings() {
+  const chatBubbleEnabled = useUIStore((state) => state.chatBubbleEnabled);
+  const toggleChatBubble = useUIStore((state) => state.toggleChatBubble);
+
+  return (
+    <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
+      <h2 className="text-3xl font-black text-primary flex items-center gap-2">
+        💬 Chat Bubble
+      </h2>
+      <p className="text-muted-foreground text-lg">Customize your AI assistant</p>
+
+      {/* Toggle */}
+      <div className="flex items-center justify-between bg-secondary rounded-xl px-4 py-4">
+        <div>
+          <p className="text-lg font-bold text-foreground">Enable Chat Bubble</p>
+          <p className="text-sm text-muted-foreground">Show/hide the AI helper button</p>
+        </div>
+        <button
+          onClick={toggleChatBubble}
+          className={`px-6 py-3 rounded-lg font-black text-lg transition-all ${
+            chatBubbleEnabled
+              ? "bg-primary text-primary-foreground"
+              : "bg-red-600 text-white"
+          }`}
+        >
+          {chatBubbleEnabled ? "✅ ON" : "🔇 OFF"}
+        </button>
+      </div>
+
+      {chatBubbleEnabled && (
+        <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
+          <p>
+            💡 <span className="font-bold">Tip:</span> Drag the chat bubble to move it around the screen.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user } = useAuth();
@@ -89,6 +130,9 @@ export default function Settings() {
 
         {/* Audio Settings */}
         <AudioSettings />
+
+        {/* Chat Bubble Settings */}
+        <ChatBubbleSettings />
 
         {/* Religion */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl">
