@@ -32,6 +32,7 @@ export default function GenrePickerDropdown({ musicGenre, onSelect, onClose }) {
             <button
               key={g.key}
               onClick={() => onSelect(g.key)}
+              title={g.label}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
                 musicGenre === g.key
                   ? 'border-primary bg-primary/15 shadow-sm'

@@ -42,6 +42,7 @@ export default function MusicGenrePicker() {
                 setMusicGenre(g.key);
               }}
               disabled={disabled}
+              title={g.label}
               className={`flex items-center gap-2 px-3 py-3 rounded-xl border-2 text-left transition-all ${
                 musicGenre === g.key
                   ? "border-primary bg-primary/15 shadow-md"
