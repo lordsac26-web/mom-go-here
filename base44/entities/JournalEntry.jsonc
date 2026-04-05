@@ -1,0 +1,25 @@
+{
+  "name": "JournalEntry",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "memory_text": {
+      "type": "string"
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "entry_date": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "entry_date"
+  ]
+}

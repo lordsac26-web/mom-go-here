@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2 } from "lucide-react";
+import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 
@@ -13,6 +13,7 @@ export default function Layout() {
     { to: "/", label: "🏠 Home", icon: Home },
     { to: "/games", label: "🎮 Games", icon: Gamepad2 },
     { to: "/daily", label: "⭐ Daily", icon: Star },
+    { to: "/memories", label: "📔 Memories", icon: BookOpen },
     { to: "/progress", label: "📊 Progress", icon: BarChart2 },
     { to: "/settings", label: "⚙️ Settings", icon: Settings },
   ];
