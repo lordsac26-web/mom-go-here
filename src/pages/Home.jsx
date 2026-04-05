@@ -3,19 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import MagneticCard from "../components/MagneticCard";
 import { ALL_GAMES } from "../components/GameTileManager";
-import IslandScene from "@/components/FloatingIslands/IslandScene";
-import IslandLabels from "@/components/FloatingIslands/IslandLabels";
+import TiltCard from "../components/TiltCard";
 
-const NAV_ISLANDS = [
-  { path: "/games", label: "Games", emoji: "🎮", beaconColor: "#a855f7", pos: [-2.8, 0.5, 0], scale: 1.1 },
-  { path: "/daily", label: "Daily", emoji: "⭐", beaconColor: "#fbbf24", pos: [0, 1.2, -1], scale: 1.15 },
-  { path: "/memories", label: "Memories", emoji: "📔", beaconColor: "#3b82f6", pos: [2.8, 0.3, 0.5], scale: 1 },
-  { path: "/progress", label: "Progress", emoji: "📊", beaconColor: "#22c55e", pos: [-1.5, -0.4, 2], scale: 0.9 },
-  { path: "/settings", label: "Settings", emoji: "⚙️", beaconColor: "#f97316", pos: [1.5, -0.2, 2.2], scale: 0.9 },
-  { path: "/games/memory", label: "Memory", emoji: "🧠", beaconColor: "#ec4899", pos: [0, -0.8, 3], scale: 0.85 },
+const NAV_CARDS = [
+  { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
+  { path: "/daily", label: "Daily", emoji: "⭐", desc: "Today's inspiration", gradient: "bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-700", glare: "#fbbf24", iconBg: "bg-yellow-400/30" },
+  { path: "/memories", label: "Memories", emoji: "📔", desc: "Your photo journal", gradient: "bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-700", glare: "#3b82f6", iconBg: "bg-blue-400/30" },
+  { path: "/progress", label: "Progress", emoji: "📊", desc: "Track your activity", gradient: "bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700", glare: "#22c55e", iconBg: "bg-green-400/30" },
+  { path: "/settings", label: "Settings", emoji: "⚙️", desc: "Customize your app", gradient: "bg-gradient-to-br from-orange-500 via-orange-600 to-red-700", glare: "#f97316", iconBg: "bg-orange-400/30" },
+  { path: "/games/memory", label: "Memory Match", emoji: "🧠", desc: "Quick brain exercise", gradient: "bg-gradient-to-br from-pink-500 via-rose-600 to-fuchsia-700", glare: "#ec4899", iconBg: "bg-pink-400/30" },
 ];
 
 const MOTIVATIONAL_QUOTES = [
@@ -105,14 +103,24 @@ export default function Home() {
         <h1 className="text-4xl font-black text-primary mb-1">
           {greeting()}, {profile?.display_name || user?.full_name?.split(" ")[0] || "Friend"}! 👋
         </h1>
-        <p className="text-muted-foreground text-lg">Explore the islands below!</p>
+        <p className="text-muted-foreground text-lg">Tap a card to explore!</p>
       </div>
 
-      {/* 3D Floating Islands Navigation */}
-      <IslandScene islands={NAV_ISLANDS} />
-      <IslandLabels islands={NAV_ISLANDS} />
-
-      <div className="my-6" />
+      {/* 3D Tilt Navigation Cards */}
+      <div className="grid grid-cols-1 gap-4 max-w-lg mx-auto mb-6">
+        {NAV_CARDS.map((card) => (
+          <TiltCard
+            key={card.path}
+            to={card.path}
+            emoji={card.emoji}
+            label={card.label}
+            description={card.desc}
+            gradient={card.gradient}
+            glareColor={card.glare}
+            iconBg={card.iconBg}
+          />
+        ))}
+      </div>
 
       {/* Quote of the Day — compact */}
       {quote && (
