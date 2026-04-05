@@ -18,7 +18,7 @@
  *   player.destroy();
  */
 
-export class AmbientMusicPlayer {
+export default class AmbientMusicPlayer {
   #audioContext = null;
   #activeNotes = [];
   #timeoutIds = [];

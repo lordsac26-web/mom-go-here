@@ -5,6 +5,7 @@ import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lu
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import AmbientMusicPlayer from "./AmbientMusicPlayer";
+import { useAudioStore } from "@/stores/audioStore";
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -12,6 +13,39 @@ export default function Layout() {
   const { user } = useAuth();
   const menuRef = useRef(null);
   const menuItemsRef = useRef([]);
+  const playerRef = useRef(null);
+
+  // Audio state from Zustand
+  const musicVolume = useAudioStore((state) => state.musicVolume);
+  const muteAll = useAudioStore((state) => state.muteAll);
+  const muteMusic = useAudioStore((state) => state.muteMusic);
+
+  // Initialize and manage AmbientMusicPlayer instance
+  useEffect(() => {
+    if (!playerRef.current) {
+      playerRef.current = new AmbientMusicPlayer({
+        musicVolume,
+        muteAll,
+        muteMusic,
+      });
+    }
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Sync audio state to player
+  useEffect(() => {
+    if (playerRef.current) {
+      playerRef.current.setVolume(musicVolume);
+      playerRef.current.setMuteAll(muteAll);
+      playerRef.current.setMuteMusic(muteMusic);
+    }
+  }, [musicVolume, muteAll, muteMusic]);
 
   const navItems = [
     { to: "/", label: "🏠 Home", icon: Home },
@@ -50,8 +84,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Ambient Music */}
-      <AmbientMusicPlayer />
+      {/* Ambient Music - managed via playerRef */}
 
       {/* Top Nav */}
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
