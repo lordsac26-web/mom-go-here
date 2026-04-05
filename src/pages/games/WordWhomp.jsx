@@ -15,6 +15,33 @@ function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+// Shuffle letters but keep the center letter at index 3 (middle of honeycomb)
+function shuffleWithCenter(allLetters, centerLetter) {
+  const center = centerLetter.toUpperCase();
+  const others = allLetters.filter((l, i) => {
+    // Remove the first occurrence of center letter from the array
+    if (l.toUpperCase() === center) {
+      allLetters = [...allLetters]; // don't mutate
+      return false;
+    }
+    return true;
+  });
+  // More robust: separate center from others
+  const otherLetters = [];
+  let centerFound = false;
+  for (const l of allLetters) {
+    if (!centerFound && l.toUpperCase() === center) {
+      centerFound = true;
+    } else {
+      otherLetters.push(l);
+    }
+  }
+  const shuffled = shuffle(otherLetters);
+  // Insert center letter at index 3 (visual center of honeycomb)
+  shuffled.splice(3, 0, center);
+  return shuffled;
+}
+
 export default function WordWhomp() {
   useGameTimer();
   const { tapVibrate, matchVibrate, winVibrate, scoreHit } = useHaptics();
@@ -24,7 +51,7 @@ export default function WordWhomp() {
   const [puzzleIndex, setPuzzleIndex] = useState(() => Math.floor(Math.random() * PUZZLES.length));
   const [letters, setLetters] = useState(() => {
     const p = PUZZLES[puzzleIndex];
-    return shuffle([...p.letters]);
+    return shuffleWithCenter([...p.letters], p.center);
   });
   const [currentWord, setCurrentWord] = useState([]);
   const [usedIndices, setUsedIndices] = useState([]);
@@ -101,7 +128,7 @@ export default function WordWhomp() {
   function handleShuffle() {
     uiClickSound();
     tapVibrate();
-    setLetters(shuffle([...letters]));
+    setLetters(shuffleWithCenter([...puzzle.letters], centerLetter));
     setCurrentWord([]);
     setUsedIndices([]);
   }
@@ -162,7 +189,7 @@ export default function WordWhomp() {
     uiClickSound();
     const idx = (puzzleIndex + 1) % PUZZLES.length;
     setPuzzleIndex(idx);
-    setLetters(shuffle([...PUZZLES[idx].letters]));
+    setLetters(shuffleWithCenter([...PUZZLES[idx].letters], PUZZLES[idx].center));
     setCurrentWord([]);
     setUsedIndices([]);
     setFoundWords([]);
@@ -233,11 +260,11 @@ export default function WordWhomp() {
             emoji="🐝"
             steps={[
               "Tap letters to build words (3+ letters).",
-              `Every word MUST include the center letter "${centerLetter}".`,
+              `The GOLD center letter "${centerLetter}" must be in EVERY word you make!`,
               "Tap SUBMIT to check your word.",
-              "Longer words earn more points!",
-              "Use SHUFFLE to rearrange the letters.",
-              "Find all words before time runs out!"
+              "Longer words earn more points! (3 letters = 1pt, 4 = 3pts, 5 = 5pts, 6 = 8pts, 7+ = 12pts)",
+              "Use SHUFFLE to rearrange the outer letters (center stays put!).",
+              "Find all words before time runs out! ⏰"
             ]}
           />
           <button onClick={newGame} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
@@ -272,7 +299,7 @@ export default function WordWhomp() {
               animate={{ opacity: 1 }}
               className="text-lg text-muted-foreground"
             >
-              Tap letters to build a word...
+              Use the gold letter <span className="text-yellow-400 font-black">{centerLetter}</span> in every word!
             </motion.span>
           )}
         </AnimatePresence>

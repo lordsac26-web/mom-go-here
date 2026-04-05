@@ -49,7 +49,7 @@ function HexButton({ letter, index, onTap, isUsed, isCenter }) {
   );
 }
 
-export default function LetterHoneycomb({ letters, usedIndices, onLetterTap }) {
+export default function LetterHoneycomb({ letters, usedIndices, onLetterTap, centerIndex = 3 }) {
   // Arrange 7 letters in honeycomb: top row (2), middle row (3), bottom row (2)
   const rows = [
     letters.slice(0, 2),
@@ -68,7 +68,7 @@ export default function LetterHoneycomb({ letters, usedIndices, onLetterTap }) {
         >
           {row.map((letter, ci) => {
             const globalIndex = indexOffsets[ri] + ci;
-            const isCenter = ri === 1 && ci === 1; // center hex
+            const isCenter = globalIndex === centerIndex; // center hex
             return (
               <HexButton
                 key={globalIndex}
