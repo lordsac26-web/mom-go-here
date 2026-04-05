@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
+import useHaptics from "../../hooks/useHaptics";
 
 // Simple Sudoku puzzles (0 = empty)
 const PUZZLES = [
@@ -57,6 +58,7 @@ const PUZZLES = [
 
 export default function Sudoku() {
   useGameTimer();
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [puzzleIdx] = useState(Math.floor(Math.random() * PUZZLES.length));
   const puzzle = PUZZLES[puzzleIdx];
   const [grid, setGrid] = useState(puzzle.puzzle.map(r => [...r]));
@@ -67,7 +69,7 @@ export default function Sudoku() {
   function isFixed(r, c) { return puzzle.puzzle[r][c] !== 0; }
 
   function handleSelect(r, c) {
-    if (!isFixed(r, c)) setSelected([r, c]);
+    if (!isFixed(r, c)) { tapVibrate(); setSelected([r, c]); }
   }
 
   function handleNumber(n) {
@@ -85,7 +87,9 @@ export default function Sudoku() {
     setErrors(errs);
     // Check win
     const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
-    if (complete) setWon(true);
+    if (complete) { winVibrate(); setWon(true); }
+    else if (n !== 0 && puzzle.solution[r][c] === n) successVibrate();
+    else if (n !== 0) tapVibrate();
   }
 
   function reset() {

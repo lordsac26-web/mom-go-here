@@ -3,6 +3,7 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import useGameSounds from "../../hooks/useGameSounds";
+import useHaptics from "../../hooks/useHaptics";
 import SparkleEffect from "../../components/SparkleEffect";
 import { Volume2, VolumeX, Palette } from "lucide-react";
 import { WS_THEMES, DEFAULT_THEME } from "../../components/wordsearch/themes";
@@ -55,6 +56,7 @@ function generateGrid(size, words) {
 export default function WordSearch() {
   useGameTimer();
   const { soundOn, setSoundOn, playTap, playSuccess, playWin } = useGameSounds();
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [started, setStarted] = useState(false);
   const [size] = useState(10);
   const [gridData, setGridData] = useState(null);
@@ -122,7 +124,7 @@ export default function WordSearch() {
     setSelected([]);
     setJustFoundCells(cellKeys);
     setJustFoundWord(word);
-    if (isWinning) { playWin(); } else { playSuccess(); }
+    if (isWinning) { playWin(); winVibrate(); } else { playSuccess(); successVibrate(); }
     clearTimeout(glowTimerRef.current);
     glowTimerRef.current = setTimeout(() => {
       setJustFoundCells([]);
@@ -146,6 +148,7 @@ export default function WordSearch() {
 
   function handleCellTap(r, c) {
     playTap();
+    tapVibrate();
     const key = cellKey(r, c);
 
     if (lineMode) {

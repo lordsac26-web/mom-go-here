@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
+import useHaptics from "../../hooks/useHaptics";
 
 function checkWinner(board) {
   const lines = [
@@ -37,6 +38,7 @@ function bestMove(board) {
 
 export default function TicTacToe() {
   useGameTimer();
+  const { tapVibrate, winVibrate } = useHaptics();
   const [board, setBoard] = useState(Array(9).fill(null));
   const [xIsNext, setXIsNext] = useState(true);
   const [gameOver, setGameOver] = useState(false);
@@ -46,10 +48,11 @@ export default function TicTacToe() {
 
   function handleClick(i) {
     if (board[i] || gameOver || !xIsNext) return;
+    tapVibrate();
     const newBoard = [...board];
     newBoard[i] = "X";
     const res = checkWinner(newBoard);
-    if (res) { setBoard(newBoard); setStatus("🎉 You Win!"); setGameOver(true); return; }
+    if (res) { setBoard(newBoard); setStatus("🎉 You Win!"); setGameOver(true); winVibrate(); return; }
     if (newBoard.every(Boolean)) { setBoard(newBoard); setStatus("🤝 It's a Draw!"); setGameOver(true); return; }
     setXIsNext(false);
     setBoard(newBoard);

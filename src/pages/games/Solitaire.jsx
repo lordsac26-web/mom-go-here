@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
+import useHaptics from "../../hooks/useHaptics";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -63,11 +64,13 @@ function CardView({ card, onClick, selected }) {
 
 export default function Solitaire() {
   useGameTimer();
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null); // { source: 'tableau'|'waste', colIdx, cardIdx }
   const [won, setWon] = useState(false);
 
   function drawCard() {
+    tapVibrate();
     setGame(prev => {
       const g = JSON.parse(JSON.stringify(prev));
       if (!g.stock.length) {
@@ -100,6 +103,7 @@ export default function Solitaire() {
         : game.tableau[selected.colIdx][selected.cardIdx];
 
       if (canPlaceOnTableau(movingCard, targetIsEmpty ? null : target)) {
+        successVibrate();
         setGame(prev => {
           const g = JSON.parse(JSON.stringify(prev));
           let cards;
@@ -139,6 +143,7 @@ export default function Solitaire() {
     if (selected.source === 'tableau' && selected.cardIdx !== game.tableau[selected.colIdx].length - 1) return;
 
     if (canPlaceOnFoundation(movingCard, game.foundations[fIdx])) {
+      successVibrate();
       setGame(prev => {
         const g = JSON.parse(JSON.stringify(prev));
         let card;
@@ -149,7 +154,7 @@ export default function Solitaire() {
           if (g.tableau[selected.colIdx].length) g.tableau[selected.colIdx][g.tableau[selected.colIdx].length - 1].faceUp = true;
         }
         g.foundations[fIdx].push(card);
-        if (checkWin(g)) setWon(true);
+        if (checkWin(g)) { winVibrate(); setWon(true); }
         return g;
       });
       setSelected(null);

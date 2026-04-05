@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
+import useHaptics from "../../hooks/useHaptics";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -56,6 +57,7 @@ function calcScore(key, dice) {
 
 export default function Yahtzee() {
   useGameTimer();
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
   const [rollsLeft, setRollsLeft] = useState(3);
@@ -68,6 +70,7 @@ export default function Yahtzee() {
 
   function roll() {
     if (rollsLeft === 0) return;
+    tapVibrate();
     setDice(prev => prev.map((d, i) => held[i] ? d : rollDie()));
     setRollsLeft(r => r - 1);
   }
@@ -80,7 +83,12 @@ export default function Yahtzee() {
   function scoreCategory(key) {
     if (scores[key] !== undefined || rollsLeft === 3) return;
     const s = calcScore(key, dice);
-    setScores(prev => ({ ...prev, [key]: s }));
+    if (s > 0) successVibrate(); else tapVibrate();
+    setScores(prev => {
+      const next = { ...prev, [key]: s };
+      if (Object.keys(next).length === totalTurns) winVibrate();
+      return next;
+    });
     setDice([1, 1, 1, 1, 1]);
     setHeld([false, false, false, false, false]);
     setRollsLeft(3);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
+import useHaptics from "../../hooks/useHaptics";
 
 function initBoard() {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -67,6 +68,7 @@ function computerMove(board) {
 
 export default function Checkers() {
   useGameTimer();
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [board, setBoard] = useState(initBoard());
   const [selected, setSelected] = useState(null);
   const [turn, setTurn] = useState(1);
@@ -81,12 +83,13 @@ export default function Checkers() {
     if (selected) {
       const move = playerMoves.find(m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c);
       if (move) {
+        if (move.jump) successVibrate(); else tapVibrate();
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
         setSelected(null);
         // Check if computer has moves
         const compMoves = getAllMoves(newBoard, 2);
-        if (!compMoves.length) { setMessage("🎉 You win!"); setGameOver(true); return; }
+        if (!compMoves.length) { setMessage("🎉 You win!"); setGameOver(true); winVibrate(); return; }
         setTurn(2);
         setMessage("🤖 Computer thinking...");
         setTimeout(() => {
