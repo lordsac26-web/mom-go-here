@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import gsap from "gsap";
 import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
@@ -8,6 +9,8 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const menuRef = useRef(null);
+  const menuItemsRef = useRef([]);
 
   const navItems = [
     { to: "/", label: "🏠 Home", icon: Home },
@@ -17,6 +20,32 @@ export default function Layout() {
     { to: "/progress", label: "📊 Progress", icon: BarChart2 },
     { to: "/settings", label: "⚙️ Settings", icon: Settings },
   ];
+
+  // GSAP Scroll Reveal Animation
+  useEffect(() => {
+    if (menuOpen && menuRef.current && menuItemsRef.current.length > 0) {
+      // Kill any existing animations
+      gsap.killTweensOf(menuItemsRef.current);
+      
+      // Animate menu items with staggered entrance
+      gsap.fromTo(
+        menuItemsRef.current,
+        {
+          opacity: 0,
+          y: -20,
+          x: -30,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          x: 0,
+          duration: 0.6,
+          stagger: 0.08,
+          ease: "power3.out",
+        }
+      );
+    }
+  }, [menuOpen]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -38,10 +67,13 @@ export default function Layout() {
 
         {/* Dropdown Menu */}
         {menuOpen && (
-          <div className="bg-card border-t border-border shadow-xl">
-            {navItems.map((item) => (
+          <div ref={menuRef} className="bg-card border-t border-border shadow-xl">
+            {navItems.map((item, idx) => (
               <Link
                 key={item.to}
+                ref={(el) => {
+                  if (el) menuItemsRef.current[idx] = el;
+                }}
                 to={item.to}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-4 px-6 py-5 text-2xl font-bold border-b border-border transition-colors ${
@@ -54,7 +86,12 @@ export default function Layout() {
               </Link>
             ))}
             {user && (
-              <div className="px-6 py-4 text-muted-foreground text-lg border-t border-border">
+              <div
+                ref={(el) => {
+                  if (el) menuItemsRef.current[navItems.length] = el;
+                }}
+                className="px-6 py-4 text-muted-foreground text-lg border-t border-border"
+              >
                 👤 {user.full_name || user.email}
               </div>
             )}
