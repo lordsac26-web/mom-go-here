@@ -3,8 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
-import MagneticCard from "../components/MagneticCard";
-import { ALL_GAMES } from "../components/GameTileManager";
 import TiltCard from "../components/TiltCard";
 
 const NAV_CARDS = [
@@ -84,10 +82,6 @@ export default function Home() {
     return "Good Evening";
   };
 
-  const visibleGames = profile?.favorite_games?.length
-    ? ALL_GAMES.filter(g => profile.favorite_games.includes(g.path))
-    : ALL_GAMES;
-
   const religionInfo = profile?.religion && RELIGION_LABELS[profile.religion];
 
   if (loading) return (
@@ -146,22 +140,6 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Games Grid */}
-      <h2 className="text-3xl font-black text-foreground mb-4 text-center">🎮 Play a Game</h2>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {visibleGames.map((game) => (
-          <MagneticCard key={game.path} strength={0.4} rotationStrength={0.2} hoverScale={1.05}>
-            <Link
-              to={game.path}
-              className={`bg-gradient-to-br ${game.color} rounded-2xl p-5 shadow-xl flex flex-col items-center gap-2 block`}
-            >
-              <span className="text-5xl">{game.emoji}</span>
-              <span className="text-xl font-black text-white text-center">{game.name}</span>
-              <span className="text-sm text-white/80 font-semibold">{game.desc}</span>
-            </Link>
-          </MagneticCard>
-        ))}
-      </div>
     </div>
   );
 }
