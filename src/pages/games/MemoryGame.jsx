@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
+import FlipCard from "../../components/FlipCard";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -16,25 +17,34 @@ function shuffle(arr) {
 }
 
 function Tile({ card, onClick }) {
-  return (
-    <div
-      onClick={() => !card.matched && !card.flipped && onClick(card.id)}
-      className="perspective-1000 cursor-pointer"
-      style={{ aspectRatio: "1" }}
-    >
-      <div
-        className={`relative w-full h-full transform-style-3d transition-transform duration-500 ${card.flipped || card.matched ? "rotate-y-180" : ""}`}
-      >
-        {/* Back */}
-        <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-purple-700 to-purple-900 rounded-xl border-4 border-purple-500 flex items-center justify-center shadow-lg">
-          <span className="text-3xl">🌸</span>
-        </div>
-        {/* Front */}
-        <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl border-4 flex items-center justify-center shadow-lg text-4xl ${card.matched ? "bg-gradient-to-br from-green-600 to-green-800 border-green-400" : "bg-gradient-to-br from-yellow-600 to-yellow-800 border-yellow-400"}`}>
-          {card.emoji}
-        </div>
-      </div>
+  const isRevealed = card.flipped || card.matched;
+
+  const backContent = (
+    <div className="w-full h-full bg-gradient-to-br from-purple-700 to-purple-900 rounded-xl border-4 border-purple-500 flex items-center justify-center shadow-lg">
+      <span className="text-3xl">🌸</span>
     </div>
+  );
+
+  const frontContent = (
+    <div className={`w-full h-full rounded-xl border-4 flex items-center justify-center shadow-lg text-4xl ${
+      card.matched
+        ? "bg-gradient-to-br from-green-600 to-green-800 border-green-400"
+        : "bg-gradient-to-br from-yellow-600 to-yellow-800 border-yellow-400"
+    }`}>
+      {card.emoji}
+    </div>
+  );
+
+  return (
+    <FlipCard
+      isFlipped={isRevealed}
+      front={frontContent}
+      back={backContent}
+      onTap={() => onClick(card.id)}
+      disabled={card.matched || card.flipped}
+      matchPulse={card.matched}
+      flipDuration={0.45}
+    />
   );
 }
 
