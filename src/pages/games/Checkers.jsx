@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
@@ -81,15 +81,24 @@ export default function Checkers() {
   const [gameOver, setGameOver] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
 
-  // Zustand store integration
+  // FIX (bug): use a ref for moveCount so setTimeout callbacks always see the latest value
+  const moveCountRef = useRef(0);
+
+  // FIX (bug): guard against clicks while computer is thinking
+  const thinkingRef = useRef(false);
+
+  // FIX (perf): track whether Zustand has been initialized so the effect doesn't re-fire
+  const zustandInitRef = useRef(false);
+
   const initializeGame = useGameStore((state) => state.initializeGame);
   const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
   const setPlayerScore = useGameStore((state) => state.setPlayerScore);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Init Zustand on component mount
+  // FIX (perf): only call initializeGame once using a ref guard instead of relying solely on gameStatus
   useEffect(() => {
-    if (gameStatus === "setup") {
+    if (gameStatus === "setup" && !zustandInitRef.current) {
+      zustandInitRef.current = true;
       initializeGame(
         [{ id: "player-1", name: "You" }, { id: "computer", name: "Computer" }],
         1
@@ -97,20 +106,45 @@ export default function Checkers() {
     }
   }, [gameStatus, initializeGame]);
 
+  // FIX (perf): memoize valid player moves so they aren't recomputed on every render
+  const playerMoves = useMemo(() => {
+    if (turn !== 1 || gameOver) return [];
+    return getAllMoves(board, 1);
+  }, [board, turn, gameOver]);
+
+  // FIX (perf): memoize valid targets for the selected piece
+  const validTargets = useMemo(() => {
+    if (!selected) return new Set();
+    return new Set(
+      playerMoves
+        .filter(m => m.from[0] === selected[0] && m.from[1] === selected[1])
+        .map(m => `${m.to[0]},${m.to[1]}`)
+    );
+  }, [playerMoves, selected]);
+
   function handleClick(r, c) {
-    if (turn !== 1 || gameOver) return;
+    // FIX (bug): block clicks while computer is thinking, not just on turn check
+    if (turn !== 1 || gameOver || thinkingRef.current) return;
     const piece = board[r][c];
-    const playerMoves = getAllMoves(board, 1);
 
     if (selected) {
-      const move = playerMoves.find(m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c);
+      const move = playerMoves.find(
+        m => m.from[0] === selected[0] && m.from[1] === selected[1] &&
+             m.to[0] === r && m.to[1] === c
+      );
       if (move) {
         checkerFlipSound();
         if (move.jump) { pieceJumped(); spark(); } else moveMade();
+
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
         setSelected(null);
-        setMoveCount(m => m + 1);
+
+        // FIX (bug): update both state and ref together so setTimeout sees the correct value
+        const newMoveCount = moveCountRef.current + 1;
+        moveCountRef.current = newMoveCount;
+        setMoveCount(newMoveCount);
+
         addHistoryEntry({
           round: 1,
           playerId: "player-1",
@@ -118,32 +152,32 @@ export default function Checkers() {
           action: "move",
           result: { from: move.from, to: move.to, jump: move.jump ? "yes" : "no" },
         });
-        // Check if computer has moves
+
         const compMoves = getAllMoves(newBoard, 2);
-        if (!compMoves.length) { 
-          winVibrate();
-          winSound();
-          fireworks();
-          emojiRain(["👑", "🏆", "⭐"]);
+        if (!compMoves.length) {
+          winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
           setMessage("🎉 You win!");
           setGameOver(true);
-          setPlayerScore("player-1", moveCount + 1);
+          // FIX (bug): use ref value so the score is accurate
+          setPlayerScore("player-1", moveCountRef.current);
           return;
         }
+
         setTurn(2);
         setMessage("🤖 Computer thinking...");
+        // FIX (bug): set thinking guard before timeout to block stray clicks
+        thinkingRef.current = true;
+
         setTimeout(() => {
           const cm = computerMove(newBoard);
-          if (!cm) { 
-             winVibrate();
-             winSound();
-             fireworks();
-             emojiRain(["👑", "🏆", "⭐"]);
-             setMessage("🎉 You win!");
-             setGameOver(true);
-             setPlayerScore("player-1", moveCount + 1);
-             return;
-           }
+          if (!cm) {
+            winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
+            setMessage("🎉 You win!");
+            setGameOver(true);
+            setPlayerScore("player-1", moveCountRef.current);
+            thinkingRef.current = false;
+            return;
+          }
           const b2 = applyMove(newBoard, cm);
           setBoard(b2);
           addHistoryEntry({
@@ -154,15 +188,18 @@ export default function Checkers() {
             result: { from: cm.from, to: cm.to, jump: cm.jump ? "yes" : "no" },
           });
           const playerMovesAfter = getAllMoves(b2, 1);
-          if (!playerMovesAfter.length) { 
+          if (!playerMovesAfter.length) {
             lossVibrate();
             setMessage("😔 Computer wins!");
             setGameOver(true);
-            setPlayerScore("computer", moveCount + 1);
+            setPlayerScore("computer", moveCountRef.current);
+            thinkingRef.current = false;
             return;
           }
           setTurn(1);
           setMessage("Your turn! (🔴 pieces)");
+          // FIX (bug): release thinking guard only after computer has fully moved
+          thinkingRef.current = false;
         }, 800);
         return;
       }
@@ -184,10 +221,9 @@ export default function Checkers() {
     setMessage("Your turn! (🔴 pieces)");
     setGameOver(false);
     setMoveCount(0);
+    moveCountRef.current = 0;
+    thinkingRef.current = false;
   }
-
-  const validMoves = selected ? getAllMoves(board, 1).filter(m => m.from[0] === selected[0] && m.from[1] === selected[1]) : [];
-  const validTargets = new Set(validMoves.map(m => `${m.to[0]},${m.to[1]}`));
 
   return (
     <div className="min-h-screen bg-background px-2 py-4 pb-24">
@@ -209,10 +245,10 @@ export default function Checkers() {
             ]}
           />
           <button
-           onClick={reset}
-           className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
+            onClick={reset}
+            className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
           >
-           🔄
+            🔄
           </button>
         </div>
       </div>
