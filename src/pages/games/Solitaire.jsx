@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import SolitaireCard from "../../components/solitaire/SolitaireCard";
+import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -86,9 +87,11 @@ export default function Solitaire() {
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null);
   const [won, setWon] = useState(false);
+  const [drawKey, setDrawKey] = useState(0);
 
   function drawCard() {
     tapVibrate();
+    setDrawKey(k => k + 1);
     setGame(prev => {
       const g = cloneGame(prev);
       if (!g.stock.length) {
@@ -232,14 +235,14 @@ export default function Solitaire() {
 
       {/* Top row: stock, waste, foundations */}
       <div className="flex gap-1 sm:gap-2 justify-center mb-3 sm:mb-4 px-1">
-        {/* Stock */}
-        <motion.div
-          onClick={drawCard}
-          whileTap={{ scale: 0.9 }}
-          className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer"
-        >
-          {game.stock.length ? <span className="text-xl sm:text-3xl">🂠</span> : <span className="text-lg sm:text-2xl text-green-500">↩</span>}
-        </motion.div>
+        {/* Stock — Stacked Card Deck */}
+        <div className="w-[12%] max-w-14 relative">
+          <StackedCardDeck
+            stockCount={game.stock.length}
+            onDraw={drawCard}
+            drawKey={drawKey}
+          />
+        </div>
         {/* Waste */}
         <div className="w-[12%] max-w-14" onClick={handleWasteClick}>
           <AnimatePresence mode="popLayout">
