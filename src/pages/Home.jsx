@@ -14,7 +14,6 @@ const NAV_CARDS = [
   { path: "/progress", label: "Progress", emoji: "📊", desc: "Track your activity", gradient: "bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700", glare: "#22c55e", iconBg: "bg-green-400/30" },
   { path: "/contacts", label: "Contacts", emoji: "👥", desc: "Friends & family birthdays", gradient: "bg-gradient-to-br from-rose-500 via-pink-600 to-fuchsia-700", glare: "#f43f5e", iconBg: "bg-rose-400/30" },
   { path: "/settings", label: "Settings", emoji: "⚙️", desc: "Customize your app", gradient: "bg-gradient-to-br from-orange-500 via-orange-600 to-red-700", glare: "#f97316", iconBg: "bg-orange-400/30" },
-  { path: "/games/memory", label: "Memory Match", emoji: "🧠", desc: "Quick brain exercise", gradient: "bg-gradient-to-br from-pink-500 via-rose-600 to-fuchsia-700", glare: "#ec4899", iconBg: "bg-pink-400/30" },
 ];
 
 const MOTIVATIONAL_QUOTES = [
