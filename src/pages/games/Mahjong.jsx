@@ -4,44 +4,40 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
+import MahjongTile from "../../components/MahjongTile";
 
-const TILE_SYMBOLS = [
-  "🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
-  "🀙","🀚","🀛","🀜","🀝","🀞","🀟","🀠","🀡",
-  "🀀","🀁","🀂","🀃","🀄","🀅","🀆",
-  "🌸","🌿","🍃","🎋",
+// Authentic Mahjong tile definitions with suits
+const TILE_DEFS = [
+  // Characters (萬) 1-9
+  ...Array.from({ length: 9 }, (_, i) => ({ suit: "characters", value: i + 1, key: `char-${i + 1}` })),
+  // Circles (筒) 1-9
+  ...Array.from({ length: 9 }, (_, i) => ({ suit: "circles", value: i + 1, key: `circ-${i + 1}` })),
+  // Bamboo (條) 1-9
+  ...Array.from({ length: 9 }, (_, i) => ({ suit: "bamboo", value: i + 1, key: `bamb-${i + 1}` })),
+  // Winds
+  { suit: "wind", value: "east", key: "wind-e" },
+  { suit: "wind", value: "south", key: "wind-s" },
+  { suit: "wind", value: "west", key: "wind-w" },
+  { suit: "wind", value: "north", key: "wind-n" },
+  // Dragons
+  { suit: "dragon", value: "red", key: "drag-r" },
+  { suit: "dragon", value: "green", key: "drag-g" },
+  { suit: "dragon", value: "white", key: "drag-w" },
 ];
 
-// Simple layout: flat grid mahjong (match pairs)
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 function buildTiles() {
-  const symbols = TILE_SYMBOLS.slice(0, 18);
-  const pairs = [...symbols, ...symbols];
-  return shuffle(pairs).map((sym, i) => ({ id: i, sym, matched: false, selected: false }));
-}
-
-function Tile3D({ tile, onClick }) {
-  return (
-    <button
-      onClick={() => !tile.matched && onClick(tile.id)}
-      disabled={tile.matched}
-      className={`mahjong-tile aspect-[7/8] rounded-lg text-2xl sm:text-3xl flex items-center justify-center font-bold transition-all select-none
-        ${tile.matched
-          ? "opacity-0 pointer-events-none"
-          : tile.selected
-            ? "bg-yellow-300 border-4 border-yellow-500 mahjong-tile-face shadow-2xl scale-110 z-10"
-            : "bg-amber-100 border-4 border-amber-400 mahjong-tile-face hover:scale-105"
-        }`}
-      style={{
-        boxShadow: tile.matched ? "none" : tile.selected
-          ? "0 8px 20px rgba(0,0,0,0.5), 4px 4px 0 rgba(0,0,0,0.35)"
-          : "4px 4px 0 rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5)",
-      }}
-    >
-      {tile.sym}
-    </button>
-  );
+  const selected = shuffle(TILE_DEFS).slice(0, 18);
+  const pairs = [...selected, ...selected];
+  return shuffle(pairs).map((def, i) => ({
+    id: i,
+    suit: def.suit,
+    value: def.value,
+    key: def.key,
+    matched: false,
+    selected: false,
+  }));
 }
 
 export default function Mahjong() {
@@ -74,7 +70,7 @@ export default function Mahjong() {
     const second = tiles.find(t => t.id === id);
     setMoves(m => m + 1);
 
-    if (first.sym === second.sym) {
+    if (first.key === second.key) {
       const newMatches = matches + 1;
       matchSound();
       if (newMatches === total) { winVibrate(); winSound(); setWon(true); setMessage(""); } else { successVibrate(); setMessage("✅ Match!"); }
@@ -146,8 +142,8 @@ export default function Mahjong() {
 
       <p className="text-center text-muted-foreground text-lg mb-4">Tap two matching tiles to remove them</p>
 
-      <div className="grid gap-1.5 sm:gap-2 px-2 max-w-md mx-auto" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
-        {tiles.map(tile => <Tile3D key={tile.id} tile={tile} onClick={handleClick} />)}
+      <div className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+        {tiles.map(tile => <MahjongTile key={tile.id} tile={tile} onClick={handleClick} />)}
       </div>
     </div>
   );
