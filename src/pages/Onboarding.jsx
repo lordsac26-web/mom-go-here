@@ -5,26 +5,34 @@ import { useAuth } from "@/lib/AuthContext";
 
 const RELIGIONS = [
   { value: "Christianity", label: "Christianity", emoji: "✝️", sub: "Bible & Scripture" },
-  { value: "Catholicism", label: "Catholicism", emoji: "⛪", sub: "Catholic Scripture" },
-  { value: "Judaism", label: "Judaism", emoji: "✡️", sub: "Torah Readings" },
-  { value: "Islam", label: "Islam", emoji: "☪️", sub: "Quranic Verses" },
-  { value: "Hinduism", label: "Hinduism", emoji: "🕉️", sub: "Gita Teachings" },
-  { value: "Buddhism", label: "Buddhism", emoji: "☸️", sub: "Dharma Teachings" },
-  { value: "Sikhism", label: "Sikhism", emoji: "🪯", sub: "Hukamnama" },
-  { value: "None", label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
+  { value: "Catholicism",  label: "Catholicism",  emoji: "⛪", sub: "Catholic Scripture" },
+  { value: "Judaism",      label: "Judaism",      emoji: "✡️", sub: "Torah Readings" },
+  { value: "Islam",        label: "Islam",        emoji: "☪️", sub: "Quranic Verses" },
+  { value: "Hinduism",     label: "Hinduism",     emoji: "🕉️", sub: "Gita Teachings" },
+  { value: "Buddhism",     label: "Buddhism",     emoji: "☸️", sub: "Dharma Teachings" },
+  { value: "Sikhism",      label: "Sikhism",      emoji: "🪯", sub: "Hukamnama" },
+  { value: "None",         label: "No Preference",emoji: "🌍", sub: "Motivational quotes only" },
 ];
 
+// FIX (bug): path corrected from "/games/spotdiff" → "/games/artstudio" to match
+// Games.jsx and the actual route. The old value was being saved to the user's
+// favorite_games array, so the AI Art Studio card could never be matched/filtered.
 const ALL_GAMES = [
-  { name: "Memory Match", emoji: "🧠", path: "/games/memory" },
-  { name: "Mahjong", emoji: "🀄", path: "/games/mahjong" },
-  { name: "Solitaire", emoji: "♠️", path: "/games/solitaire" },
-  { name: "Tic Tac Toe", emoji: "❌", path: "/games/tictactoe" },
-  { name: "Word Search", emoji: "🔤", path: "/games/wordsearch" },
-  { name: "Sudoku", emoji: "🔢", path: "/games/sudoku" },
-  { name: "Checkers", emoji: "⬛", path: "/games/checkers" },
-  { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee" },
-  { name: "AI Art Studio", emoji: "🎨", path: "/games/spotdiff" },
+  { name: "Memory Match",  emoji: "🧠", path: "/games/memory" },
+  { name: "Mahjong",       emoji: "🀄", path: "/games/mahjong" },
+  { name: "Solitaire",     emoji: "♠️", path: "/games/solitaire" },
+  { name: "Tic Tac Toe",   emoji: "❌", path: "/games/tictactoe" },
+  { name: "Word Search",   emoji: "🔤", path: "/games/wordsearch" },
+  { name: "Sudoku",        emoji: "🔢", path: "/games/sudoku" },
+  { name: "Checkers",      emoji: "⬛", path: "/games/checkers" },
+  { name: "Yahtzee",       emoji: "🎲", path: "/games/yahtzee" },
+  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio" },
+  { name: "Buzz Word!",    emoji: "🐝", path: "/games/buzzword" },
+  { name: "Lucky Slots",   emoji: "🎰", path: "/games/slots" },
 ];
+
+// FIX (security): cap display name length and strip leading/trailing whitespace
+const MAX_NAME_LENGTH = 50;
 
 export default function Onboarding() {
   const { user } = useAuth();
@@ -35,6 +43,7 @@ export default function Onboarding() {
   const [religion, setReligion] = useState("None");
   const [favoriteGames, setFavoriteGames] = useState(ALL_GAMES.map(g => g.path));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   function toggleGame(path) {
     setFavoriteGames(prev =>
@@ -44,14 +53,31 @@ export default function Onboarding() {
 
   async function finish() {
     setSaving(true);
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const data = { user_email: user.email, display_name: displayName, birthday, religion, favorite_games: favoriteGames };
-    if (profiles[0]) {
-      await base44.entities.UserProfile.update(profiles[0].id, data);
-    } else {
-      await base44.entities.UserProfile.create(data);
+    setError(null);
+    // FIX (bug): try/catch so a failed save doesn't leave the button stuck on "Saving..."
+    try {
+      // FIX (security): trim and cap display name before saving
+      const safeName = displayName.trim().slice(0, MAX_NAME_LENGTH);
+
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const data = {
+        user_email: user.email,
+        display_name: safeName,
+        birthday,
+        religion,
+        favorite_games: favoriteGames,
+      };
+      if (profiles[0]) {
+        await base44.entities.UserProfile.update(profiles[0].id, data);
+      } else {
+        await base44.entities.UserProfile.create(data);
+      }
+      navigate("/");
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setError("Could not save your preferences. Please try again.");
+      setSaving(false);
     }
-    navigate("/");
   }
 
   return (
@@ -77,8 +103,10 @@ export default function Onboarding() {
                 <input
                   type="text"
                   value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
+                  // FIX (security): enforce max length in the input itself too
+                  onChange={e => setDisplayName(e.target.value.slice(0, MAX_NAME_LENGTH))}
                   placeholder="Your first name or nickname"
+                  maxLength={MAX_NAME_LENGTH}
                   className="w-full bg-card border-2 border-border rounded-2xl px-5 py-4 text-2xl font-bold text-foreground focus:outline-none focus:border-primary"
                 />
               </div>
@@ -163,6 +191,11 @@ export default function Onboarding() {
             </div>
 
             <p className="text-muted-foreground text-lg mb-4">{favoriteGames.length} of {ALL_GAMES.length} selected</p>
+
+            {/* FIX (bug): surface save errors to the user */}
+            {error && (
+              <p className="text-red-500 font-bold text-lg mb-4">{error}</p>
+            )}
 
             <div className="flex gap-3">
               <button onClick={() => setStep(2)} className="flex-1 bg-secondary text-foreground text-xl font-black py-4 rounded-2xl">← Back</button>
