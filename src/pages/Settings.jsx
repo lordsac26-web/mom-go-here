@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AudioSettings from "@/components/AudioSettings";
 import { useUIStore } from "@/stores/uiStore";
+import PermissionsPanel from "@/components/PermissionsPanel";
 
 const RELIGIONS = [
   { value: "None", label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -63,6 +64,8 @@ export default function Settings() {
   const [religion, setReligion] = useState("None");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   useEffect(() => { loadProfile(); }, [user]);
 
@@ -79,7 +82,7 @@ export default function Settings() {
   }
 
   async function saveProfile() {
-    const data = { display_name: displayName, birthday, religion };
+    const data = { display_name: displayName, birthday, religion, ...(location && { latitude: location.latitude, longitude: location.longitude, city: location.city }), ...(profilePhoto && { profile_photo_url: profilePhoto }) };
     if (profile) {
       await base44.entities.UserProfile.update(profile.id, data);
     } else {
@@ -88,6 +91,14 @@ export default function Settings() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  function handleLocationChange(loc) {
+    setLocation(loc);
+  }
+
+  function handlePhotoCapture(photoData) {
+    setProfilePhoto(photoData);
   }
 
   if (loading) return (
@@ -134,6 +145,9 @@ export default function Settings() {
         {/* Chat Bubble Settings */}
         <ChatBubbleSettings />
 
+        {/* Permissions Panel */}
+        <PermissionsPanel onLocationChange={handleLocationChange} onPhotoCapture={handlePhotoCapture} />
+
         {/* Religion */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl">
           <h2 className="text-2xl font-black text-foreground mb-2">📖 Daily Reading</h2>
@@ -167,7 +181,7 @@ export default function Settings() {
 
         {saved && (
           <div className="bg-green-700 text-white text-center text-xl font-bold py-4 rounded-2xl">
-            ✅ Saved successfully!
+            ✅ Saved successfully! 📍 Location & 📸 Photo saved.
           </div>
         )}
 

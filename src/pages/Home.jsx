@@ -116,7 +116,7 @@ export default function Home() {
       )}
 
       {/* This Day in History — compact */}
-      <HistoryFact birthday={profile?.birthday} />
+      <HistoryFact birthday={profile?.birthday} location={{ city: profile?.city, latitude: profile?.latitude, longitude: profile?.longitude }} />
 
       {/* Daily Inspiration link */}
       {religionInfo && (

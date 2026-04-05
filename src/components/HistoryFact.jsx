@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
-export default function HistoryFact({ birthday }) {
+export default function HistoryFact({ birthday, location }) {
   const [todayFact, setTodayFact] = useState(null);
   const [birthdayFact, setBirthdayFact] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,10 +14,11 @@ export default function HistoryFact({ birthday }) {
   async function loadFacts() {
     const today = new Date();
     const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    const locationContext = location?.city ? ` in or near ${location.city}` : '';
 
     const [todayRes, bdayRes] = await Promise.allSettled([
       base44.integrations.Core.InvokeLLM({
-        prompt: `Give me one fascinating "This Day in History" fact for ${monthDay}. Pick a random historical year. Write 2 sentences, friendly and easy to read for an older adult.`,
+        prompt: `Give me one fascinating "This Day in History" fact for ${monthDay}${locationContext}. Pick a random historical year. Write 2 sentences, friendly and easy to read for an older adult.`,
         add_context_from_internet: true,
         response_json_schema: {
           type: "object",

@@ -11,6 +11,18 @@
     "birthday": {
       "type": "string"
     },
+    "profile_photo_url": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "city": {
+      "type": "string"
+    },
     "favorite_games": {
       "type": "array",
       "items": {
