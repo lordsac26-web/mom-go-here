@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import AIChatBot from "./AIChatBot";
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,6 +65,9 @@ export default function Layout() {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
+
+      {/* AI Chat Bot */}
+      <AIChatBot />
 
       {/* Bottom Nav Bar */}
       <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg">

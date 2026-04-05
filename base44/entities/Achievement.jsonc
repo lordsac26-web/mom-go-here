@@ -1,0 +1,29 @@
+{
+  "name": "Achievement",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "achievement_key": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "emoji": {
+      "type": "string"
+    },
+    "earned_date": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "achievement_key",
+    "title"
+  ]
+}

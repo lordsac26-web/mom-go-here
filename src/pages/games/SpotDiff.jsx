@@ -1,140 +1,141 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
-import SpotDiffCanvas from "../../components/games/SpotDiffCanvas";
+import { base44 } from "@/api/base44Client";
 
-// Each puzzle has a base image and a list of differences applied via canvas
-// Differences are defined as regions with specific modifications
-const PUZZLES = [
-  {
-    title: "Beach Sunset",
-    baseImage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop",
-    differences: [
-      { id: 1, x: 420, y: 30, w: 60, h: 60, type: "fill", color: "#87CEEB", label: "Cloud missing" },
-      { id: 2, x: 80, y: 280, w: 50, h: 50, type: "fill", color: "#C2B280", label: "Shell removed" },
-      { id: 3, x: 300, y: 180, w: 40, h: 40, type: "fill", color: "#FF6B35", label: "Sun color changed" },
-      { id: 4, x: 150, y: 320, w: 55, h: 35, type: "fill", color: "#1E90FF", label: "Wave pattern changed" },
-      { id: 5, x: 500, y: 300, w: 45, h: 45, type: "fill", color: "#C2B280", label: "Rock missing" },
-    ],
-  },
-  {
-    title: "Mountain Lake",
-    baseImage: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=600&h=400&fit=crop",
-    differences: [
-      { id: 1, x: 100, y: 50, w: 70, h: 50, type: "fill", color: "#87CEEB", label: "Cloud shape changed" },
-      { id: 2, x: 450, y: 200, w: 50, h: 60, type: "fill", color: "#228B22", label: "Tree removed" },
-      { id: 3, x: 250, y: 300, w: 60, h: 40, type: "fill", color: "#4169E1", label: "Reflection changed" },
-      { id: 4, x: 50, y: 250, w: 45, h: 55, type: "fill", color: "#228B22", label: "Bush added" },
-      { id: 5, x: 400, y: 80, w: 55, h: 45, type: "fill", color: "#708090", label: "Mountain peak changed" },
-    ],
-  },
-  {
-    title: "City Park",
-    baseImage: "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=600&h=400&fit=crop",
-    differences: [
-      { id: 1, x: 120, y: 100, w: 60, h: 70, type: "fill", color: "#228B22", label: "Tree color changed" },
-      { id: 2, x: 350, y: 250, w: 50, h: 40, type: "fill", color: "#8B4513", label: "Bench removed" },
-      { id: 3, x: 480, y: 150, w: 45, h: 50, type: "fill", color: "#87CEEB", label: "Bird missing" },
-      { id: 4, x: 200, y: 320, w: 55, h: 35, type: "fill", color: "#32CD32", label: "Grass patch changed" },
-      { id: 5, x: 50, y: 50, w: 50, h: 50, type: "fill", color: "#FFD700", label: "Light changed" },
-    ],
-  },
-  {
-    title: "Flower Garden",
-    baseImage: "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=600&h=400&fit=crop",
-    differences: [
-      { id: 1, x: 100, y: 120, w: 55, h: 55, type: "fill", color: "#FF1493", label: "Flower color changed" },
-      { id: 2, x: 400, y: 80, w: 60, h: 50, type: "fill", color: "#228B22", label: "Leaf removed" },
-      { id: 3, x: 250, y: 250, w: 50, h: 50, type: "fill", color: "#FFD700", label: "Petal missing" },
-      { id: 4, x: 50, y: 300, w: 45, h: 40, type: "fill", color: "#8B4513", label: "Stem changed" },
-      { id: 5, x: 480, y: 300, w: 50, h: 50, type: "fill", color: "#9370DB", label: "Flower added" },
-    ],
-  },
+const STYLES = [
+  { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
+  { label: "Oil Painting", value: "oil painting style, rich colors, brushstrokes visible, classical art" },
+  { label: "Watercolor", value: "watercolor illustration, soft edges, pastel tones, artistic" },
+  { label: "Cartoon", value: "cartoon illustration, bright colors, fun, playful style" },
+  { label: "Pixel Art", value: "pixel art style, retro 8-bit game aesthetic" },
+  { label: "Pencil Sketch", value: "detailed pencil sketch, black and white, hand-drawn" },
+  { label: "Fantasy Art", value: "fantasy art style, magical, ethereal, detailed digital art" },
+  { label: "Pop Art", value: "pop art style, bold colors, comic book aesthetic, Andy Warhol inspired" },
 ];
 
 export default function SpotDiff() {
   useGameTimer();
-  const [puzzleIdx, setPuzzleIdx] = useState(() => Math.floor(Math.random() * PUZZLES.length));
-  const puzzle = PUZZLES[puzzleIdx];
-  const [found, setFound] = useState([]);
-  const [won, setWon] = useState(false);
-  const [tapped, setTapped] = useState(null); // {x,y} for miss feedback
+  const [prompt, setPrompt] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState(STYLES[0].value);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [history, setHistory] = useState([]);
 
-  const handleFound = useCallback((diffId) => {
-    setFound(prev => {
-      if (prev.includes(diffId)) return prev;
-      const next = [...prev, diffId];
-      if (next.length === puzzle.differences.length) {
-        setTimeout(() => setWon(true), 600);
-      }
-      return next;
-    });
-  }, [puzzle]);
-
-  const handleMiss = useCallback((x, y) => {
-    setTapped({ x, y });
-    setTimeout(() => setTapped(null), 600);
-  }, []);
-
-  function reset() {
-    const newIdx = (puzzleIdx + 1) % PUZZLES.length;
-    setPuzzleIdx(newIdx);
-    setFound([]);
-    setWon(false);
-    setTapped(null);
+  async function handleGenerate() {
+    if (!prompt.trim()) return;
+    setGenerating(true);
+    const fullPrompt = `${prompt.trim()}. Style: ${selectedStyle}`;
+    const result = await base44.integrations.Core.GenerateImage({ prompt: fullPrompt });
+    setImageUrl(result.url);
+    setHistory(prev => [{ prompt: prompt.trim(), style: STYLES.find(s => s.value === selectedStyle)?.label, url: result.url }, ...prev].slice(0, 10));
+    setGenerating(false);
   }
 
-  if (won) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-2">All Differences Found!</h1>
-      <p className="text-2xl text-muted-foreground mb-6">Great eye! You spotted them all.</p>
-      <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-        🔄 Next Puzzle
-      </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-background px-2 py-4 pb-24">
-      <div className="flex items-center justify-between px-2 mb-3">
+    <div className="min-h-screen bg-background px-4 py-4 pb-24">
+      <div className="flex items-center justify-between mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
-        <div className="text-center">
-          <div className="text-2xl font-black text-primary">🔍 Spot the Diff</div>
-          <div className="text-muted-foreground text-lg">Found: {found.length} / {puzzle.differences.length}</div>
-        </div>
-        <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+        <div className="text-2xl font-black text-primary">🎨 AI Art Studio</div>
+        <div className="w-16" />
       </div>
 
-      <p className="text-center text-2xl font-black text-foreground mb-1">{puzzle.title}</p>
-      <p className="text-center text-muted-foreground text-lg mb-3">
-        Tap on the differences in the bottom image!
-      </p>
-
-      <SpotDiffCanvas
-        puzzle={puzzle}
-        found={found}
-        onFound={handleFound}
-        onMiss={handleMiss}
-        tapped={tapped}
-      />
-
-      {/* Legend of differences */}
-      <div className="max-w-lg mx-auto mt-4 px-2">
-        <div className="grid grid-cols-2 gap-2">
-          {puzzle.differences.map(d => (
-            <div key={d.id}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-base font-bold transition-all ${
-                found.includes(d.id)
-                  ? "bg-green-700 border-green-500 text-white"
-                  : "bg-card border-border text-muted-foreground"
-              }`}>
-              <span>{found.includes(d.id) ? "✅" : "⭕"}</span>
-              <span className="truncate">{d.label}</span>
-            </div>
-          ))}
+      <div className="max-w-lg mx-auto">
+        {/* Prompt Input */}
+        <div className="bg-card border-2 border-border rounded-2xl p-5 mb-4 shadow-xl">
+          <label className="block text-xl font-black text-foreground mb-2">✏️ Describe what you'd like to see</label>
+          <textarea
+            value={prompt}
+            onChange={e => setPrompt(e.target.value)}
+            placeholder="e.g. A golden retriever wearing a top hat, sitting in a field of sunflowers..."
+            rows={3}
+            className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary resize-none"
+          />
         </div>
+
+        {/* Style Picker */}
+        <div className="bg-card border-2 border-border rounded-2xl p-5 mb-4 shadow-xl">
+          <label className="block text-xl font-black text-foreground mb-3">🎭 Choose a style</label>
+          <div className="grid grid-cols-2 gap-2">
+            {STYLES.map(s => (
+              <button
+                key={s.value}
+                onClick={() => setSelectedStyle(s.value)}
+                className={`px-4 py-3 rounded-xl text-lg font-bold border-2 transition-all ${
+                  selectedStyle === s.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-foreground border-border hover:border-primary"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Generate Button */}
+        <button
+          onClick={handleGenerate}
+          disabled={generating || !prompt.trim()}
+          className={`w-full text-2xl font-black py-5 rounded-2xl shadow-xl mb-5 transition-all ${
+            generating || !prompt.trim()
+              ? "bg-muted text-muted-foreground"
+              : "bg-primary text-primary-foreground active:scale-95"
+          }`}
+        >
+          {generating ? (
+            <span className="flex items-center justify-center gap-3">
+              <span className="w-6 h-6 border-3 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              Creating your art...
+            </span>
+          ) : "🪄 Generate Image"}
+        </button>
+
+        {/* Generated Image */}
+        {imageUrl && (
+          <div className="bg-card border-2 border-primary rounded-2xl p-4 mb-5 shadow-2xl">
+            <img
+              src={imageUrl}
+              alt={prompt}
+              className="w-full rounded-xl border-2 border-border"
+            />
+            <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
+            <div className="flex gap-3 mt-3">
+              <a
+                href={imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-secondary text-foreground text-lg font-bold py-3 rounded-xl text-center border-2 border-border"
+              >
+                🔗 Open Full Size
+              </a>
+              <button
+                onClick={() => { setPrompt(""); setImageUrl(null); }}
+                className="flex-1 bg-primary text-primary-foreground text-lg font-bold py-3 rounded-xl"
+              >
+                ✨ New Image
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* History */}
+        {history.length > 1 && (
+          <div className="bg-card border-2 border-border rounded-2xl p-5 shadow-xl">
+            <h3 className="text-xl font-black text-foreground mb-3">🖼️ Recent Creations</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {history.slice(1).map((item, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border-2 border-border">
+                  <img src={item.url} alt={item.prompt} className="w-full aspect-square object-cover" />
+                  <div className="p-2 bg-secondary">
+                    <p className="text-xs text-muted-foreground truncate">{item.prompt}</p>
+                    <p className="text-xs text-primary font-bold">{item.style}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

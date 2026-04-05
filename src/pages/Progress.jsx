@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import AchievementGrid from "../components/AchievementGrid";
 
 const GOAL_MINUTES = 15;
 
@@ -139,6 +140,11 @@ export default function Progress() {
           <span>🟡 Partial</span>
           <span>⬜ No play</span>
         </div>
+      </div>
+
+      {/* Achievements */}
+      <div className="bg-card border-2 border-border rounded-3xl p-6 mt-6 shadow-xl max-w-lg mx-auto">
+        <AchievementGrid />
       </div>
     </div>
   );
