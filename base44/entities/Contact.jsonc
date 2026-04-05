@@ -1,0 +1,34 @@
+{
+  "name": "Contact",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "birthday": {
+      "type": "string",
+      "description": "YYYY-MM-DD format"
+    },
+    "relationship": {
+      "type": "string",
+      "enum": [
+        "Family",
+        "Friend",
+        "Neighbor",
+        "Coworker",
+        "Other"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "name",
+    "birthday"
+  ]
+}
