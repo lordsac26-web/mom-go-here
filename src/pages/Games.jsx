@@ -11,7 +11,7 @@ const GAMES = [
   { name: "Checkers", emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
   { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll dice and score points!" },
   { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
-  { name: "Buzz Word!", emoji: "🐝", path: "/games/wordwhomp", color: "from-amber-600 to-amber-800", desc: "Make words from jumbled letters!" },
+  { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Make words from jumbled letters!" },
 ];
 
 export default function Games() {

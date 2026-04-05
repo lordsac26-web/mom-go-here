@@ -2,7 +2,6 @@
  * Pre-built puzzle sets for Buzz Word.
  * Each puzzle has 7 letters, a designated center letter, and valid words.
  * ALL words must contain the center letter AND only use the available letters.
- * Each letter can only be used once per word (unless duplicated in the set).
  */
 
 function validatePuzzle(puzzle) {
@@ -10,11 +9,10 @@ function validatePuzzle(puzzle) {
   const center = puzzle.center.toLowerCase();
   return {
     ...puzzle,
-    words: puzzle.words.filter(word => {
+    words: [...new Set(puzzle.words)].filter(word => {
       const w = word.toLowerCase();
-      // Must contain center
       if (!w.includes(center)) return false;
-      // Each letter in word must be available (respecting count)
+      if (w.length < 3) return false;
       const pool = [...available];
       for (const ch of w) {
         const idx = pool.indexOf(ch);
@@ -77,9 +75,84 @@ const RAW_PUZZLES = [
     center: "U",
     words: ["dun", "hue", "hun", "nut", "run", "rut", "dune", "hunt", "hurt", "rude", "rung", "runt", "thud", "true", "tune", "turn", "under", "tuner", "turned", "hunted", "hunter", "thunder"],
   },
+  // === NEW PUZZLES ===
+  {
+    letters: ["S", "P", "A", "R", "K", "L", "E"],
+    center: "R",
+    words: ["are", "ark", "ear", "era", "par", "rap", "earl", "lake", "lark", "leak", "pear", "rake", "real", "reap", "sear", "spare", "spear", "pearl", "parks", "drape", "leaps", "reaps", "pearls", "sparkle"],
+  },
+  {
+    letters: ["J", "O", "U", "R", "N", "E", "Y"],
+    center: "O",
+    words: ["joy", "nor", "one", "ore", "our", "roe", "yon", "your", "euro", "jury", "loner", "rune", "yore", "journey"],
+  },
+  {
+    letters: ["B", "A", "L", "A", "N", "C", "E"],
+    center: "A",
+    words: ["ace", "ale", "ban", "cab", "can", "lab", "able", "bale", "bane", "cane", "clan", "lace", "lane", "lean", "canal", "lance", "clean", "balance"],
+  },
+  {
+    letters: ["K", "I", "T", "C", "H", "E", "N"],
+    center: "K",
+    words: ["kin", "ink", "kit", "kick", "kite", "knit", "tick", "thick", "think", "kitchen"],
+  },
+  {
+    letters: ["S", "U", "M", "M", "E", "R", "S"],
+    center: "M",
+    words: ["emu", "rum", "sum", "use", "muse", "seem", "serum", "summer", "summers"],
+  },
+  {
+    letters: ["P", "U", "Z", "Z", "L", "E", "S"],
+    center: "Z",
+    words: ["zap", "zee", "zip", "zeal", "zone", "buzz", "fuzz", "puzzle", "puzzles"],
+  },
+  {
+    letters: ["H", "A", "R", "V", "E", "S", "T"],
+    center: "H",
+    words: ["ash", "hat", "has", "her", "the", "hash", "hate", "have", "hear", "heat", "rash", "shave", "share", "heart", "earth", "trash", "shaver", "hearts", "harvest"],
+  },
+  {
+    letters: ["C", "O", "U", "N", "T", "R", "Y"],
+    center: "C",
+    words: ["con", "cop", "cor", "cot", "cry", "cur", "cut", "corn", "cost", "curt", "coat", "cart", "court", "count", "corny", "crouton", "country"],
+  },
+  {
+    letters: ["W", "E", "A", "T", "H", "E", "R"],
+    center: "W",
+    words: ["awe", "hew", "new", "raw", "sew", "wet", "wart", "ware", "wear", "whet", "whew", "wheat", "where", "water", "wrath", "weather"],
+  },
+  {
+    letters: ["L", "A", "U", "G", "H", "T", "S"],
+    center: "L",
+    words: ["all", "gal", "lag", "last", "lash", "lust", "tall", "gall", "halt", "haul", "salt", "slug", "slat", "stall", "laugh", "laughs"],
+  },
+  {
+    letters: ["F", "R", "I", "E", "N", "D", "S"],
+    center: "N",
+    words: ["den", "din", "end", "fin", "inn", "sin", "dine", "find", "fine", "fern", "rein", "rind", "send", "diner", "finer", "inner", "siren", "snide", "fiend", "finder", "dinner", "friend", "friends"],
+  },
+  {
+    letters: ["S", "T", "R", "O", "N", "G", "E"],
+    center: "O",
+    words: ["ego", "got", "nor", "not", "one", "ore", "rot", "ton", "toe", "gone", "gore", "note", "nose", "rose", "tone", "tore", "wore", "song", "goner", "store", "stone", "snore", "strong"],
+  },
+  {
+    letters: ["B", "R", "A", "V", "E", "L", "Y"],
+    center: "V",
+    words: ["eve", "rave", "veal", "verb", "very", "vale", "rave", "brave", "ravel", "lever", "every", "bravely"],
+  },
+  {
+    letters: ["C", "R", "E", "A", "T", "I", "V"],
+    center: "I",
+    words: ["air", "ice", "ire", "tie", "via", "cite", "rice", "tire", "vice", "vita", "crate", "irate", "rivet", "trace", "active", "creative"],
+  },
+  {
+    letters: ["M", "A", "G", "N", "E", "T", "S"],
+    center: "M",
+    words: ["gem", "gum", "ham", "jam", "man", "mat", "met", "game", "mane", "mast", "mate", "mean", "meat", "name", "same", "seam", "stem", "tame", "team", "games", "magnet", "magnets"],
+  },
 ];
 
-// Validate all puzzles at import time — strip any invalid words
 const PUZZLES = RAW_PUZZLES.map(validatePuzzle);
 
 export default PUZZLES;

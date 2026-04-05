@@ -22,7 +22,7 @@ import AIArtStudio from './pages/games/AIArtStudio';
 import Progress from './pages/Progress';
 import Onboarding from './pages/Onboarding';
 import Memories from './pages/Memories';
-import WordWhomp from './pages/games/WordWhomp';
+import BuzzWord from './pages/games/WordWhomp';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -67,7 +67,7 @@ const AuthenticatedApp = () => {
         <Route path="/progress" element={<Progress />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/memories" element={<Memories />} />
-        <Route path="/games/wordwhomp" element={<WordWhomp />} />
+        <Route path="/games/buzzword" element={<BuzzWord />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

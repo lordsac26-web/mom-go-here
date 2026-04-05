@@ -14,6 +14,18 @@ const WORD_LISTS = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
   ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE"],
   ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM"],
+  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE"],
+  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET"],
+  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY"],
+  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD"],
+  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE"],
+  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP"],
+  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK"],
+  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM"],
+  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL"],
+  ["NATURE", "FOREST", "BROOK", "EAGLE", "DEER", "MOSS", "STONE", "PATH"],
+  ["RECIPE", "SPICE", "SAUCE", "GRILL", "ROAST", "CHOP", "STEW", "HERB"],
+  ["PAINT", "BRUSH", "CANVAS", "COLOR", "FRAME", "DRAW", "SKETCH", "ART"],
 ];
 
 function generateGrid(size, words) {
