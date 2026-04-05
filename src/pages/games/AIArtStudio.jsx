@@ -17,6 +17,14 @@ const STYLES = [
   { label: "Pop Art", value: "pop art style, bold colors, comic book aesthetic, Andy Warhol inspired" },
 ];
 
+// FIX (security): max prompt length to prevent prompt injection / runaway inputs
+const MAX_PROMPT_LENGTH = 300;
+
+// FIX (security): strip control characters and newlines from user prompt
+function sanitizePrompt(str) {
+  return str.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+}
+
 export default function AIArtStudio() {
   useGameTimer();
   const [prompt, setPrompt] = useState("");
@@ -27,12 +35,73 @@ export default function AIArtStudio() {
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
+
+    // FIX (security): sanitize and cap length before sending to AI
+    const safePrompt = sanitizePrompt(prompt.trim()).slice(0, MAX_PROMPT_LENGTH);
+    const fullPrompt = `${safePrompt}. Style: ${selectedStyle}`;
+
     setGenerating(true);
-    const fullPrompt = `${prompt.trim()}. Style: ${selectedStyle}`;
-    const result = await base44.integrations.Core.GenerateImage({ prompt: fullPrompt });
-    setImageUrl(result.url);
-    setHistory(prev => [{ prompt: prompt.trim(), style: STYLES.find(s => s.value === selectedStyle)?.label, url: result.url }, ...prev].slice(0, 10));
-    setGenerating(false);
+    // FIX (bug): use try/finally so generating is always cleared, even on API error
+    try {
+      const result = await base44.integrations.Core.GenerateImage({ prompt: fullPrompt });
+      setImageUrl(result.url);
+      setHistory(prev =>
+        [
+          {
+            prompt: safePrompt,
+            style: STYLES.find(s => s.value === selectedStyle)?.label,
+            url: result.url,
+          },
+          ...prev,
+        ].slice(0, 10)
+      );
+    } catch (err) {
+      console.error("Image generation failed:", err);
+      toast.error("Image generation failed. Please try again.");
+    } finally {
+      // FIX (bug): always re-enable the button regardless of success/failure
+      setGenerating(false);
+    }
+  }
+
+  // FIX (perf): extracted download handler so it isn't recreated on every render
+  async function handleDownload() {
+    try {
+      const res = await fetch(imageUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ai-art-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Image downloaded!");
+    } catch (err) {
+      // FIX (security): handle CORS / network failure gracefully instead of silent crash
+      console.error("Download error:", err);
+      toast.error("Could not download image. Try right-clicking and saving instead.");
+    }
+  }
+
+  async function handleShare() {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My AI Art",
+          text: `Check out this AI art I made: "${prompt}"`,
+          url: imageUrl,
+        });
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          navigator.clipboard.writeText(imageUrl);
+          toast.success("Link copied to clipboard!");
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(imageUrl);
+      toast.success("Link copied to clipboard!");
+    }
   }
 
   return (
@@ -59,11 +128,15 @@ export default function AIArtStudio() {
           <label className="block text-xl font-black text-foreground mb-2">✏️ Describe what you'd like to see</label>
           <textarea
             value={prompt}
-            onChange={e => setPrompt(e.target.value)}
+            onChange={e => setPrompt(e.target.value.slice(0, MAX_PROMPT_LENGTH))}
             placeholder="e.g. A golden retriever wearing a top hat, sitting in a field of sunflowers..."
             rows={3}
             className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary resize-none"
           />
+          {/* FIX (security/UX): show character count so user knows the limit */}
+          <p className="text-right text-sm text-muted-foreground mt-1">
+            {prompt.length}/{MAX_PROMPT_LENGTH}
+          </p>
         </div>
 
         {/* Style Picker */}
@@ -114,18 +187,9 @@ export default function AIArtStudio() {
             />
             <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
             <div className="grid grid-cols-2 gap-3 mt-3">
+              {/* FIX (bug + security): extracted handler with CORS error handling */}
               <button
-                onClick={async () => {
-                  const res = await fetch(imageUrl);
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `ai-art-${Date.now()}.png`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success("Image downloaded!");
-                }}
+                onClick={handleDownload}
                 className="flex items-center justify-center gap-2 bg-secondary text-foreground text-lg font-bold py-3 rounded-xl border-2 border-border"
               >
                 <Download size={20} /> Download
@@ -143,21 +207,7 @@ export default function AIArtStudio() {
               <p className="text-base font-black text-foreground mb-2">📤 Share your creation</p>
               <div className="flex gap-2">
                 <button
-                  onClick={async () => {
-                    if (navigator.share) {
-                      try {
-                        await navigator.share({ title: "My AI Art", text: `Check out this AI art I made: "${prompt}"`, url: imageUrl });
-                      } catch (e) {
-                        if (e.name !== "AbortError") {
-                          navigator.clipboard.writeText(imageUrl);
-                          toast.success("Link copied to clipboard!");
-                        }
-                      }
-                    } else {
-                      navigator.clipboard.writeText(imageUrl);
-                      toast.success("Link copied to clipboard!");
-                    }
-                  }}
+                  onClick={handleShare}
                   className="flex-1 flex items-center justify-center gap-2 bg-card border-2 border-border text-foreground font-bold py-3 rounded-xl text-base"
                 >
                   <Share2 size={18} /> Share
