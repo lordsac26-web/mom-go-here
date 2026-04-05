@@ -6,7 +6,7 @@ function randomBetween(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-export default function SparkleEffect({ active, children, className = "" }) {
+export default function SparkleEffect({ active, children, className = "", sparkleColor }) {
   const [sparkles, setSparkles] = useState([]);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function SparkleEffect({ active, children, className = "" }) {
             width: s.size,
             height: s.size,
             borderRadius: "50%",
-            background: "radial-gradient(circle, #fef08a 0%, #22c55e 60%, transparent 100%)",
+            background: `radial-gradient(circle, #fef08a 0%, ${sparkleColor || "#22c55e"} 60%, transparent 100%)`,
             animation: `sparkle-pop ${s.duration}s ease-out ${s.delay}s both`,
           }}
         />
