@@ -3,6 +3,7 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import Dice3DPhysicsRoller from "../../components/Dice3DPhysicsRoller";
 import { useGameStore } from "../../stores/gameStore";
 
@@ -60,6 +61,7 @@ function calcScore(key, dice) {
 export default function Yahtzee() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { diceshakeSound, diceCollideSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
   const [rollsLeft, setRollsLeft] = useState(3);
@@ -88,6 +90,7 @@ export default function Yahtzee() {
 
   // Handle physics roller results
   const handleRollComplete = (results) => {
+    diceCollideSound();
     setDice(results);
     setRollsLeft(r => r - 1);
     addHistoryEntry({
@@ -102,17 +105,19 @@ export default function Yahtzee() {
   function roll() {
     if (rollsLeft === 0) return;
     tapVibrate();
+    diceshakeSound();
   }
 
   function toggleHold(i) {
     if (rollsLeft === 3) return;
+    uiClickSound();
     setHeld(h => h.map((v, idx) => idx === i ? !v : v));
   }
 
   function scoreCategory(key) {
     if (scores[key] !== undefined || rollsLeft === 3) return;
     const s = calcScore(key, dice);
-    if (s > 0) successVibrate(); else tapVibrate();
+    if (s > 0) { successVibrate(); matchSound(); } else { tapVibrate(); uiClickSound(); }
     setScores(prev => {
       const next = { ...prev, [key]: s };
       addHistoryEntry({
@@ -124,6 +129,7 @@ export default function Yahtzee() {
       });
       if (Object.keys(next).length === totalTurns) {
         winVibrate();
+        winSound();
         setPlayerScore("player-1", Object.values(next).reduce((a, b) => a + b, 0));
       }
       return next;
@@ -135,6 +141,7 @@ export default function Yahtzee() {
   }
 
   function reset() {
+    uiClickSound();
     setDice([1, 1, 1, 1, 1]);
     setHeld([false, false, false, false, false]);
     setRollsLeft(3);

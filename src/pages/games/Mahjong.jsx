@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 
 const TILE_SYMBOLS = [
   "🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
@@ -46,6 +47,7 @@ function Tile3D({ tile, onClick }) {
 export default function Mahjong() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { mahjongTileSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const [tiles, setTiles] = useState(buildTiles());
   const [selectedId, setSelectedId] = useState(null);
   const [matches, setMatches] = useState(0);
@@ -57,6 +59,7 @@ export default function Mahjong() {
 
   function handleClick(id) {
     tapVibrate();
+    mahjongTileSound();
     if (selectedId === null) {
       setTiles(prev => prev.map(t => t.id === id ? { ...t, selected: true } : t));
       setSelectedId(id);
@@ -73,7 +76,8 @@ export default function Mahjong() {
 
     if (first.sym === second.sym) {
       const newMatches = matches + 1;
-      if (newMatches === total) { winVibrate(); setWon(true); setMessage(""); } else { successVibrate(); setMessage("✅ Match!"); }
+      matchSound();
+      if (newMatches === total) { winVibrate(); winSound(); setWon(true); setMessage(""); } else { successVibrate(); setMessage("✅ Match!"); }
       setTiles(prev => prev.map(t => [selectedId, id].includes(t.id) ? { ...t, matched: true, selected: false } : t));
       setMatches(newMatches);
       setSelectedId(null);
@@ -90,6 +94,7 @@ export default function Mahjong() {
   }
 
   function reset() {
+    uiClickSound();
     setTiles(buildTiles());
     setSelectedId(null);
     setMatches(0);

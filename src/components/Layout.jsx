@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
+import AmbientMusicPlayer from "./AmbientMusicPlayer";
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,6 +50,9 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Ambient Music */}
+      <AmbientMusicPlayer />
+
       {/* Top Nav */}
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">

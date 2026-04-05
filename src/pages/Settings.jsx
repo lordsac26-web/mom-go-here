@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import AudioSettings from "@/components/AudioSettings";
 
 const RELIGIONS = [
   { value: "None", label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -85,6 +86,9 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        {/* Audio Settings */}
+        <AudioSettings />
 
         {/* Religion */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl">

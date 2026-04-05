@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import FlipCard from "../../components/FlipCard";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
@@ -61,6 +62,7 @@ export default function MemoryGame() {
   useGameTimer();
   const lockRef = useRef(false);
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { cardFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
 
   // Zustand store integration
   const initializeGame = useGameStore((state) => state.initializeGame);
@@ -81,6 +83,7 @@ export default function MemoryGame() {
   }, [started, gameStatus, initializeGame]);
 
   function startGame(idx = sizeIdx) {
+    uiClickSound();
     const { pairs } = SIZES[idx];
     const selected = shuffle(EMOJI_SETS).slice(0, pairs);
     const deck = shuffle([...selected, ...selected].map((emoji, i) => ({ id: i, emoji, flipped: false, matched: false })));
@@ -106,6 +109,7 @@ export default function MemoryGame() {
     const card = cards.find(c => c.id === id);
     if (!card || card.flipped || card.matched) return;
     tapVibrate();
+    cardFlipSound();
 
     const newCards = cards.map(c => c.id === id ? { ...c, flipped: true } : c);
     const newFlipped = [...flipped, id];
@@ -119,6 +123,7 @@ export default function MemoryGame() {
       if (a.emoji === b.emoji) {
         setTimeout(() => {
           successVibrate();
+          matchSound();
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
           setMatched(prev => {
             const newMatched = prev + 1;
@@ -131,6 +136,7 @@ export default function MemoryGame() {
             });
             if (newMatched === SIZES[sizeIdx].pairs) { 
               winVibrate();
+              winSound();
               setWon(true);
               setPlayerScore("player-1", moves + 1);
             }

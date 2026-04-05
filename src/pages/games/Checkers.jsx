@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
 
 function initBoard() {
@@ -70,6 +71,7 @@ function computerMove(board) {
 export default function Checkers() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { checkerFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const [board, setBoard] = useState(initBoard());
   const [selected, setSelected] = useState(null);
   const [turn, setTurn] = useState(1);
@@ -101,6 +103,7 @@ export default function Checkers() {
     if (selected) {
       const move = playerMoves.find(m => m.from[0] === selected[0] && m.from[1] === selected[1] && m.to[0] === r && m.to[1] === c);
       if (move) {
+        checkerFlipSound();
         if (move.jump) successVibrate(); else tapVibrate();
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
@@ -146,6 +149,7 @@ export default function Checkers() {
             setMessage("😔 Computer wins!");
             setGameOver(true);
             setPlayerScore("computer", moveCount + 1);
+            winSound();
             return;
           }
           setTurn(1);
@@ -163,6 +167,7 @@ export default function Checkers() {
   }
 
   function reset() {
+    uiClickSound();
     setBoard(initBoard());
     setSelected(null);
     setTurn(1);
