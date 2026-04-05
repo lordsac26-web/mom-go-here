@@ -23,7 +23,7 @@ const ALL_GAMES = [
   { name: "Sudoku", emoji: "🔢", path: "/games/sudoku" },
   { name: "Checkers", emoji: "⬛", path: "/games/checkers" },
   { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee" },
-  { name: "Spot the Diff", emoji: "🔍", path: "/games/spotdiff" },
+  { name: "AI Art Studio", emoji: "🎨", path: "/games/spotdiff" },
 ];
 
 export default function Onboarding() {
