@@ -143,9 +143,16 @@ export default function AIArtStudio() {
               <p className="text-base font-black text-foreground mb-2">📤 Share your creation</p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (navigator.share) {
-                      navigator.share({ title: "My AI Art", text: `Check out this AI art I made: "${prompt}"`, url: imageUrl });
+                      try {
+                        await navigator.share({ title: "My AI Art", text: `Check out this AI art I made: "${prompt}"`, url: imageUrl });
+                      } catch (e) {
+                        if (e.name !== "AbortError") {
+                          navigator.clipboard.writeText(imageUrl);
+                          toast.success("Link copied to clipboard!");
+                        }
+                      }
                     } else {
                       navigator.clipboard.writeText(imageUrl);
                       toast.success("Link copied to clipboard!");
