@@ -1,0 +1,40 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "religion": {
+      "type": "string",
+      "enum": [
+        "Christianity",
+        "Catholicism",
+        "Judaism",
+        "Islam",
+        "Hinduism",
+        "Buddhism",
+        "Sikhism",
+        "None"
+      ]
+    },
+    "last_quote_date": {
+      "type": "string"
+    },
+    "last_verse_date": {
+      "type": "string"
+    },
+    "last_quote_index": {
+      "type": "number"
+    },
+    "last_verse_index": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

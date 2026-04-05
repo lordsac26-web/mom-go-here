@@ -5,7 +5,20 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import Games from './pages/Games';
+import Settings from './pages/Settings';
+import Daily from './pages/Daily';
+import MemoryGame from './pages/games/MemoryGame';
+import TicTacToe from './pages/games/TicTacToe';
+import Yahtzee from './pages/games/Yahtzee';
+import WordSearch from './pages/games/WordSearch';
+import Sudoku from './pages/games/Sudoku';
+import Checkers from './pages/games/Checkers';
+import Mahjong from './pages/games/Mahjong';
+import Solitaire from './pages/games/Solitaire';
+import SpotDiff from './pages/games/SpotDiff';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,8 +46,22 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/games" element={<Games />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/daily" element={<Daily />} />
+        <Route path="/games/memory" element={<MemoryGame />} />
+        <Route path="/games/tictactoe" element={<TicTacToe />} />
+        <Route path="/games/yahtzee" element={<Yahtzee />} />
+        <Route path="/games/wordsearch" element={<WordSearch />} />
+        <Route path="/games/sudoku" element={<Sudoku />} />
+        <Route path="/games/checkers" element={<Checkers />} />
+        <Route path="/games/mahjong" element={<Mahjong />} />
+        <Route path="/games/solitaire" element={<Solitaire />} />
+        <Route path="/games/spotdiff" element={<SpotDiff />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 };

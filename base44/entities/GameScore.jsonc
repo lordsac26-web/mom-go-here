@@ -1,0 +1,28 @@
+{
+  "name": "GameScore",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "game_name": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number"
+    },
+    "duration_seconds": {
+      "type": "number"
+    },
+    "difficulty": {
+      "type": "string"
+    },
+    "completed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "user_email",
+    "game_name"
+  ]
+}
