@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import MagneticCard from "../components/MagneticCard";
 
 const MOTIVATIONAL_QUOTES = [
   { quote: "Every day is a new beginning. Take a deep breath and start again.", author: "Unknown" },
@@ -133,15 +134,16 @@ export default function Home() {
       <h2 className="text-3xl font-black text-foreground mb-4 text-center">🎮 Play a Game</h2>
       <div className="grid grid-cols-2 gap-4 mb-4">
         {visibleGames.map((game) => (
-          <Link
-            key={game.path}
-            to={game.path}
-            className={`bg-gradient-to-br ${game.color} rounded-2xl p-5 shadow-xl flex flex-col items-center gap-2 active:scale-95 transition-transform`}
-          >
-            <span className="text-5xl">{game.emoji}</span>
-            <span className="text-xl font-black text-white text-center">{game.name}</span>
-            <span className="text-sm text-white/80 font-semibold">{game.desc}</span>
-          </Link>
+          <MagneticCard key={game.path} strength={0.4} rotationStrength={0.2} hoverScale={1.05}>
+            <Link
+              to={game.path}
+              className={`bg-gradient-to-br ${game.color} rounded-2xl p-5 shadow-xl flex flex-col items-center gap-2 block`}
+            >
+              <span className="text-5xl">{game.emoji}</span>
+              <span className="text-xl font-black text-white text-center">{game.name}</span>
+              <span className="text-sm text-white/80 font-semibold">{game.desc}</span>
+            </Link>
+          </MagneticCard>
         ))}
       </div>
     </div>

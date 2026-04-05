@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import MagneticCard from "../components/MagneticCard";
 
 const GAMES = [
   { name: "Memory Match", emoji: "🧠", path: "/games/memory", color: "from-purple-600 to-purple-800", desc: "Flip 3D tiles to find matching pairs" },
@@ -19,17 +20,18 @@ export default function Games() {
       <p className="text-center text-muted-foreground text-xl mb-8">Tap any game to start playing!</p>
       <div className="grid grid-cols-1 gap-5 max-w-lg mx-auto">
         {GAMES.map((game) => (
-          <Link
-            key={game.name}
-            to={game.path}
-            className={`bg-gradient-to-r ${game.color} rounded-2xl p-6 shadow-xl flex items-center gap-5 active:scale-95 transition-transform`}
-          >
-            <span className="text-6xl">{game.emoji}</span>
-            <div>
-              <div className="text-2xl font-black text-white">{game.name}</div>
-              <div className="text-white/80 text-lg font-semibold mt-1">{game.desc}</div>
-            </div>
-          </Link>
+          <MagneticCard key={game.name} strength={0.35} rotationStrength={0.18} hoverScale={1.03}>
+            <Link
+              to={game.path}
+              className={`bg-gradient-to-r ${game.color} rounded-2xl p-6 shadow-xl flex items-center gap-5 block`}
+            >
+              <span className="text-6xl">{game.emoji}</span>
+              <div>
+                <div className="text-2xl font-black text-white">{game.name}</div>
+                <div className="text-white/80 text-lg font-semibold mt-1">{game.desc}</div>
+              </div>
+            </Link>
+          </MagneticCard>
         ))}
       </div>
     </div>
