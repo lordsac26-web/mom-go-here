@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
@@ -7,6 +7,7 @@ import SparkleEffect from "../../components/SparkleEffect";
 import { Volume2, VolumeX, Palette } from "lucide-react";
 import { WS_THEMES, DEFAULT_THEME } from "../../components/wordsearch/themes";
 import ThemePanel from "../../components/wordsearch/ThemePanel";
+import useGridReveal, { PATTERN_LIST } from "../../hooks/useGridReveal";
 
 const WORD_LISTS = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
@@ -68,6 +69,10 @@ export default function WordSearch() {
   const [themeKey, setThemeKey] = useState(DEFAULT_THEME);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
   const theme = WS_THEMES[themeKey];
+  const [revealPattern, setRevealPattern] = useState("spiral");
+  const [revealPanelOpen, setRevealPanelOpen] = useState(false);
+  const { gridRef, reveal } = useGridReveal(size, size);
+  const [revealKey, setRevealKey] = useState(0);
 
   function startGame() {
     const wlist = WORD_LISTS[Math.floor(Math.random() * WORD_LISTS.length)];
@@ -80,7 +85,17 @@ export default function WordSearch() {
     setJustFoundCells([]);
     setJustFoundWord(null);
     setStarted(true);
+    setRevealKey(prev => prev + 1);
   }
+
+  // Trigger GSAP reveal whenever the grid appears or game restarts
+  useEffect(() => {
+    if (started && gridData && !won) {
+      // Small delay so DOM is painted
+      const t = setTimeout(() => reveal(revealPattern), 50);
+      return () => clearTimeout(t);
+    }
+  }, [revealKey, started]);
 
   function cellKey(r, c) { return `${r},${c}`; }
 
@@ -265,6 +280,12 @@ export default function WordSearch() {
             title={lineMode ? "Line mode" : "Manual mode"}>
             {lineMode ? "📏" : "✏️"}
           </button>
+          <button onClick={() => setRevealPanelOpen(!revealPanelOpen)}
+            className="px-3 py-2 rounded-xl font-bold text-sm"
+            style={{ background: theme.cell, color: theme.cellText }}
+            title="Grid reveal pattern">
+            {PATTERN_LIST.find(p => p.key === revealPattern)?.emoji || "🌀"}
+          </button>
           <button onClick={clearSelection} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>✕</button>
           <button onClick={startGame} className="px-4 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
         </div>
@@ -289,9 +310,27 @@ export default function WordSearch() {
         ))}
       </div>
 
+      {/* Reveal pattern selector */}
+      {revealPanelOpen && (
+        <div className="flex flex-wrap gap-1.5 justify-center mb-3 px-2">
+          {PATTERN_LIST.map(p => (
+            <button key={p.key}
+              onClick={() => { setRevealPattern(p.key); setRevealPanelOpen(false); reveal(p.key); }}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${p.key === revealPattern ? "scale-105" : "opacity-70"}`}
+              style={{
+                background: p.key === revealPattern ? theme.selected : theme.cell,
+                color: p.key === revealPattern ? theme.selectedText : theme.cellText,
+                borderColor: p.key === revealPattern ? theme.selected : theme.wordBorder,
+              }}>
+              {p.emoji} {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Grid */}
       <div className="flex justify-center px-1">
-        <div className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}>
+        <div ref={gridRef} className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}>
           {gridData.grid.map((row, r) =>
             row.map((letter, c) => {
               const key = cellKey(r, c);
