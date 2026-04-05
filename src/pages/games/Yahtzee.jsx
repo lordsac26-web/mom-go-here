@@ -92,14 +92,13 @@ export default function Yahtzee() {
     }
   }, [gameStatus, initializeGame, totalTurns]);
 
-  // Handle physics roller results
+  // Handle roller results — results already have held dice values preserved
   const handleRollComplete = useCallback((results) => {
     diceCollideSound();
-    // Merge: keep held dice values, use physics results for free dice
-    setDice(prev => prev.map((d, i) => held[i] ? d : results[i]));
+    setDice(results);
     setRollsLeft(r => r - 1);
     setIsRolling(false);
-  }, [held, diceCollideSound]);
+  }, [diceCollideSound]);
 
   function roll() {
     if (rollsLeft === 0 || isRolling) return;

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import * as THREE from "three";
-import * as CANNON from "cannon-es";
+
+/**
+ * 3D Dice Roller using Three.js with animated tumbling (no physics engine).
+ * Each die spins and lands on a deterministic face.
+ * Parent controls via ref.roll() and receives results via onRollComplete.
+ */
 
 const PIP_POSITIONS = {
   1: [[128, 128]],
@@ -21,10 +26,10 @@ function createPipTexture(number) {
   ctx.strokeStyle = "#cccccc";
   ctx.lineWidth = 3;
   ctx.strokeRect(2, 2, 252, 252);
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = "#1a1a2e";
   (PIP_POSITIONS[number] || []).forEach(([x, y]) => {
     ctx.beginPath();
-    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
   });
   return new THREE.CanvasTexture(canvas);
@@ -34,84 +39,104 @@ function createPipTexture(number) {
 // BoxGeometry face order: +x, -x, +y, -y, +z, -z
 const FACE_MAP = [2, 5, 1, 6, 3, 4];
 
-function getTopFace(body) {
-  const up = new CANNON.Vec3(0, 1, 0);
-  const axes = [
-    new CANNON.Vec3(1, 0, 0),
-    new CANNON.Vec3(-1, 0, 0),
-    new CANNON.Vec3(0, 1, 0),
-    new CANNON.Vec3(0, -1, 0),
-    new CANNON.Vec3(0, 0, 1),
-    new CANNON.Vec3(0, 0, -1),
-  ];
-  let bestDot = -2;
-  let bestIdx = 0;
-  axes.forEach((axis, i) => {
-    const worldAxis = body.quaternion.vmult(axis);
-    const dot = worldAxis.dot(up);
-    if (dot > bestDot) {
-      bestDot = dot;
-      bestIdx = i;
-    }
-  });
-  return FACE_MAP[bestIdx];
+// Quaternion rotations to show each face on top (facing +Y)
+const FACE_ROTATIONS = {
+  1: { x: Math.PI / 2, z: 0 },    // face 1 on +y → rotate so -y face (which is 6's opposite=1) faces up
+  2: { x: 0, z: -Math.PI / 2 },
+  3: { x: 0, z: Math.PI },
+  4: { x: 0, z: 0 },
+  5: { x: 0, z: Math.PI / 2 },
+  6: { x: -Math.PI / 2, z: 0 },
+};
+
+// Get the target euler angles so a specific number faces up
+function getTargetRotation(number) {
+  const r = FACE_ROTATIONS[number];
+  return { x: r.x, y: 0, z: r.z };
 }
 
-const REST_X = [-2.2, -1, 0.2, 1.4, 2.6];
-const REST_Y = -1.4;
+const REST_POSITIONS = [
+  { x: -2.4, z: 0 },
+  { x: -1.2, z: 0 },
+  { x: 0, z: 0 },
+  { x: 1.2, z: 0 },
+  { x: 2.4, z: 0 },
+];
+
+const GROUND_Y = -1.5;
+const ANIM_DURATION = 1.2; // seconds
 
 const Dice3DPhysicsRoller = forwardRef(function Dice3DPhysicsRoller({ onRollComplete, held = [] }, ref) {
   const canvasRef = useRef(null);
   const sceneDataRef = useRef(null);
-  const rollingRef = useRef(false);
-  const rollTimerRef = useRef(0);
+  const animStateRef = useRef(null);
   const onRollCompleteRef = useRef(onRollComplete);
   const heldRef = useRef(held);
+  const currentValuesRef = useRef([1, 1, 1, 1, 1]);
 
   useEffect(() => { onRollCompleteRef.current = onRollComplete; }, [onRollComplete]);
   useEffect(() => { heldRef.current = held; }, [held]);
 
-  // Expose roll() to parent via ref
   useImperativeHandle(ref, () => ({
     roll: () => doRoll(),
   }));
 
   const doRoll = useCallback(() => {
-    if (rollingRef.current || !sceneDataRef.current) return;
-    const { diceBodies } = sceneDataRef.current;
+    if (animStateRef.current?.rolling) return;
+    const { diceMeshes } = sceneDataRef.current || {};
+    if (!diceMeshes) return;
     const currentHeld = heldRef.current;
 
     // Check if any dice are free to roll
     const freeCount = currentHeld.filter(h => !h).length;
     if (freeCount === 0) return;
 
-    rollingRef.current = true;
-    rollTimerRef.current = 0;
+    // Generate random results for free dice
+    const results = currentValuesRef.current.map((val, i) =>
+      currentHeld[i] ? val : Math.floor(Math.random() * 6) + 1
+    );
 
-    diceBodies.forEach((body, i) => {
-      if (currentHeld[i]) {
-        // Keep held dice still
-        body.velocity.set(0, 0, 0);
-        body.angularVelocity.set(0, 0, 0);
-        return;
-      }
-      body.wakeUp();
-      body.position.set(
-        REST_X[i] + (Math.random() - 0.5) * 0.5,
-        2 + Math.random() * 1.5,
-        (Math.random() - 0.5) * 1.5
-      );
-      body.velocity.set(
-        (Math.random() - 0.5) * 5,
-        Math.random() * 2 + 1,
-        (Math.random() - 0.5) * 5
-      );
-      body.angularVelocity.set(
-        (Math.random() - 0.5) * 25,
-        (Math.random() - 0.5) * 25,
-        (Math.random() - 0.5) * 25
-      );
+    // Set up animation state
+    const startTime = performance.now();
+    const anims = diceMeshes.map((mesh, i) => {
+      if (currentHeld[i]) return null;
+
+      const startPos = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+      const startRot = { x: mesh.rotation.x, y: mesh.rotation.y, z: mesh.rotation.z };
+      const target = getTargetRotation(results[i]);
+      const restPos = REST_POSITIONS[i];
+
+      // Add extra full spins for visual excitement
+      const spinX = (Math.random() > 0.5 ? 1 : -1) * Math.PI * (4 + Math.random() * 4);
+      const spinY = (Math.random() > 0.5 ? 1 : -1) * Math.PI * (2 + Math.random() * 3);
+      const spinZ = (Math.random() > 0.5 ? 1 : -1) * Math.PI * (2 + Math.random() * 4);
+
+      return {
+        startPos,
+        startRot,
+        // Target position: back to rest
+        endPos: { x: restPos.x, y: GROUND_Y + 0.5, z: restPos.z },
+        // Target rotation: the specific face up + extra spins
+        endRot: {
+          x: target.x + spinX,
+          y: target.y + spinY,
+          z: target.z + spinZ,
+        },
+        // Final clean rotation (just the face, no extra spins modulo)
+        finalRot: target,
+        // Random scatter at peak
+        peakY: 1.5 + Math.random() * 1.5,
+        peakX: restPos.x + (Math.random() - 0.5) * 2,
+        peakZ: (Math.random() - 0.5) * 2,
+      };
     });
+
+    animStateRef.current = {
+      rolling: true,
+      startTime,
+      anims,
+      results,
+    };
   }, []);
 
   useEffect(() => {
@@ -121,12 +146,11 @@ const Dice3DPhysicsRoller = forwardRef(function Dice3DPhysicsRoller({ onRollComp
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    // THREE.js
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a2e);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 6, 7);
+    camera.position.set(0, 5.5, 6);
     camera.lookAt(0, -1, 0);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -140,44 +164,18 @@ const Dice3DPhysicsRoller = forwardRef(function Dice3DPhysicsRoller({ onRollComp
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // CANNON
-    const world = new CANNON.World();
-    world.gravity.set(0, -30, 0);
-    world.defaultContactMaterial.friction = 0.4;
-    world.defaultContactMaterial.restitution = 0.25;
-
     // Ground
-    const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-    groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-    groundBody.position.y = -2;
-    world.addBody(groundBody);
-
     const groundMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(14, 14),
       new THREE.MeshStandardMaterial({ color: 0x1a1a2e })
     );
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.y = -2;
+    groundMesh.position.y = GROUND_Y;
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    // Walls
-    [
-      { pos: [4.5, 0, 0], axis: [0, 0, 1], angle: -Math.PI / 2 },
-      { pos: [-4.5, 0, 0], axis: [0, 0, 1], angle: Math.PI / 2 },
-      { pos: [0, 0, 3], axis: [1, 0, 0], angle: Math.PI / 2 },
-      { pos: [0, 0, -3], axis: [1, 0, 0], angle: -Math.PI / 2 },
-    ].forEach(({ pos, axis, angle }) => {
-      const wb = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-      wb.position.set(...pos);
-      wb.quaternion.setFromAxisAngle(new CANNON.Vec3(...axis), angle);
-      world.addBody(wb);
-    });
-
-    // Create 5 dice resting on the ground
+    // Create 5 dice at rest positions
     const diceMeshes = [];
-    const diceBodies = [];
-
     for (let i = 0; i < 5; i++) {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const materials = FACE_MAP.map((num) =>
@@ -190,59 +188,80 @@ const Dice3DPhysicsRoller = forwardRef(function Dice3DPhysicsRoller({ onRollComp
       const mesh = new THREE.Mesh(geometry, materials);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      mesh.position.set(REST_POSITIONS[i].x, GROUND_Y + 0.5, REST_POSITIONS[i].z);
+      // Set initial rotation to show face 1
+      const initRot = getTargetRotation(1);
+      mesh.rotation.set(initRot.x, 0, initRot.z);
       scene.add(mesh);
       diceMeshes.push(mesh);
-
-      const body = new CANNON.Body({
-        mass: 1,
-        shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
-        linearDamping: 0.3,
-        angularDamping: 0.4,
-      });
-      body.position.set(REST_X[i], REST_Y, 0);
-      body.velocity.set(0, 0, 0);
-      body.angularVelocity.set(0, 0, 0);
-      world.addBody(body);
-      diceBodies.push(body);
     }
 
-    sceneDataRef.current = { scene, camera, renderer, world, diceMeshes, diceBodies };
+    sceneDataRef.current = { scene, camera, renderer, diceMeshes };
+
+    // Easing: ease-out bounce feel
+    function easeOutBack(t) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
 
     // Animation loop
     let animId;
-    const STEP = 1 / 60;
-    const SETTLE_THRESHOLD = 0.08;
-    const ROLL_MIN_TIME = 0.8;
-
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      world.step(STEP);
 
-      diceMeshes.forEach((mesh, i) => {
-        mesh.position.copy(diceBodies[i].position);
-        mesh.quaternion.copy(diceBodies[i].quaternion);
-      });
+      const state = animStateRef.current;
+      if (state?.rolling) {
+        const elapsed = (performance.now() - state.startTime) / 1000;
+        const t = Math.min(elapsed / ANIM_DURATION, 1);
 
-      if (rollingRef.current) {
-        rollTimerRef.current += STEP;
+        state.anims.forEach((anim, i) => {
+          if (!anim) return; // held die
+          const mesh = diceMeshes[i];
 
-        if (rollTimerRef.current > ROLL_MIN_TIME) {
-          const allSettled = diceBodies.every((b, i) => {
-            if (heldRef.current[i]) return true;
-            return b.velocity.length() < SETTLE_THRESHOLD && b.angularVelocity.length() < SETTLE_THRESHOLD;
+          // Position: arc up then down
+          const tEased = easeInOutQuad(t);
+          const arcT = t < 0.4 ? t / 0.4 : (1 - t) / 0.6; // peaks around t=0.4
+          const arcHeight = Math.sin(arcT * Math.PI) * anim.peakY;
+
+          if (t < 0.4) {
+            // Going up and scattering
+            const upT = t / 0.4;
+            mesh.position.x = anim.startPos.x + (anim.peakX - anim.startPos.x) * upT;
+            mesh.position.z = anim.startPos.z + (anim.peakZ - anim.startPos.z) * upT;
+            mesh.position.y = anim.startPos.y + arcHeight;
+          } else {
+            // Coming down to rest
+            const downT = (t - 0.4) / 0.6;
+            const eased = easeOutBack(downT);
+            mesh.position.x = anim.peakX + (anim.endPos.x - anim.peakX) * eased;
+            mesh.position.z = anim.peakZ + (anim.endPos.z - anim.peakZ) * eased;
+            mesh.position.y = anim.endPos.y + arcHeight;
+          }
+
+          // Rotation: spin throughout, converge to target at end
+          const spinProgress = easeInOutQuad(t);
+          mesh.rotation.x = anim.startRot.x + (anim.endRot.x - anim.startRot.x) * spinProgress;
+          mesh.rotation.y = anim.startRot.y + (anim.endRot.y - anim.startRot.y) * spinProgress;
+          mesh.rotation.z = anim.startRot.z + (anim.endRot.z - anim.startRot.z) * spinProgress;
+        });
+
+        if (t >= 1) {
+          // Snap to exact final rotation and position
+          state.anims.forEach((anim, i) => {
+            if (!anim) return;
+            const mesh = diceMeshes[i];
+            mesh.position.set(anim.endPos.x, anim.endPos.y, anim.endPos.z);
+            mesh.rotation.set(anim.finalRot.x, 0, anim.finalRot.z);
           });
 
-          if (allSettled || rollTimerRef.current > 3.0) {
-            diceBodies.forEach((b) => {
-              b.velocity.set(0, 0, 0);
-              b.angularVelocity.set(0, 0, 0);
-            });
-
-            const results = diceBodies.map((body) => getTopFace(body));
-            rollingRef.current = false;
-            rollTimerRef.current = 0;
-            onRollCompleteRef.current?.(results);
-          }
+          currentValuesRef.current = state.results;
+          animStateRef.current = { rolling: false };
+          onRollCompleteRef.current?.(state.results);
         }
       }
 
