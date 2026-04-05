@@ -9,6 +9,7 @@ import LetterHoneycomb from "../../components/wordwhomp/LetterHoneycomb";
 import WordList from "../../components/wordwhomp/WordList";
 import PUZZLES from "../../components/wordwhomp/wordData";
 import useConfetti from "../../hooks/useConfetti";
+import BeeFlightTitle from "../../components/BeeFlightTitle";
 
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -140,7 +141,7 @@ export default function WordWhomp() {
       scoreHit();
 
       if (word.length >= 7) {
-        showMessage(`🐝 WHOMP! +${points} pts!`, "success");
+        showMessage(`🐝 BUZZ! +${points} pts!`, "success");
         sideCannons();
       } else if (word.length >= 5) {
         showMessage(`✨ Great! +${points} pts!`, "success");
@@ -183,7 +184,7 @@ export default function WordWhomp() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
         <div className="text-8xl mb-4">{allFound ? "🐝" : "⏰"}</div>
         <h1 className="text-4xl font-black text-primary mb-2">
-          {allFound ? "Perfect Whomp!" : "Time's Up!"}
+          {allFound ? <BeeFlightTitle text="Perfect Buzz!" size="text-4xl" /> : "Time's Up!"}
         </h1>
         <p className="text-2xl text-foreground mb-1">Score: <span className="text-primary font-black">{score}</span></p>
         <p className="text-xl text-muted-foreground mb-6">
@@ -221,14 +222,14 @@ export default function WordWhomp() {
       <div className="flex items-center justify-between mb-3">
         <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
         <div className="text-center">
-          <div className="text-xl font-black text-primary">🐝 Word Whomp</div>
+          <BeeFlightTitle text="🐝 Buzz Word!" size="text-xl" />
           <div className="text-muted-foreground text-sm">
             Score: {score} | {foundWords.length}/{allWords.length} words
           </div>
         </div>
         <div className="flex gap-2">
           <GameInstructions
-            title="Word Whomp"
+            title="Buzz Word!"
             emoji="🐝"
             steps={[
               "Tap letters to build words (3+ letters).",
