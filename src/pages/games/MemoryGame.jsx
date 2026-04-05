@@ -3,6 +3,7 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import FlipCard from "../../components/FlipCard";
+import useHaptics from "../../hooks/useHaptics";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -58,6 +59,7 @@ export default function MemoryGame() {
   const [started, setStarted] = useState(false);
   useGameTimer();
   const lockRef = useRef(false);
+  const { tapVibrate, successVibrate, winVibrate } = useHaptics();
 
   function startGame(idx = sizeIdx) {
     const { pairs } = SIZES[idx];
@@ -76,6 +78,7 @@ export default function MemoryGame() {
     if (lockRef.current) return;
     const card = cards.find(c => c.id === id);
     if (!card || card.flipped || card.matched) return;
+    tapVibrate();
 
     const newCards = cards.map(c => c.id === id ? { ...c, flipped: true } : c);
     const newFlipped = [...flipped, id];
@@ -88,10 +91,11 @@ export default function MemoryGame() {
       const [a, b] = newFlipped.map(fid => newCards.find(c => c.id === fid));
       if (a.emoji === b.emoji) {
         setTimeout(() => {
+          successVibrate();
           setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, matched: true, flipped: true } : c));
           setMatched(prev => {
             const newMatched = prev + 1;
-            if (newMatched === SIZES[sizeIdx].pairs) setWon(true);
+            if (newMatched === SIZES[sizeIdx].pairs) { winVibrate(); setWon(true); }
             return newMatched;
           });
           setFlipped([]);
