@@ -100,6 +100,32 @@ export default function Home() {
         <p className="text-muted-foreground text-lg">Tap a card to explore!</p>
       </div>
 
+      {/* Quote of the Day */}
+      {quote && (
+        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-4 shadow">
+          <p className="text-base text-foreground italic text-center leading-snug">
+            💛 "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Daily Inspiration link */}
+      {religionInfo && (
+        <Link
+          to="/daily"
+          className="block bg-card border-2 border-primary rounded-2xl p-5 text-center shadow-xl mb-4"
+        >
+          <span className="text-4xl">{religionInfo.emoji}</span>
+          <p className="text-2xl font-black text-primary mt-2">{religionInfo.label}</p>
+          <p className="text-muted-foreground text-lg">Tap to read today's reading</p>
+        </Link>
+      )}
+
+      {/* This Day in History */}
+      <div className="mb-6">
+        <HistoryFact birthday={profile?.birthday} location={{ city: profile?.city, latitude: profile?.latitude, longitude: profile?.longitude }} />
+      </div>
+
       {/* 3D Tilt Navigation Cards */}
       <div className="grid grid-cols-1 gap-4 max-w-lg mx-auto mb-6">
         {NAV_CARDS.map((card) => (
@@ -115,30 +141,6 @@ export default function Home() {
           />
         ))}
       </div>
-
-      {/* Quote of the Day — compact */}
-      {quote && (
-        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-4 shadow">
-          <p className="text-base text-foreground italic text-center leading-snug">
-            💛 "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
-          </p>
-        </div>
-      )}
-
-      {/* This Day in History — compact */}
-      <HistoryFact birthday={profile?.birthday} location={{ city: profile?.city, latitude: profile?.latitude, longitude: profile?.longitude }} />
-
-      {/* Daily Inspiration link */}
-      {religionInfo && (
-        <Link
-          to="/daily"
-          className="block bg-card border-2 border-primary rounded-2xl p-5 text-center shadow-xl mb-6"
-        >
-          <span className="text-4xl">{religionInfo.emoji}</span>
-          <p className="text-2xl font-black text-primary mt-2">{religionInfo.label}</p>
-          <p className="text-muted-foreground text-lg">Tap to read today's reading</p>
-        </Link>
-      )}
 
     </div>
   );
