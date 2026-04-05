@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import ParallaxBackground from "./ParallaxBackground";
 import PersistentAudioStream from "./PersistentAudioStream";
+import MiniMusicPlayer from "./MiniMusicPlayer";
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,13 +65,16 @@ export default function Layout() {
             <span className="text-3xl">🌸</span>
             <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="bg-primary text-primary-foreground rounded-xl p-3 shadow-lg"
-            aria-label="Menu"
-          >
-            {menuOpen ? <X size={32} /> : <Menu size={32} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <MiniMusicPlayer />
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="bg-primary text-primary-foreground rounded-xl p-3 shadow-lg"
+              aria-label="Menu"
+            >
+              {menuOpen ? <X size={32} /> : <Menu size={32} />}
+            </button>
+          </div>
         </div>
 
         {/* Dropdown Menu */}
