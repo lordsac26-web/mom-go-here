@@ -4,8 +4,8 @@ export const useAudioStore = create((set) => ({
   // Settings
   sfxVolume: 0.7,
   musicVolume: 0.5,
-  muteAll: false,
-  muteMusic: false,
+  muteAll: true,
+  muteMusic: true,
 
   // Actions
   setSfxVolume: (vol) => set({ sfxVolume: Math.max(0, Math.min(1, vol)) }),
