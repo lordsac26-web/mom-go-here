@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameStore } from "../../stores/gameStore";
 
 function initBoard() {
   const board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -74,6 +75,23 @@ export default function Checkers() {
   const [turn, setTurn] = useState(1);
   const [message, setMessage] = useState("Your turn! (🔴 pieces)");
   const [gameOver, setGameOver] = useState(false);
+  const [moveCount, setMoveCount] = useState(0);
+
+  // Zustand store integration
+  const initializeGame = useGameStore((state) => state.initializeGame);
+  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
+  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
+  const gameStatus = useGameStore((state) => state.gameStatus);
+
+  // Init Zustand on component mount
+  useEffect(() => {
+    if (gameStatus === "setup") {
+      initializeGame(
+        [{ id: "player-1", name: "You" }, { id: "computer", name: "Computer" }],
+        1
+      );
+    }
+  }, [gameStatus, initializeGame]);
 
   function handleClick(r, c) {
     if (turn !== 1 || gameOver) return;
@@ -87,18 +105,49 @@ export default function Checkers() {
         const newBoard = applyMove(board, move);
         setBoard(newBoard);
         setSelected(null);
+        setMoveCount(m => m + 1);
+        addHistoryEntry({
+          round: 1,
+          playerId: "player-1",
+          playerName: "You",
+          action: "move",
+          result: { from: move.from, to: move.to, jump: move.jump ? "yes" : "no" },
+        });
         // Check if computer has moves
         const compMoves = getAllMoves(newBoard, 2);
-        if (!compMoves.length) { setMessage("🎉 You win!"); setGameOver(true); winVibrate(); return; }
+        if (!compMoves.length) { 
+          setMessage("🎉 You win!");
+          setGameOver(true);
+          setPlayerScore("player-1", moveCount + 1);
+          winVibrate();
+          return;
+        }
         setTurn(2);
         setMessage("🤖 Computer thinking...");
         setTimeout(() => {
           const cm = computerMove(newBoard);
-          if (!cm) { setMessage("🎉 You win!"); setGameOver(true); return; }
+          if (!cm) { 
+            setMessage("🎉 You win!");
+            setGameOver(true);
+            setPlayerScore("player-1", moveCount + 1);
+            return;
+          }
           const b2 = applyMove(newBoard, cm);
           setBoard(b2);
+          addHistoryEntry({
+            round: 1,
+            playerId: "computer",
+            playerName: "Computer",
+            action: "move",
+            result: { from: cm.from, to: cm.to, jump: cm.jump ? "yes" : "no" },
+          });
           const playerMovesAfter = getAllMoves(b2, 1);
-          if (!playerMovesAfter.length) { setMessage("😔 Computer wins!"); setGameOver(true); return; }
+          if (!playerMovesAfter.length) { 
+            setMessage("😔 Computer wins!");
+            setGameOver(true);
+            setPlayerScore("computer", moveCount + 1);
+            return;
+          }
           setTurn(1);
           setMessage("Your turn! (🔴 pieces)");
         }, 800);
@@ -119,6 +168,7 @@ export default function Checkers() {
     setTurn(1);
     setMessage("Your turn! (🔴 pieces)");
     setGameOver(false);
+    setMoveCount(0);
   }
 
   const validMoves = selected ? getAllMoves(board, 1).filter(m => m.from[0] === selected[0] && m.from[1] === selected[1]) : [];
