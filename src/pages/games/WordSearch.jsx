@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
+import useGameSounds from "../../hooks/useGameSounds";
+import SparkleEffect from "../../components/SparkleEffect";
+import { Volume2, VolumeX } from "lucide-react";
 
 const WORD_LISTS = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
@@ -48,6 +51,7 @@ function generateGrid(size, words) {
 
 export default function WordSearch() {
   useGameTimer();
+  const { soundOn, setSoundOn, playTap, playSuccess, playWin } = useGameSounds();
   const [started, setStarted] = useState(false);
   const [size] = useState(10);
   const [gridData, setGridData] = useState(null);
@@ -56,6 +60,9 @@ export default function WordSearch() {
   const [foundWords, setFoundWords] = useState([]);
   const [foundCells, setFoundCells] = useState([]);
   const [lineMode, setLineMode] = useState(true);
+  const [justFoundCells, setJustFoundCells] = useState([]);
+  const [justFoundWord, setJustFoundWord] = useState(null);
+  const glowTimerRef = useRef(null);
 
   function startGame() {
     const wlist = WORD_LISTS[Math.floor(Math.random() * WORD_LISTS.length)];
@@ -65,6 +72,8 @@ export default function WordSearch() {
     setSelected([]);
     setFoundWords([]);
     setFoundCells([]);
+    setJustFoundCells([]);
+    setJustFoundWord(null);
     setStarted(true);
   }
 
@@ -86,15 +95,29 @@ export default function WordSearch() {
     return cells;
   }
 
+  function markFound(word, wCells, isWinning) {
+    const cellKeys = wCells.map(([cr, cc]) => cellKey(cr, cc));
+    setFoundWords(prev => [...prev, word]);
+    setFoundCells(prev => [...prev, ...cellKeys]);
+    setSelected([]);
+    setJustFoundCells(cellKeys);
+    setJustFoundWord(word);
+    if (isWinning) { playWin(); } else { playSuccess(); }
+    clearTimeout(glowTimerRef.current);
+    glowTimerRef.current = setTimeout(() => {
+      setJustFoundCells([]);
+      setJustFoundWord(null);
+    }, 800);
+  }
+
   function checkAndMarkWord(cells) {
     const selStr = cells.map(([sr, sc]) => gridData.grid[sr][sc]).join("");
     const selRev = selStr.split("").reverse().join("");
     for (const { word, cells: wCells } of gridData.placed) {
       if (foundWords.includes(word)) continue;
       if (word === selStr || word === selRev) {
-        setFoundWords(prev => [...prev, word]);
-        setFoundCells(prev => [...prev, ...wCells.map(([cr, cc]) => cellKey(cr, cc))]);
-        setSelected([]);
+        const isWinning = foundWords.length + 1 === words.length;
+        markFound(word, wCells, isWinning);
         return true;
       }
     }
@@ -102,6 +125,7 @@ export default function WordSearch() {
   }
 
   function handleCellTap(r, c) {
+    playTap();
     const key = cellKey(r, c);
 
     if (lineMode) {
@@ -131,15 +155,13 @@ export default function WordSearch() {
         for (const { word, cells } of gridData.placed) {
           if (foundWords.includes(word)) continue;
           if (word === selStr || word === selRev) {
-            setFoundWords(prev => [...prev, word]);
-            setFoundCells(prev => [...prev, ...cells.map(([cr, cc]) => cellKey(cr, cc))]);
-            setSelected([]);
+            const isWinning = foundWords.length + 1 === words.length;
+            markFound(word, cells, isWinning);
             matched = true;
             break;
           }
         }
         if (!matched) {
-          // Show the line briefly then clear
           setTimeout(() => setSelected([]), 1200);
         }
         return;
@@ -209,6 +231,11 @@ export default function WordSearch() {
               "Find all the words to win the puzzle."
             ]}
           />
+          <button onClick={() => setSoundOn(!soundOn)}
+            className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold"
+            title={soundOn ? "Mute sounds" : "Enable sounds"}>
+            {soundOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          </button>
           <button onClick={() => setLineMode(!lineMode)}
             className={`px-3 py-2 rounded-xl font-bold ${lineMode ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}
             title={lineMode ? "Line mode" : "Manual mode"}>
@@ -222,9 +249,15 @@ export default function WordSearch() {
       {/* Words to find */}
       <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-4 px-2">
         {words.map(w => (
-          <span key={w} className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-sm sm:text-lg font-black border-2 ${foundWords.includes(w) ? "bg-green-700 border-green-500 text-white line-through" : "bg-card border-border text-foreground"}`}>
-            {w}
-          </span>
+          <SparkleEffect key={w} active={justFoundWord === w}>
+            <span className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-sm sm:text-lg font-black border-2 inline-block transition-all duration-300 ${
+              justFoundWord === w ? "bg-green-500 border-green-300 text-white scale-110 shadow-lg shadow-green-500/50" :
+              foundWords.includes(w) ? "bg-green-700 border-green-500 text-white line-through" :
+              "bg-card border-border text-foreground"
+            }`}>
+              {w}
+            </span>
+          </SparkleEffect>
         ))}
       </div>
 
@@ -236,10 +269,12 @@ export default function WordSearch() {
               const key = cellKey(r, c);
               const isSelected = selected.find(([sr, sc]) => cellKey(sr, sc) === key);
               const isFound = foundCells.includes(key);
+              const isJustFound = justFoundCells.includes(key);
               return (
                 <div key={key}
                   onClick={() => handleCellTap(r, c)}
                   className={`aspect-square flex items-center justify-center text-sm sm:text-lg font-black rounded cursor-pointer transition-colors ${
+                    isJustFound ? "bg-green-400 text-white cell-found-glow" :
                     isFound ? "bg-green-600 text-white" :
                     isSelected ? "bg-primary text-primary-foreground" :
                     "bg-card text-foreground"
