@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const VERSES = {
   Christianity: [
@@ -122,6 +123,11 @@ export default function Daily() {
 
   if (!religion || religion === "None") return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 pb-24 text-center">
+      <Link to="/" className="absolute top-4 left-4 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 shadow-lg hover:bg-muted transition-colors">
+        <ArrowLeft size={20} className="text-primary" />
+        <span className="text-xl">🌸</span>
+        <span className="text-lg font-bold text-primary">Mom, Go Here</span>
+      </Link>
       <div className="text-8xl mb-6">📖</div>
       <h1 className="text-4xl font-black text-primary mb-4">Daily Verse</h1>
       <p className="text-2xl text-muted-foreground mb-8">Select a religion in Settings to receive a daily verse from your scripture.</p>
@@ -132,29 +138,67 @@ export default function Daily() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8 pb-24">
-      <div className="max-w-lg w-full">
+    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+      {/* Back Navigation */}
+      <Link to="/" className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 mb-6 shadow-lg hover:bg-muted transition-colors">
+        <ArrowLeft size={20} className="text-primary" />
+        <span className="text-xl">🌸</span>
+        <span className="text-lg font-bold text-primary">Mom, Go Here</span>
+      </Link>
+
+      <div className="max-w-lg w-full mx-auto">
+        {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-7xl mb-2">{RELIGION_EMOJI[religion]}</div>
+          <div className="text-7xl mb-3">{RELIGION_EMOJI[religion]}</div>
           <h1 className="text-4xl font-black text-primary">{READING_LABEL[religion] || `Today's ${religion} Reading`}</h1>
-          <p className="text-muted-foreground text-xl mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-muted-foreground text-lg mt-2">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
         </div>
 
-        <div className="bg-card border-2 border-primary rounded-3xl p-8 shadow-2xl">
-          <div className="text-6xl text-center mb-4">🕊️</div>
-          <p className="text-3xl font-bold text-foreground text-center italic leading-relaxed mb-6">
+        {/* Decorative divider */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <div className="h-px w-12 bg-primary/30" />
+          <span className="text-2xl">✨</span>
+          <div className="h-px w-12 bg-primary/30" />
+        </div>
+
+        {/* Verse Card */}
+        <div className="relative bg-card border-2 border-primary/40 rounded-3xl p-8 shadow-2xl overflow-hidden">
+          {/* Corner decorations */}
+          <div className="absolute top-3 left-4 text-3xl opacity-20">❝</div>
+          <div className="absolute bottom-3 right-4 text-3xl opacity-20">❞</div>
+
+          <div className="text-5xl text-center mb-5">🕊️</div>
+          <p className="text-2xl font-bold text-foreground text-center italic leading-relaxed mb-6 px-2">
             "{verse?.text}"
           </p>
           <div className="text-center">
-            <span className="bg-primary text-primary-foreground px-6 py-3 rounded-full text-xl font-black">
+            <span className="inline-block bg-primary/15 border border-primary/30 text-primary px-5 py-2 rounded-full text-lg font-black">
               📜 {verse?.ref}
             </span>
           </div>
         </div>
 
-        <div className="mt-8 bg-card border border-border rounded-2xl p-5 text-center">
-          <p className="text-muted-foreground text-xl">A new verse appears each day. Come back tomorrow! 🌅</p>
+        {/* Reflection prompt */}
+        <div className="mt-6 bg-card/60 border border-border rounded-2xl p-5 text-center">
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            🙏 Take a moment to reflect on today's reading.
+          </p>
         </div>
+
+        {/* Footer info */}
+        <div className="mt-4 text-center">
+          <p className="text-muted-foreground text-base">A new verse appears each day. Come back tomorrow! 🌅</p>
+        </div>
+
+        {/* Back home button */}
+        <Link
+          to="/"
+          className="block mt-6 bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl text-center shadow-xl"
+        >
+          🌸 Back to Home
+        </Link>
       </div>
     </div>
   );
