@@ -3,7 +3,7 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
-import Dice3DRoller from "../../components/Dice3DRoller";
+import Dice3DPhysicsRoller from "../../components/Dice3DPhysicsRoller";
 import { useGameStore } from "../../stores/gameStore";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
@@ -66,7 +66,6 @@ export default function Yahtzee() {
   const [scores, setScores] = useState({});
   const [turn, setTurn] = useState(1);
 
-  const [isRolling, setIsRolling] = useState(false);
   const totalTurns = 13;
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const gameOver = Object.keys(scores).length === totalTurns;
@@ -87,23 +86,22 @@ export default function Yahtzee() {
     }
   }, [gameStatus, initializeGame, totalTurns]);
 
+  // Handle physics roller results
+  const handleRollComplete = (results) => {
+    setDice(results);
+    setRollsLeft(r => r - 1);
+    addHistoryEntry({
+      round: turn,
+      playerId: "player-1",
+      playerName: "Player",
+      action: "roll",
+      result: { dice: results, rollNumber: 4 - (rollsLeft - 1) },
+    });
+  };
+
   function roll() {
     if (rollsLeft === 0) return;
     tapVibrate();
-    setIsRolling(true);
-    setTimeout(() => {
-      const newDice = dice.map((d, i) => held[i] ? d : rollDie());
-      setDice(newDice);
-      setRollsLeft(r => r - 1);
-      setIsRolling(false);
-      addHistoryEntry({
-        round: turn,
-        playerId: "player-1",
-        playerName: "Player",
-        action: "roll",
-        result: { dice: newDice, rollNumber: 4 - (rollsLeft - 1) },
-      });
-    }, 600);
   }
 
   function toggleHold(i) {
@@ -182,9 +180,9 @@ export default function Yahtzee() {
         </div>
       </div>
 
-      {/* 3D Dice Roller */}
+      {/* 3D Physics Dice Roller */}
       <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden">
-        <Dice3DRoller dice={dice} isRolling={isRolling} onRollComplete={() => setIsRolling(false)} />
+        <Dice3DPhysicsRoller onRollComplete={handleRollComplete} />
         <div className="flex justify-center gap-2 mt-3 flex-wrap">
           {dice.map((d, i) => (
             <button key={i} onClick={() => toggleHold(i)}
@@ -193,11 +191,7 @@ export default function Yahtzee() {
             </button>
           ))}
         </div>
-        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm mt-2">Tap dice buttons to hold them 👆</p>}
-        <button onClick={roll} disabled={rollsLeft === 0}
-          className={`w-full text-2xl font-black py-4 rounded-2xl shadow-xl transition-all mt-3 ${rollsLeft > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-          🎲 Roll Dice ({rollsLeft} rolls left)
-        </button>
+        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm mt-2">Hold dice to keep them 👆</p>}
       </div>
 
       {/* Scorecard */}
