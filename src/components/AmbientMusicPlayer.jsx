@@ -124,6 +124,19 @@ export default function AmbientMusicPlayer() {
     activeNotesRef.current = [];
   };
 
+  // Update volume of playing notes when slider changes
+  useEffect(() => {
+    const ctx = audioContextRef.current;
+    if (!ctx || !isPlayingRef.current) return;
+
+    activeNotesRef.current.forEach(({ gain }) => {
+      if (gain && gain.gain) {
+        // Scale the gain smoothly to new volume level
+        gain.gain.linearRampToValueAtTime((musicVolume * 0.2) / 2, ctx.currentTime + 0.05);
+      }
+    });
+  }, [musicVolume]);
+
   // Control music playback based on settings
   useEffect(() => {
     const shouldPlay = !muteAll && !muteMusic && musicVolume > 0;
