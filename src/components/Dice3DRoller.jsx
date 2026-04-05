@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { useGesture } from "@use-gesture/react";
 
 export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
   const canvasRef = useRef(null);
@@ -7,13 +8,77 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
   const diceRef = useRef([]);
   const velocitiesRef = useRef([]);
   const rollTimeRef = useRef(0);
+  const [shaking, setShaking] = useState(false);
 
-  const ROLL_DURATION = 0.6; // seconds
+  const ROLL_DURATION = 0.6;
+  const DAMPING = 0.93;
+
+  // Create pip texture for a die face
+  const createPipTexture = (number) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    // White background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Subtle border
+    ctx.strokeStyle = "#cccccc";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, 252, 252);
+
+    // Draw pips (black dots)
+    ctx.fillStyle = "#000000";
+    const pipRadius = 20;
+    const positions = {
+      1: [[128, 128]],
+      2: [[85, 85], [171, 171]],
+      3: [[85, 85], [128, 128], [171, 171]],
+      4: [[85, 85], [171, 85], [85, 171], [171, 171]],
+      5: [[85, 85], [171, 85], [128, 128], [85, 171], [171, 171]],
+      6: [[85, 85], [171, 85], [85, 128], [171, 128], [85, 171], [171, 171]],
+    };
+
+    (positions[number] || []).forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, pipRadius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    return new THREE.CanvasTexture(canvas);
+  };
+
+  useGesture(
+    {
+      onDrag: ({ offset: [dx, dy], velocity: [vx, vy], last }) => {
+        if (!diceRef.current.length) return;
+
+        const magnitude = Math.sqrt(dx * dx + dy * dy);
+        if (magnitude < 10) return; // Minimum drag distance
+
+        if (!last) {
+          setShaking(true);
+          diceRef.current.forEach((die, i) => {
+            velocitiesRef.current[i] = {
+              x: (dy / 100) * 30 + vx * 10,
+              y: (dx / 100) * 30 + vy * 10,
+              z: (Math.random() - 0.5) * 20,
+            };
+          });
+        } else {
+          setShaking(false);
+          rollTimeRef.current = 0;
+        }
+      },
+    },
+    { target: canvasRef }
+  );
 
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Scene setup
     const canvas = canvasRef.current;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
@@ -27,14 +92,19 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
 
     // Lighting
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const directLight = new THREE.DirectionalLight(0xffffff, 1);
+    directLight.position.set(5, 8, 7);
+    directLight.castShadow = true;
+    directLight.shadow.mapSize.width = 2048;
+    directLight.shadow.mapSize.height = 2048;
+    scene.add(directLight);
 
-    // Create dice geometries
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
     diceRef.current = [];
     velocitiesRef.current = [];
 
@@ -46,45 +116,28 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
       [0, 3, 0],
     ];
 
+    // Create dice with proper materials
     for (let i = 0; i < 5; i++) {
       const geometry = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-      const material = new THREE.MeshStandardMaterial({
-        color: 0xffd700,
-        metalness: 0.3,
-        roughness: 0.4,
+      const materials = [1, 6, 2, 5, 3, 4].map((num) => {
+        const texture = createPipTexture(num);
+        return new THREE.MeshStandardMaterial({
+          map: texture,
+          metalness: 0.1,
+          roughness: 0.5,
+        });
       });
 
-      const mesh = new THREE.Mesh(geometry, material);
+      const mesh = new THREE.Mesh(geometry, materials);
       mesh.position.set(...positions[i]);
       mesh.userData.value = dice[i] || 1;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       scene.add(mesh);
       diceRef.current.push(mesh);
 
-      // Random initial velocity for rolling
-      velocitiesRef.current.push({
-        x: (Math.random() - 0.5) * 20,
-        y: (Math.random() - 0.5) * 20,
-        z: (Math.random() - 0.5) * 20,
-      });
+      velocitiesRef.current.push({ x: 0, y: 0, z: 0 });
     }
-
-    // Add pip dots on dice (face labels)
-    diceRef.current.forEach((die, idx) => {
-      const canvas2d = document.createElement("canvas");
-      canvas2d.width = 256;
-      canvas2d.height = 256;
-      const ctx = canvas2d.getContext("2d");
-      ctx.fillStyle = "#1a1a2e";
-      ctx.fillRect(0, 0, 256, 256);
-      ctx.fillStyle = "#2d1515";
-      ctx.font = "bold 120px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(dice[idx], 128, 128);
-
-      const texture = new THREE.CanvasTexture(canvas2d);
-      die.material = new THREE.MeshStandardMaterial({ map: texture });
-    });
 
     rollTimeRef.current = 0;
     let animationId;
@@ -92,7 +145,8 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
     const animate = () => {
       animationId = requestAnimationFrame(animate);
 
-      if (isRolling && rollTimeRef.current < ROLL_DURATION) {
+      // Handle rolling or shaking animation
+      if ((isRolling || shaking) && rollTimeRef.current < ROLL_DURATION) {
         rollTimeRef.current += 1 / 60;
 
         diceRef.current.forEach((die, i) => {
@@ -101,24 +155,28 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
           die.rotation.y += vel.y * 0.02;
           die.rotation.z += vel.z * 0.02;
 
-          // Dampen velocity
-          vel.x *= 0.95;
-          vel.y *= 0.95;
-          vel.z *= 0.95;
+          vel.x *= DAMPING;
+          vel.y *= DAMPING;
+          vel.z *= DAMPING;
         });
 
         if (rollTimeRef.current >= ROLL_DURATION) {
-          // Final positioning based on die values
+          // Snap to final orientation based on die value
           diceRef.current.forEach((die) => {
             const val = die.userData.value;
-            const angle = (val - 1) * (Math.PI / 3);
-            die.rotation.set(
-              Math.cos(angle) * Math.PI,
-              Math.sin(angle) * Math.PI,
-              Math.random() * Math.PI
-            );
+            const angles = {
+              1: [0, 0, 0],
+              2: [0, Math.PI / 2, 0],
+              3: [0, Math.PI / 4, 0],
+              4: [0, -Math.PI / 4, 0],
+              5: [Math.PI / 2, 0, 0],
+              6: [Math.PI, 0, 0],
+            };
+            die.rotation.set(...(angles[val] || [0, 0, 0]));
           });
-          if (onRollComplete) onRollComplete();
+
+          if (isRolling && onRollComplete) onRollComplete();
+          setShaking(false);
         }
       }
 
@@ -142,7 +200,12 @@ export default function Dice3DRoller({ dice, isRolling, onRollComplete }) {
       cancelAnimationFrame(animationId);
       renderer.dispose();
     };
-  }, [dice, isRolling, onRollComplete]);
+  }, [dice, isRolling, onRollComplete, shaking]);
 
-  return <canvas ref={canvasRef} className="w-full h-64 rounded-2xl" />;
+  return (
+    <div className="w-full select-none">
+      <canvas ref={canvasRef} className="w-full h-64 rounded-2xl cursor-grab active:cursor-grabbing" />
+      <p className="text-center text-xs text-muted-foreground mt-2">Drag and fling to shake the dice 👇</p>
+    </div>
+  );
 }
