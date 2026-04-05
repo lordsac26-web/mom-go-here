@@ -71,11 +71,11 @@ export default function VolumeSlider({ label, value, onChange, disabled = false,
       />
 
       {/* Quick preset buttons */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-1 flex-wrap">
         <button
           onClick={() => onChange(0.25)}
           disabled={disabled || muted}
-          className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
             Math.abs(value - 0.25) < 0.05
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground hover:bg-muted/80'
@@ -86,7 +86,7 @@ export default function VolumeSlider({ label, value, onChange, disabled = false,
         <button
           onClick={() => onChange(0.5)}
           disabled={disabled || muted}
-          className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
             Math.abs(value - 0.5) < 0.05
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground hover:bg-muted/80'
@@ -97,7 +97,7 @@ export default function VolumeSlider({ label, value, onChange, disabled = false,
         <button
           onClick={() => onChange(0.75)}
           disabled={disabled || muted}
-          className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
             Math.abs(value - 0.75) < 0.05
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground hover:bg-muted/80'
@@ -108,7 +108,7 @@ export default function VolumeSlider({ label, value, onChange, disabled = false,
         <button
           onClick={() => onChange(1)}
           disabled={disabled || muted}
-          className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+          className={`flex-1 min-w-12 px-2 py-1 rounded text-xs font-bold transition-all ${
             Math.abs(value - 1) < 0.05
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground hover:bg-muted/80'

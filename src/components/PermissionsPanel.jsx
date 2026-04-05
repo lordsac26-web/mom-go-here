@@ -94,8 +94,8 @@ export default function PermissionsPanel({ onLocationChange, onPhotoCapture }) {
               ref={videoRef}
               autoPlay
               playsInline
-              className="w-full rounded-lg bg-black"
-              style={{ aspectRatio: '4/3' }}
+              className="w-full rounded-lg bg-black object-cover"
+              style={{ height: 'auto', maxHeight: '400px', aspectRatio: '4/3' }}
             />
             <canvas ref={canvasRef} className="hidden" />
             <div className="flex gap-2">

@@ -157,16 +157,16 @@ export default function Settings() {
               <button
                 key={r.value}
                 onClick={() => setReligion(r.value)}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left ${
+                className={`w-full flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4 rounded-2xl border-2 transition-all text-left ${
                   religion === r.value ? "border-primary bg-primary/10" : "border-border bg-secondary"
                 }`}
               >
-                <span className="text-3xl">{r.emoji}</span>
-                <div>
-                  <p className="text-xl font-black text-foreground">{r.label}</p>
-                  <p className="text-muted-foreground text-sm">{r.sub}</p>
+                <span className="text-2xl sm:text-3xl flex-shrink-0">{r.emoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg sm:text-xl font-black text-foreground truncate">{r.label}</p>
+                  <p className="text-muted-foreground text-xs sm:text-sm truncate">{r.sub}</p>
                 </div>
-                {religion === r.value && <span className="ml-auto text-2xl">✅</span>}
+                {religion === r.value && <span className="ml-auto text-xl sm:text-2xl flex-shrink-0">✅</span>}
               </button>
             ))}
           </div>
