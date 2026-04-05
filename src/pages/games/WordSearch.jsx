@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameInstructions from "../../components/GameInstructions";
@@ -53,7 +53,6 @@ export default function WordSearch() {
   const [gridData, setGridData] = useState(null);
   const [words, setWords] = useState([]);
   const [selected, setSelected] = useState([]);
-  const [selecting, setSelecting] = useState(false);
   const [foundWords, setFoundWords] = useState([]);
   const [foundCells, setFoundCells] = useState([]);
 
@@ -65,40 +64,42 @@ export default function WordSearch() {
     setSelected([]);
     setFoundWords([]);
     setFoundCells([]);
-    setSelecting(false);
     setStarted(true);
   }
 
   function cellKey(r, c) { return `${r},${c}`; }
 
-  function handleCellDown(r, c) {
-    setSelecting(true);
-    setSelected([[r, c]]);
-  }
+  function handleCellTap(r, c) {
+    const key = cellKey(r, c);
+    const alreadyIdx = selected.findIndex(([sr, sc]) => cellKey(sr, sc) === key);
 
-  function handleCellEnter(r, c) {
-    if (!selecting) return;
-    setSelected(prev => {
-      const key = cellKey(r, c);
-      if (prev.find(([pr, pc]) => cellKey(pr, pc) === key)) return prev;
-      return [...prev, [r, c]];
-    });
-  }
+    // If tapping the last selected cell, deselect it
+    if (alreadyIdx === selected.length - 1 && alreadyIdx >= 0) {
+      setSelected(prev => prev.slice(0, -1));
+      return;
+    }
 
-  function handleUp() {
-    if (!selecting) return;
-    setSelecting(false);
-    // Check if selected cells spell any unfound word
-    const selStr = selected.map(([r, c]) => gridData.grid[r][c]).join("");
+    // If already selected (not last), ignore
+    if (alreadyIdx >= 0) return;
+
+    const newSelected = [...selected, [r, c]];
+    setSelected(newSelected);
+
+    // Auto-check if selected cells spell any unfound word
+    const selStr = newSelected.map(([sr, sc]) => gridData.grid[sr][sc]).join("");
     const selRev = selStr.split("").reverse().join("");
     for (const { word, cells } of gridData.placed) {
       if (foundWords.includes(word)) continue;
       if (word === selStr || word === selRev) {
         setFoundWords(prev => [...prev, word]);
-        setFoundCells(prev => [...prev, ...cells.map(([r, c]) => cellKey(r, c))]);
-        break;
+        setFoundCells(prev => [...prev, ...cells.map(([cr, cc]) => cellKey(cr, cc))]);
+        setSelected([]);
+        return;
       }
     }
+  }
+
+  function clearSelection() {
     setSelected([]);
   }
 
@@ -108,7 +109,7 @@ export default function WordSearch() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
       <div className="text-8xl mb-4">🔤</div>
       <h1 className="text-4xl font-black text-primary mb-4 text-center">Word Search</h1>
-      <p className="text-xl text-muted-foreground text-center mb-8">Drag your finger to highlight hidden words!</p>
+      <p className="text-xl text-muted-foreground text-center mb-8">Tap letters to spell out hidden words!</p>
       <button onClick={startGame} className="bg-yellow-600 text-white text-2xl font-black px-10 py-6 rounded-2xl shadow-xl mb-4">
         🔤 Start Game
       </button>
@@ -128,8 +129,7 @@ export default function WordSearch() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-2 py-4 pb-24 select-none"
-      onMouseUp={handleUp} onTouchEnd={handleUp}>
+    <div className="min-h-screen bg-background px-2 py-4 pb-24 select-none">
       <div className="flex items-center justify-between px-2 mb-3">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🔤 Word Search</div>
@@ -140,11 +140,12 @@ export default function WordSearch() {
             steps={[
               "Look at the word list at the top — those are the words to find.",
               "Words are hidden in the grid in any direction (horizontal, vertical, diagonal, even backwards!).",
-              "Drag your finger across the letters to highlight a word.",
-              "If the highlighted letters match a word, it turns green!",
+              "Tap letters one by one to spell out a word.",
+              "If the letters match a word, it turns green! Tap ✕ to clear your selection.",
               "Find all the words to win the puzzle."
             ]}
           />
+          <button onClick={clearSelection} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold">✕</button>
           <button onClick={startGame} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
         </div>
       </div>
@@ -160,8 +161,7 @@ export default function WordSearch() {
 
       {/* Grid */}
       <div className="flex justify-center px-1">
-        <div className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}
-          onMouseLeave={() => { if (selecting) handleUp(); }}>
+        <div className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}>
           {gridData.grid.map((row, r) =>
             row.map((letter, c) => {
               const key = cellKey(r, c);
@@ -169,15 +169,7 @@ export default function WordSearch() {
               const isFound = foundCells.includes(key);
               return (
                 <div key={key}
-                  onMouseDown={() => handleCellDown(r, c)}
-                  onMouseEnter={() => handleCellEnter(r, c)}
-                  onTouchStart={() => { setSelecting(true); setSelected([[r, c]]); }}
-                  onTouchMove={(e) => {
-                    const touch = e.touches[0];
-                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if (el?.dataset?.r && el?.dataset?.c) handleCellEnter(+el.dataset.r, +el.dataset.c);
-                  }}
-                  data-r={r} data-c={c}
+                  onClick={() => handleCellTap(r, c)}
                   className={`aspect-square flex items-center justify-center text-sm sm:text-lg font-black rounded cursor-pointer transition-colors ${
                     isFound ? "bg-green-600 text-white" :
                     isSelected ? "bg-primary text-primary-foreground" :
@@ -190,6 +182,13 @@ export default function WordSearch() {
           )}
         </div>
       </div>
+      {selected.length > 0 && (
+        <div className="text-center mt-3">
+          <span className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-lg font-black tracking-widest">
+            {selected.map(([sr, sc]) => gridData.grid[sr][sc]).join("")}
+          </span>
+        </div>
+      )}
       <p className="text-center text-muted-foreground text-lg mt-3">Found: {foundWords.length} / {words.length}</p>
     </div>
   );
