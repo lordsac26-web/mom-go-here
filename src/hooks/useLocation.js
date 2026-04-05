@@ -4,10 +4,16 @@ import { useState, useCallback } from 'react';
  * useLocation hook — Request geolocation and get user coordinates
  * Returns: { location, requestLocation, hasPermission, loading, error, city }
  */
-export function useLocation() {
-  const [location, setLocation] = useState(null);
-  const [city, setCity] = useState(null);
-  const [hasPermission, setHasPermission] = useState(false);
+export function useLocation(savedLocation) {
+  const [location, setLocation] = useState(
+    savedLocation?.latitude && savedLocation?.longitude
+      ? { latitude: savedLocation.latitude, longitude: savedLocation.longitude }
+      : null
+  );
+  const [city, setCity] = useState(savedLocation?.city || null);
+  const [hasPermission, setHasPermission] = useState(
+    !!(savedLocation?.latitude && savedLocation?.longitude)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 

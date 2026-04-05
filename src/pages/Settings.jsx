@@ -65,7 +65,6 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState(null);
-  const [profilePhoto, setProfilePhoto] = useState(null);
 
   useEffect(() => { loadProfile(); }, [user]);
 
@@ -82,7 +81,7 @@ export default function Settings() {
   }
 
   async function saveProfile() {
-    const data = { display_name: displayName, birthday, religion, ...(location && { latitude: location.latitude, longitude: location.longitude, city: location.city }), ...(profilePhoto && { profile_photo_url: profilePhoto }) };
+    const data = { display_name: displayName, birthday, religion, ...(location && { latitude: location.latitude, longitude: location.longitude, city: location.city }) };
     if (profile) {
       await base44.entities.UserProfile.update(profile.id, data);
     } else {
@@ -95,10 +94,6 @@ export default function Settings() {
 
   function handleLocationChange(loc) {
     setLocation(loc);
-  }
-
-  function handlePhotoCapture(photoData) {
-    setProfilePhoto(photoData);
   }
 
   if (loading) return (
@@ -146,7 +141,7 @@ export default function Settings() {
         <ChatBubbleSettings />
 
         {/* Permissions Panel */}
-        <PermissionsPanel onLocationChange={handleLocationChange} onPhotoCapture={handlePhotoCapture} />
+        <PermissionsPanel onLocationChange={handleLocationChange} savedLocation={profile ? { latitude: profile.latitude, longitude: profile.longitude, city: profile.city } : null} />
 
         {/* Religion */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl">
@@ -181,7 +176,7 @@ export default function Settings() {
 
         {saved && (
           <div className="bg-green-700 text-white text-center text-xl font-bold py-4 rounded-2xl">
-            ✅ Saved successfully! 📍 Location & 📸 Photo saved.
+            ✅ Saved successfully!
           </div>
         )}
 
