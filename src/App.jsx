@@ -18,7 +18,7 @@ import Sudoku from './pages/games/Sudoku';
 import Checkers from './pages/games/Checkers';
 import Mahjong from './pages/games/Mahjong';
 import Solitaire from './pages/games/Solitaire';
-import SpotDiff from './pages/games/SpotDiff';
+import AIArtStudio from './pages/games/AIArtStudio';
 import Progress from './pages/Progress';
 import Onboarding from './pages/Onboarding';
 import Memories from './pages/Memories';
@@ -62,7 +62,7 @@ const AuthenticatedApp = () => {
         <Route path="/games/checkers" element={<Checkers />} />
         <Route path="/games/mahjong" element={<Mahjong />} />
         <Route path="/games/solitaire" element={<Solitaire />} />
-        <Route path="/games/spotdiff" element={<SpotDiff />} />
+        <Route path="/games/artstudio" element={<AIArtStudio />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/memories" element={<Memories />} />

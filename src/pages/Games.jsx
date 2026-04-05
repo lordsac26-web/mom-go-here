@@ -9,7 +9,7 @@ const GAMES = [
   { name: "Sudoku", emoji: "🔢", path: "/games/sudoku", color: "from-indigo-600 to-indigo-800", desc: "Fill in the number puzzle" },
   { name: "Checkers", emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
   { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll dice and score points!" },
-  { name: "AI Art Studio", emoji: "🎨", path: "/games/spotdiff", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
+  { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
 ];
 
 export default function Games() {

@@ -17,7 +17,7 @@ const STYLES = [
   { label: "Pop Art", value: "pop art style, bold colors, comic book aesthetic, Andy Warhol inspired" },
 ];
 
-export default function SpotDiff() {
+export default function AIArtStudio() {
   useGameTimer();
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState(STYLES[0].value);
