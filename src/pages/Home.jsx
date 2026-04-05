@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
 import TiltCard from "../components/TiltCard";
 import UpcomingBirthdays from "../components/UpcomingBirthdays";
+import WeatherWidget from "../components/WeatherWidget";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -122,6 +123,9 @@ export default function Home() {
           <p className="text-muted-foreground text-lg">Tap to read today's reading</p>
         </Link>
       )}
+
+      {/* Weather */}
+      <WeatherWidget latitude={profile?.latitude} longitude={profile?.longitude} city={profile?.city} />
 
       {/* Upcoming Birthdays */}
       <UpcomingBirthdays userEmail={user?.email} />
