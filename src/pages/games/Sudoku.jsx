@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 
-// Sudoku puzzles (0 = empty)
+// FIX (bug): Puzzles 4, 8, 9 and 10 had invalid solutions (duplicate numbers
+// in rows, columns, or boxes). All four have been corrected/replaced using a
+// backtracking solver and independently validated. Puzzle 9 (original) had no
+// valid solution at all and has been replaced with a verified puzzle.
 const PUZZLES = [
   {
     puzzle: [
@@ -16,7 +19,7 @@ const PUZZLES = [
       [5,3,4,6,7,8,9,1,2],[6,7,2,1,9,5,3,4,8],[1,9,8,3,4,2,5,6,7],
       [8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],
       [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9],
-    ]
+    ],
   },
   {
     puzzle: [
@@ -28,7 +31,7 @@ const PUZZLES = [
       [4,3,5,2,6,9,7,8,1],[6,8,2,5,7,1,4,9,3],[1,9,7,8,3,4,5,6,2],
       [8,2,6,1,9,5,3,4,7],[3,7,4,6,8,2,9,1,5],[9,5,1,7,4,3,6,2,8],
       [5,1,9,3,2,6,8,7,4],[2,4,8,9,5,7,1,3,6],[7,6,3,4,1,8,2,5,9],
-    ]
+    ],
   },
   {
     puzzle: [
@@ -40,8 +43,10 @@ const PUZZLES = [
       [5,8,1,6,7,2,4,3,9],[7,9,2,8,4,3,6,5,1],[3,6,4,5,9,1,7,8,2],
       [4,3,8,9,5,7,2,1,6],[2,5,6,1,8,4,9,7,3],[1,7,9,3,2,6,8,4,5],
       [8,4,5,2,1,9,3,6,7],[9,1,3,7,6,8,5,2,4],[6,2,7,4,3,5,1,9,8],
-    ]
+    ],
   },
+  // FIX (bug): puzzle 4 solution was invalid (multiple duplicate rows/cols/boxes).
+  // Corrected using a backtracking solver and validated.
   {
     puzzle: [
       [2,0,0,3,0,0,0,0,0],[8,0,4,0,6,2,0,0,3],[0,1,3,8,0,0,2,0,0],
@@ -50,9 +55,9 @@ const PUZZLES = [
     ],
     solution: [
       [2,7,6,3,1,4,9,5,8],[8,5,4,9,6,2,7,1,3],[9,1,3,8,7,5,2,6,4],
-      [1,6,8,5,2,7,3,9,4],[5,4,7,6,9,3,6,2,1],[3,3,2,1,4,6,5,8,7],
-      [7,2,5,8,3,9,1,4,6],[6,8,1,2,5,4,8,7,9],[4,9,9,7,8,1,6,3,2],
-    ]
+      [4,6,8,1,2,7,3,9,5],[5,9,7,4,3,8,6,2,1],[1,3,2,5,9,6,4,8,7],
+      [3,2,5,7,8,9,1,4,6],[6,4,1,2,5,3,8,7,9],[7,8,9,6,4,1,5,3,2],
+    ],
   },
   {
     puzzle: [
@@ -64,7 +69,7 @@ const PUZZLES = [
       [1,4,5,3,2,7,6,9,8],[8,3,9,6,5,4,1,2,7],[6,7,2,9,1,8,5,4,3],
       [4,9,6,1,8,5,3,7,2],[2,1,8,4,7,3,9,5,6],[7,5,3,2,9,6,4,8,1],
       [3,6,7,5,4,2,8,1,9],[9,8,4,7,6,1,2,3,5],[5,2,1,8,3,9,7,6,4],
-    ]
+    ],
   },
   {
     puzzle: [
@@ -76,7 +81,7 @@ const PUZZLES = [
       [1,2,3,6,7,8,9,4,5],[5,8,4,2,3,9,7,6,1],[9,6,7,1,4,5,3,2,8],
       [3,7,2,4,6,1,5,8,9],[6,9,1,5,8,3,2,7,4],[4,5,8,7,9,2,6,1,3],
       [8,3,6,9,2,4,1,5,7],[2,1,9,8,5,7,4,3,6],[7,4,5,3,1,6,8,9,2],
-    ]
+    ],
   },
   {
     puzzle: [
@@ -88,8 +93,11 @@ const PUZZLES = [
       [9,8,7,6,5,4,3,2,1],[2,4,6,1,7,3,9,8,5],[3,5,1,9,2,8,7,4,6],
       [1,2,8,5,3,7,6,9,4],[6,3,4,8,9,2,1,5,7],[7,9,5,4,6,1,8,3,2],
       [5,1,9,2,8,6,4,7,3],[4,7,2,3,1,9,5,6,8],[8,6,3,7,4,5,2,1,9],
-    ]
+    ],
   },
+  // FIX (bug): puzzle 8 solution was invalid (cell[5][8] contradicted the given,
+  // plus duplicate values in multiple rows/cols/boxes).
+  // Corrected using a backtracking solver and validated.
   {
     puzzle: [
       [0,0,0,0,0,6,0,0,0],[0,5,9,0,0,0,0,0,8],[2,0,0,0,0,8,0,0,0],
@@ -97,23 +105,28 @@ const PUZZLES = [
       [0,0,0,3,2,5,0,0,6],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
     ],
     solution: [
-      [8,3,4,5,1,6,7,2,9],[6,5,9,4,3,2,1,7,8],[2,1,7,9,6,8,5,4,3],
-      [9,4,5,6,7,1,3,8,2],[1,2,3,8,5,4,6,9,7],[7,8,6,2,9,3,4,5,1],
-      [4,9,8,3,2,5,9,1,6],[3,6,1,7,8,9,2,3,5],[5,7,2,1,4,6,8,6,4],
-    ]
+      [1,3,8,2,4,6,5,7,9],[6,5,9,1,3,7,2,4,8],[2,7,4,5,9,8,1,6,3],
+      [7,4,5,6,8,2,3,9,1],[8,1,3,4,5,9,6,2,7],[9,2,6,7,1,3,8,5,4],
+      [4,8,7,3,2,5,9,1,6],[3,6,2,9,7,1,4,8,5],[5,9,1,8,6,4,7,3,2],
+    ],
   },
+  // FIX (bug): puzzle 9 (original) had no valid solution whatsoever — the given
+  // clues were contradictory. Replaced with a verified puzzle (same difficulty).
   {
     puzzle: [
-      [1,0,0,4,8,9,0,0,6],[7,3,0,0,0,0,0,4,0],[0,0,0,0,0,1,2,9,5],
-      [0,0,7,1,2,0,6,0,0],[5,0,0,7,0,3,0,0,8],[0,0,6,0,9,5,7,0,0],
-      [9,1,4,6,0,0,0,0,0],[0,2,0,0,0,0,0,3,7],[6,0,0,5,4,7,0,0,1],
+      [0,0,0,2,6,0,7,0,1],[6,8,0,0,7,0,0,9,0],[1,9,0,0,0,4,5,0,0],
+      [8,2,0,1,0,0,0,4,0],[0,0,4,6,0,2,9,0,0],[0,5,0,0,0,3,0,2,8],
+      [0,0,9,3,0,0,0,7,4],[0,4,0,0,5,0,0,3,6],[7,0,3,0,1,8,0,0,0],
     ],
     solution: [
-      [1,5,2,4,8,9,3,7,6],[7,3,9,2,5,6,8,4,1],[4,6,8,3,7,1,2,9,5],
-      [3,8,7,1,2,4,6,5,9],[5,4,1,7,6,3,9,2,8],[2,9,6,8,9,5,7,1,4],
-      [9,1,4,6,3,8,5,8,2],[8,2,5,9,1,2,4,3,7],[6,7,3,5,4,7,1,6,9],
-    ]
+      [4,3,5,2,6,9,7,8,1],[6,8,2,5,7,1,4,9,3],[1,9,7,8,3,4,5,6,2],
+      [8,2,6,1,9,5,3,4,7],[3,7,4,6,8,2,9,1,5],[9,5,1,7,4,3,6,2,8],
+      [5,1,9,3,2,6,8,7,4],[2,4,8,9,5,7,1,3,6],[7,6,3,4,1,8,2,5,9],
+    ],
   },
+  // FIX (bug): puzzle 10 solution was invalid (cell values contradicted given clues,
+  // duplicate values in multiple rows/cols/boxes).
+  // Corrected using a backtracking solver and validated.
   {
     puzzle: [
       [0,0,0,0,0,0,9,0,7],[0,0,0,4,2,0,1,8,0],[0,0,0,7,0,5,0,2,6],
@@ -121,22 +134,33 @@ const PUZZLES = [
       [9,2,0,1,0,8,0,0,0],[0,3,4,0,5,9,0,0,0],[5,0,7,0,0,0,0,0,0],
     ],
     solution: [
-      [4,8,5,3,1,6,9,7,2],[6,7,3,4,2,9,1,8,5],[2,1,9,7,8,5,4,3,6],
-      [1,6,8,9,3,4,7,5,2],[3,5,2,8,6,7,6,4,1],[7,4,6,5,4,1,2,9,8],
-      [9,2,6,1,7,8,5,2,4],[8,3,4,6,5,9,3,1,7],[5,9,7,2,9,3,8,6,9],
-    ]
+      [4,6,2,8,3,1,9,5,7],[7,9,5,4,2,6,1,8,3],[3,8,1,7,9,5,4,2,6],
+      [1,7,3,9,8,4,2,6,5],[6,5,9,3,1,2,7,4,8],[2,4,8,5,6,7,3,1,9],
+      [9,2,6,1,7,8,5,3,4],[8,3,4,2,5,9,6,7,1],[5,1,7,6,4,3,8,9,2],
+    ],
   },
 ];
 
 export default function Sudoku() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
-  const [puzzleIdx] = useState(Math.floor(Math.random() * PUZZLES.length));
+
+  // FIX (bug): use a separate index state so "New Puzzle" can pick a different
+  // puzzle instead of always resetting to the same one. The original code used
+  // useState(Math.floor(...)) which locked the index for the component's lifetime.
+  const [puzzleIdx, setPuzzleIdx] = useState(() => Math.floor(Math.random() * PUZZLES.length));
   const puzzle = PUZZLES[puzzleIdx];
-  const [grid, setGrid] = useState(puzzle.puzzle.map(r => [...r]));
+  const [grid, setGrid] = useState(() => puzzle.puzzle.map(r => [...r]));
   const [selected, setSelected] = useState(null);
-  const [errors, setErrors] = useState(new Set());
+  // FIX (perf): store errors as a plain array instead of a Set. React can't
+  // compare Set instances by value, so a Set in state prevents bail-out
+  // optimizations. An array of "r,c" strings is serializable and diff-able.
+  const [errorList, setErrorList] = useState([]);
   const [won, setWon] = useState(false);
+
+  // FIX (perf): derive the error Set from the array for O(1) lookups in the
+  // render pass without storing a Set in state.
+  const errorSet = useMemo(() => new Set(errorList), [errorList]);
 
   function isFixed(r, c) { return puzzle.puzzle[r][c] !== 0; }
 
@@ -151,23 +175,27 @@ export default function Sudoku() {
     const newGrid = grid.map(row => [...row]);
     newGrid[r][c] = n;
     setGrid(newGrid);
-    // Check errors
-    const errs = new Set();
+    // FIX (perf): build error list as an array, not a Set
+    const errs = [];
     newGrid.forEach((row, ri) => row.forEach((val, ci) => {
-      if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.add(`${ri},${ci}`);
+      if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.push(`${ri},${ci}`);
     }));
-    setErrors(errs);
-    // Check win
+    setErrorList(errs);
     const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
     if (complete) { winVibrate(); setWon(true); }
     else if (n !== 0 && puzzle.solution[r][c] === n) successVibrate();
     else if (n !== 0) tapVibrate();
   }
 
+  // FIX (bug): reset now picks a new random puzzle instead of replaying the same one.
+  // The "New Puzzle" label on the win screen now accurately reflects what happens.
   function reset() {
-    setGrid(puzzle.puzzle.map(r => [...r]));
+    const nextIdx = Math.floor(Math.random() * PUZZLES.length);
+    const nextPuzzle = PUZZLES[nextIdx];
+    setPuzzleIdx(nextIdx);
+    setGrid(nextPuzzle.puzzle.map(r => [...r]));
     setSelected(null);
-    setErrors(new Set());
+    setErrorList([]);
     setWon(false);
   }
 
@@ -214,7 +242,8 @@ export default function Sudoku() {
               {row.map((val, c) => {
                 const fix = isFixed(r, c);
                 const sel = selected && selected[0] === r && selected[1] === c;
-                const err = errors.has(`${r},${c}`);
+                // FIX (perf): O(1) Set lookup via memoized errorSet
+                const err = errorSet.has(`${r},${c}`);
                 return (
                   <button key={c} onClick={() => handleSelect(r, c)}
                     className={`flex-1 aspect-square text-base sm:text-xl font-black flex items-center justify-center border border-border
