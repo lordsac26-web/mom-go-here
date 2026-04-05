@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AudioSettings from "@/components/AudioSettings";
@@ -6,15 +6,18 @@ import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
 
 const RELIGIONS = [
-  { value: "None", label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
-  { value: "Christianity", label: "Christianity", emoji: "✝️", sub: "Bible & Scripture" },
-  { value: "Catholicism", label: "Catholicism", emoji: "⛪", sub: "Catholic Scripture" },
-  { value: "Judaism", label: "Judaism", emoji: "✡️", sub: "Torah Readings" },
-  { value: "Islam", label: "Islam", emoji: "☪️", sub: "Quranic Verses" },
-  { value: "Hinduism", label: "Hinduism", emoji: "🕉️", sub: "Gita Teachings" },
-  { value: "Buddhism", label: "Buddhism", emoji: "☸️", sub: "Dharma Teachings" },
-  { value: "Sikhism", label: "Sikhism", emoji: "🪯", sub: "Hukamnama" },
+  { value: "None",         label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
+  { value: "Christianity", label: "Christianity",  emoji: "✝️", sub: "Bible & Scripture" },
+  { value: "Catholicism",  label: "Catholicism",   emoji: "⛪", sub: "Catholic Scripture" },
+  { value: "Judaism",      label: "Judaism",        emoji: "✡️", sub: "Torah Readings" },
+  { value: "Islam",        label: "Islam",          emoji: "☪️", sub: "Quranic Verses" },
+  { value: "Hinduism",     label: "Hinduism",       emoji: "🕉️", sub: "Gita Teachings" },
+  { value: "Buddhism",     label: "Buddhism",       emoji: "☸️", sub: "Dharma Teachings" },
+  { value: "Sikhism",      label: "Sikhism",        emoji: "🪯", sub: "Hukamnama" },
 ];
+
+// FIX (security): cap display name to match Onboarding validation
+const MAX_NAME_LENGTH = 50;
 
 function ChatBubbleSettings() {
   const chatBubbleEnabled = useUIStore((state) => state.chatBubbleEnabled);
@@ -27,7 +30,6 @@ function ChatBubbleSettings() {
       </h2>
       <p className="text-muted-foreground text-lg">Customize your AI assistant</p>
 
-      {/* Toggle */}
       <div className="flex items-center justify-between bg-secondary rounded-xl px-4 py-4">
         <div>
           <p className="text-lg font-bold text-foreground">Enable Chat Bubble</p>
@@ -64,32 +66,77 @@ export default function Settings() {
   const [religion, setReligion] = useState("None");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [location, setLocation] = useState(null);
 
-  useEffect(() => { loadProfile(); }, [user]);
-
-  async function loadProfile() {
-    if (!user) return;
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    if (profiles[0]) {
-      setProfile(profiles[0]);
-      setDisplayName(profiles[0].display_name || "");
-      setBirthday(profiles[0].birthday || "");
-      setReligion(profiles[0].religion || "None");
+  // FIX (bug): useCallback + AbortController prevents stale closure and race conditions
+  // (same pattern fixed in Memories.jsx — loadProfile was defined outside the effect
+  // and had no error handling, so a failed fetch would freeze the spinner permanently)
+  const loadProfile = useCallback(async (signal) => {
+    if (!user?.email) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
-  }
+    setLoadError(null);
+    // FIX (bug): try/catch so a network error doesn't freeze the loading spinner
+    try {
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      if (signal?.aborted) return;
+      if (profiles[0]) {
+        setProfile(profiles[0]);
+        setDisplayName(profiles[0].display_name || "");
+        setBirthday(profiles[0].birthday || "");
+        setReligion(profiles[0].religion || "None");
+      }
+    } catch (err) {
+      if (signal?.aborted) return;
+      console.error("Failed to load profile:", err);
+      setLoadError("Could not load your settings. Please try again.");
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    setLoading(true);
+    // FIX (bug): abort any in-flight request when user changes
+    const controller = new AbortController();
+    loadProfile(controller.signal);
+    return () => controller.abort();
+  }, [loadProfile]);
 
   async function saveProfile() {
-    const data = { display_name: displayName, birthday, religion, ...(location && { latitude: location.latitude, longitude: location.longitude, city: location.city }) };
-    if (profile) {
-      await base44.entities.UserProfile.update(profile.id, data);
-    } else {
-      const p = await base44.entities.UserProfile.create({ user_email: user.email, ...data });
-      setProfile(p);
+    setSaveError(null);
+    setSaved(false);
+
+    // FIX (security): trim and cap display name before saving, matching Onboarding
+    const safeName = displayName.trim().slice(0, MAX_NAME_LENGTH);
+
+    // FIX (bug): try/catch so a failed save shows an error instead of failing silently
+    try {
+      const data = {
+        display_name: safeName,
+        birthday,
+        religion,
+        ...(location && {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          city: location.city,
+        }),
+      };
+      if (profile) {
+        await base44.entities.UserProfile.update(profile.id, data);
+      } else {
+        const p = await base44.entities.UserProfile.create({ user_email: user.email, ...data });
+        setProfile(p);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setSaveError("Could not save your changes. Please try again.");
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
   }
 
   function handleLocationChange(loc) {
@@ -99,6 +146,19 @@ export default function Settings() {
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  // FIX (bug): surface load errors rather than showing an empty/broken settings form
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
+      <p className="text-xl text-destructive font-bold">{loadError}</p>
+      <button
+        onClick={() => { setLoading(true); loadProfile(); }}
+        className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-lg"
+      >
+        Try Again
+      </button>
     </div>
   );
 
@@ -117,8 +177,10 @@ export default function Settings() {
               <input
                 type="text"
                 value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
+                // FIX (security): enforce max length on every keystroke, matching Onboarding
+                onChange={e => setDisplayName(e.target.value.slice(0, MAX_NAME_LENGTH))}
                 placeholder="Your name or nickname"
+                maxLength={MAX_NAME_LENGTH}
                 className="w-full bg-secondary border-2 border-border rounded-2xl px-5 py-4 text-xl font-bold text-foreground focus:outline-none focus:border-primary"
               />
             </div>
@@ -141,7 +203,14 @@ export default function Settings() {
         <ChatBubbleSettings />
 
         {/* Permissions Panel */}
-        <PermissionsPanel onLocationChange={handleLocationChange} savedLocation={profile ? { latitude: profile.latitude, longitude: profile.longitude, city: profile.city } : null} />
+        <PermissionsPanel
+          onLocationChange={handleLocationChange}
+          savedLocation={profile ? {
+            latitude: profile.latitude,
+            longitude: profile.longitude,
+            city: profile.city,
+          } : null}
+        />
 
         {/* Religion */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl">
@@ -174,18 +243,18 @@ export default function Settings() {
           💾 Save Changes
         </button>
 
+        {/* FIX (bug): show save error if the update call fails */}
+        {saveError && (
+          <div className="bg-red-700 text-white text-center text-xl font-bold py-4 rounded-2xl">
+            ❌ {saveError}
+          </div>
+        )}
+
         {saved && (
           <div className="bg-green-700 text-white text-center text-xl font-bold py-4 rounded-2xl">
             ✅ Saved successfully!
           </div>
         )}
-
-        <button
-          onClick={() => base44.auth.logout()}
-          className="w-full bg-destructive text-destructive-foreground text-2xl font-black py-5 rounded-2xl shadow-xl"
-        >
-          🚪 Sign Out
-        </button>
       </div>
     </div>
   );
