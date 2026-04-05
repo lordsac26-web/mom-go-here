@@ -24,6 +24,7 @@ function formatBirthday(birthdayStr) {
 function ContactForm({ initial, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [birthday, setBirthday] = useState(initial?.birthday || "");
+  const [anniversary, setAnniversary] = useState(initial?.anniversary || "");
   const [relationship, setRelationship] = useState(initial?.relationship || "");
   const [notes, setNotes] = useState(initial?.notes || "");
   const [saving, setSaving] = useState(false);
@@ -32,7 +33,7 @@ function ContactForm({ initial, onSave, onCancel }) {
     e.preventDefault();
     if (!name.trim() || !birthday) return;
     setSaving(true);
-    await onSave({ name: name.trim(), birthday, relationship, notes: notes.trim() });
+    await onSave({ name: name.trim(), birthday, anniversary: anniversary || undefined, relationship, notes: notes.trim() });
     setSaving(false);
   }
 
@@ -56,6 +57,15 @@ function ContactForm({ initial, onSave, onCancel }) {
           type="date"
           value={birthday}
           onChange={e => setBirthday(e.target.value)}
+          className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground focus:outline-none focus:border-primary"
+        />
+      </div>
+      <div>
+        <label className="block text-base font-bold text-foreground mb-1">💍 Anniversary</label>
+        <input
+          type="date"
+          value={anniversary}
+          onChange={e => setAnniversary(e.target.value)}
           className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground focus:outline-none focus:border-primary"
         />
       </div>
@@ -169,7 +179,7 @@ export default function Contacts() {
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-black text-primary">👥 My Contacts</h1>
-          <p className="text-muted-foreground text-lg mt-1">Keep track of birthdays for friends & family</p>
+          <p className="text-muted-foreground text-lg mt-1">Keep track of birthdays & anniversaries</p>
         </div>
 
         {/* Add button */}
@@ -212,9 +222,14 @@ export default function Contacts() {
                   <div className="flex-1 min-w-0">
                     <p className="text-lg font-bold text-foreground truncate">{c.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatBirthday(c.birthday)}
+                      🎂 {formatBirthday(c.birthday)}
                       {c.relationship ? ` · ${c.relationship}` : ""}
                     </p>
+                    {c.anniversary && (
+                      <p className="text-sm text-muted-foreground">
+                        💍 Anniversary: {formatBirthday(c.anniversary)}
+                      </p>
+                    )}
                     <p className="text-sm font-bold text-primary">
                       {daysUntil === 0 ? "🎉 Birthday TODAY!" : daysUntil === 1 ? "Tomorrow!" : `${daysUntil} days away`}
                     </p>

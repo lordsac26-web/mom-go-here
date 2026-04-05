@@ -12,6 +12,10 @@
       "type": "string",
       "description": "YYYY-MM-DD format"
     },
+    "anniversary": {
+      "type": "string",
+      "description": "YYYY-MM-DD format"
+    },
     "relationship": {
       "type": "string",
       "enum": [
