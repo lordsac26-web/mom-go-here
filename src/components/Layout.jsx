@@ -70,7 +70,7 @@ export default function Layout() {
       <AIChatBot />
 
       {/* Bottom Nav Bar */}
-      <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg">
+      <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around items-center py-2">
           {navItems.map((item) => (
             <Link

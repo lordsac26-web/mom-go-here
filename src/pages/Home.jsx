@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import HistoryFact from "../components/HistoryFact";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const MOTIVATIONAL_QUOTES = [
   { quote: "Every day is a new beginning. Take a deep breath and start again.", author: "Unknown" },
@@ -104,21 +105,16 @@ export default function Home() {
         <p className="text-muted-foreground text-xl">What would you like to do today?</p>
       </div>
 
-      {/* Quote of the Day */}
+      {/* Quote of the Day — compact */}
       {quote && (
-        <div className="bg-card border-2 border-primary rounded-2xl p-6 mb-6 shadow-xl">
-          <div className="text-center mb-3">
-            <span className="text-4xl">💛</span>
-            <h2 className="text-2xl font-black text-primary mt-1">Quote of the Day</h2>
-          </div>
-          <p className="text-2xl font-bold text-foreground text-center italic leading-relaxed">
-            "{quote.quote}"
+        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-4 shadow">
+          <p className="text-base text-foreground italic text-center leading-snug">
+            💛 "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
           </p>
-          <p className="text-right text-muted-foreground text-xl mt-3 font-semibold">— {quote.author}</p>
         </div>
       )}
 
-      {/* This Day in History */}
+      {/* This Day in History — compact */}
       <HistoryFact birthday={profile?.birthday} />
 
       {/* Daily Inspiration link */}
