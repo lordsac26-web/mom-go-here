@@ -4,7 +4,7 @@ import gsap from "gsap";
 import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
-import AmbientMusicPlayer from "./AmbientMusicPlayer";
+import AmbientMusicPlayerV2 from "./AmbientMusicPlayerV2";
 import { useAudioStore } from "@/stores/audioStore";
 
 export default function Layout() {
@@ -20,10 +20,10 @@ export default function Layout() {
   const muteAll = useAudioStore((state) => state.muteAll);
   const muteMusic = useAudioStore((state) => state.muteMusic);
 
-  // Initialize and manage AmbientMusicPlayer instance
+  // Initialize and manage AmbientMusicPlayerV2 instance
   useEffect(() => {
     if (!playerRef.current) {
-      playerRef.current = new AmbientMusicPlayer({
+      playerRef.current = new AmbientMusicPlayerV2({
         musicVolume,
         muteAll,
         muteMusic,
