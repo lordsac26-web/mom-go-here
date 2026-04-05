@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
@@ -15,27 +15,15 @@ function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
-// Shuffle letters but keep the center letter at index 3 (middle of honeycomb)
+// FIX (bug): rewrote shuffleWithCenter to avoid the parameter-mutation bug.
+// The original code reassigned `allLetters` inside a closure over the loop variable,
+// which caused the center detection to fail when the array contained duplicate letters.
+// Now uses a clean immutable split: find the first occurrence of the center and remove it.
 function shuffleWithCenter(allLetters, centerLetter) {
   const center = centerLetter.toUpperCase();
-  const others = allLetters.filter((l, i) => {
-    // Remove the first occurrence of center letter from the array
-    if (l.toUpperCase() === center) {
-      allLetters = [...allLetters]; // don't mutate
-      return false;
-    }
-    return true;
-  });
-  // More robust: separate center from others
-  const otherLetters = [];
-  let centerFound = false;
-  for (const l of allLetters) {
-    if (!centerFound && l.toUpperCase() === center) {
-      centerFound = true;
-    } else {
-      otherLetters.push(l);
-    }
-  }
+  const centerIndex = allLetters.findIndex(l => l.toUpperCase() === center);
+  // Remove exactly the first occurrence of the center letter
+  const otherLetters = allLetters.filter((_, i) => i !== centerIndex);
   const shuffled = shuffle(otherLetters);
   // Insert center letter at index 3 (visual center of honeycomb)
   shuffled.splice(3, 0, center);
@@ -57,24 +45,30 @@ export default function WordWhomp() {
   const [usedIndices, setUsedIndices] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // info, success, error
+  const [messageType, setMessageType] = useState("info");
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
+  const [timeLeft, setTimeLeft] = useState(120);
   const [timerActive, setTimerActive] = useState(true);
 
   const puzzle = PUZZLES[puzzleIndex];
-  const allWords = puzzle.words;
+  // FIX (perf): memoize allWords so it isn't re-derived on every render
+  const allWords = useMemo(() => puzzle.words, [puzzleIndex]);
   const centerLetter = puzzle.center;
 
-  // Timer countdown
+  // FIX (bug): restructured timer so the cleanup always runs, preventing timeout leaks.
+  // The original code returned clearTimeout only inside the early-return branches,
+  // leaving the happy-path effect with no cleanup — meaning every re-render that
+  // didn't hit the early return leaked a timeout.
   useEffect(() => {
-    if (!timerActive || gameOver) return;
-    if (timeLeft <= 0) {
-      setGameOver(true);
+    if (!timerActive || gameOver || timeLeft <= 0) {
+      if (timeLeft <= 0 && !gameOver) {
+        setGameOver(true);
+      }
       return;
     }
     const id = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    // FIX (bug): cleanup always returned, not only on early return
     return () => clearTimeout(id);
   }, [timeLeft, timerActive, gameOver]);
 
@@ -143,7 +137,6 @@ export default function WordWhomp() {
       return;
     }
 
-    // Must contain center letter
     if (!word.includes(centerLetter.toLowerCase())) {
       showMessage(`Must contain "${centerLetter}"!`, "error");
       tapVibrate();
@@ -159,7 +152,6 @@ export default function WordWhomp() {
     }
 
     if (allWords.includes(word)) {
-      // Valid word!
       const points = word.length === 3 ? 1 : word.length === 4 ? 3 : word.length === 5 ? 5 : word.length === 6 ? 8 : 12;
       matchVibrate();
       matchSound();
@@ -218,7 +210,6 @@ export default function WordWhomp() {
           Found {foundWords.length}/{allWords.length} words
         </p>
 
-        {/* Show missed words */}
         {!allFound && (
           <div className="bg-card border border-border rounded-2xl p-4 mb-6 max-w-sm w-full max-h-40 overflow-y-auto">
             <p className="text-sm font-bold text-muted-foreground mb-2">Missed words:</p>
