@@ -1,8 +1,10 @@
 import { useState, useCallback } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import SolitaireCard from "../../components/solitaire/SolitaireCard";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -58,26 +60,7 @@ function checkWin(g) {
   return g.foundations.every(f => f.length === 13);
 }
 
-function CardView({ card, onClick, selected }) {
-  if (!card) return null;
-  return (
-    <div onClick={onClick}
-      className={`w-full aspect-[5/7] border-2 rounded-lg sm:rounded-xl flex flex-col items-center justify-center font-black cursor-pointer transition-all select-none shadow-md text-xs sm:text-base
-        ${!card.faceUp ? "bg-gradient-to-br from-blue-800 to-blue-900 border-blue-600" :
-          isRed(card) ? "bg-white text-red-600 border-gray-300" : "bg-white text-gray-900 border-gray-300"}
-        ${selected ? "ring-4 ring-yellow-400 scale-105" : ""}
-      `}>
-      {card.faceUp ? (
-        <>
-          <span className="leading-none">{card.val}</span>
-          <span className="leading-none text-sm sm:text-lg">{card.suit}</span>
-        </>
-      ) : (
-        <span className="text-lg sm:text-2xl">🂠</span>
-      )}
-    </div>
-  );
-}
+// CardView replaced by SolitaireCard component with 3D flip
 
 // FIX (perf + bug): extracted the move-card-to-tableau logic into a shared
 // helper so the empty-column handler and the normal column handler stay in sync.
@@ -250,23 +233,58 @@ export default function Solitaire() {
       {/* Top row: stock, waste, foundations */}
       <div className="flex gap-1 sm:gap-2 justify-center mb-3 sm:mb-4 px-1">
         {/* Stock */}
-        <div onClick={drawCard} className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer">
+        <motion.div
+          onClick={drawCard}
+          whileTap={{ scale: 0.9 }}
+          className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer"
+        >
           {game.stock.length ? <span className="text-xl sm:text-3xl">🂠</span> : <span className="text-lg sm:text-2xl text-green-500">↩</span>}
-        </div>
+        </motion.div>
         {/* Waste */}
         <div className="w-[12%] max-w-14" onClick={handleWasteClick}>
-          {wasteTop ? <CardView card={wasteTop} selected={selected?.source === "waste"} /> :
-            <div className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl" />}
+          <AnimatePresence mode="popLayout">
+            {wasteTop ? (
+              <motion.div
+                key={`waste-${wasteTop.val}-${wasteTop.suit}`}
+                initial={{ x: -30, opacity: 0, rotateY: -90 }}
+                animate={{ x: 0, opacity: 1, rotateY: 0 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <SolitaireCard card={wasteTop} selected={selected?.source === "waste"} />
+              </motion.div>
+            ) : (
+              <div className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl" />
+            )}
+          </AnimatePresence>
         </div>
         <div className="flex-1" />
         {/* Foundations */}
         {game.foundations.map((f, i) => {
           const top = f.length ? f[f.length - 1] : null;
           return (
-            <div key={i} onClick={() => handleFoundationClick(i)}
-              className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer">
-              {top ? <CardView card={top} /> : <span className="text-lg sm:text-2xl text-green-600">{SUIT_ORDER[i]}</span>}
-            </div>
+            <motion.div
+              key={i}
+              onClick={() => handleFoundationClick(i)}
+              whileTap={{ scale: 0.92 }}
+              className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer overflow-hidden"
+            >
+              <AnimatePresence mode="popLayout">
+                {top ? (
+                  <motion.div
+                    key={`f${i}-${top.val}-${top.suit}`}
+                    initial={{ y: -40, opacity: 0, scale: 0.5 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                    className="w-full h-full"
+                  >
+                    <SolitaireCard card={top} />
+                  </motion.div>
+                ) : (
+                  <span className="text-lg sm:text-2xl text-green-600">{SUIT_ORDER[i]}</span>
+                )}
+              </AnimatePresence>
+            </motion.div>
           );
         })}
       </div>
@@ -276,21 +294,26 @@ export default function Solitaire() {
         {game.tableau.map((col, ci) => (
           <div key={ci} className="flex flex-col flex-1" style={{ maxWidth: "60px" }}>
             {col.length === 0 ? (
-              // FIX (bug + perf): uses shared applyTableauMove via handleEmptyColumnClick
-              // instead of duplicating the entire move logic inline with a stale closure
-              <div
+              <motion.div
                 onClick={() => handleEmptyColumnClick(ci)}
+                whileTap={{ scale: 0.95 }}
                 className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl cursor-pointer"
               />
             ) : (
               col.map((card, ci2) => (
-                <div key={ci2} style={{ marginTop: ci2 > 0 ? "-65%" : 0, zIndex: ci2 }} className="relative">
-                  <CardView
+                <motion.div
+                  key={`${ci}-${ci2}-${card.val}-${card.suit}`}
+                  initial={false}
+                  animate={{ y: 0, opacity: 1 }}
+                  style={{ marginTop: ci2 > 0 ? "-65%" : 0, zIndex: ci2 }}
+                  className="relative"
+                >
+                  <SolitaireCard
                     card={card}
                     selected={selected?.source === "tableau" && selected.colIdx === ci && selected.cardIdx === ci2}
                     onClick={() => handleTableauClick(ci, ci2)}
                   />
-                </div>
+                </motion.div>
               ))
             )}
           </div>
