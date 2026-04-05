@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, SkipForward, Loader2 } from "lucide-react";
+import { Play, Pause, SkipForward, Loader2, ChevronDown, X } from "lucide-react";
 import MUSIC_GENRES from "./MusicGenreData";
 import { useAudioStore } from "@/stores/audioStore";
 
@@ -16,6 +16,7 @@ export default function MiniMusicPlayer() {
   const muteAll = useAudioStore(s => s.muteAll);
   const muteMusic = useAudioStore(s => s.muteMusic);
   const musicGenre = useAudioStore(s => s.musicGenre);
+  const setMusicGenre = useAudioStore(s => s.setMusicGenre);
   const setCurrentStreamUrl = useAudioStore(s => s.setCurrentStreamUrl);
   const setCurrentStationName = useAudioStore(s => s.setCurrentStationName);
   const setPlayerActive = useAudioStore(s => s.setPlayerActive);
@@ -26,6 +27,7 @@ export default function MiniMusicPlayer() {
   const [streamIndex, setStreamIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [stationNames, setStationNames] = useState([]);
+  const [showPicker, setShowPicker] = useState(false);
   const fetchRef = useRef(null);
 
   const isMuted = muteAll || muteMusic;
@@ -104,52 +106,91 @@ export default function MiniMusicPlayer() {
   if (isMuted) return null;
 
   return (
-    <div className="flex items-center gap-2 bg-secondary/80 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-border">
-      {/* Play/Pause */}
-      <button
-        onClick={isPlayerActive ? handlePause : handlePlay}
-        disabled={loading || streams.length === 0}
-        className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-transform active:scale-90"
-      >
-        {loading ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : isPlayerActive ? (
-          <Pause size={14} />
-        ) : (
-          <Play size={14} className="ml-0.5" />
-        )}
-      </button>
+    <div className="relative">
+      <div className="flex items-center gap-2 bg-secondary/80 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-border">
+        {/* Play/Pause */}
+        <button
+          onClick={isPlayerActive ? handlePause : handlePlay}
+          disabled={loading || streams.length === 0}
+          className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-transform active:scale-90 flex-shrink-0"
+        >
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : isPlayerActive ? (
+            <Pause size={14} />
+          ) : (
+            <Play size={14} className="ml-0.5" />
+          )}
+        </button>
 
-      {/* Station info */}
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold text-foreground truncate leading-tight">
-          {currentStationName || `${genreConfig.label} Radio`}
-        </p>
-        {isPlayerActive && (
-          <div className="flex items-center gap-1 mt-0.5">
-            {[0, 1, 2, 3].map(i => (
-              <div
-                key={i}
-                className="w-1 bg-primary rounded-full"
-                style={{
-                  height: "6px",
-                  animation: `miniBarBounce 0.5s ${i * 0.08}s ease-in-out infinite alternate`,
-                }}
-              />
-            ))}
-            <span className="text-[10px] text-primary font-bold ml-1">LIVE</span>
+        {/* Station info — tappable to open genre picker */}
+        <button
+          onClick={() => setShowPicker(!showPicker)}
+          className="min-w-0 flex-1 text-left flex items-center gap-1"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-foreground truncate leading-tight">
+              {genreConfig.emoji} {currentStationName || `${genreConfig.label} Radio`}
+            </p>
+            {isPlayerActive && (
+              <div className="flex items-center gap-1 mt-0.5">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className="w-1 bg-primary rounded-full"
+                    style={{
+                      height: "6px",
+                      animation: `miniBarBounce 0.5s ${i * 0.08}s ease-in-out infinite alternate`,
+                    }}
+                  />
+                ))}
+                <span className="text-[10px] text-primary font-bold ml-1">LIVE</span>
+              </div>
+            )}
           </div>
-        )}
+          <ChevronDown size={14} className={`text-muted-foreground flex-shrink-0 transition-transform ${showPicker ? 'rotate-180' : ''}`} />
+        </button>
+
+        {/* Skip */}
+        <button
+          onClick={handleSkip}
+          disabled={loading || streams.length === 0}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-transform active:scale-90 flex-shrink-0"
+        >
+          <SkipForward size={16} />
+        </button>
       </div>
 
-      {/* Skip */}
-      <button
-        onClick={handleSkip}
-        disabled={loading || streams.length === 0}
-        className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-transform active:scale-90"
-      >
-        <SkipForward size={16} />
-      </button>
+      {/* Genre Picker Dropdown */}
+      {showPicker && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+          <div className="absolute right-0 top-full mt-2 z-50 w-72 max-h-80 overflow-y-auto bg-card border-2 border-border rounded-2xl shadow-2xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-black text-primary">🎶 Pick a Genre</p>
+              <button onClick={() => setShowPicker(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X size={16} className="text-muted-foreground" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {MUSIC_GENRES.map(g => (
+                <button
+                  key={g.key}
+                  onClick={() => { setMusicGenre(g.key); setShowPicker(false); }}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                    musicGenre === g.key
+                      ? 'border-primary bg-primary/15 shadow-sm'
+                      : 'border-border bg-secondary hover:border-primary/40'
+                  }`}
+                >
+                  <span className="text-lg flex-shrink-0">{g.emoji}</span>
+                  <span className="text-xs font-bold text-foreground truncate">{g.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <style>{`
         @keyframes miniBarBounce {
