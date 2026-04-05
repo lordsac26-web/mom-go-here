@@ -82,7 +82,7 @@ function IslandMesh({ position, color, scale = 1, label, emoji, path, index, onH
 // ─── Floating particles / fireflies ───
 function Particles({ count = 60 }) {
   const meshRef = useRef();
-  const geo = useMemo(() => {
+  const { geo, mat } = useMemo(() => {
     const g = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -91,7 +91,8 @@ function Particles({ count = 60 }) {
       positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
     }
     g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    return g;
+    const m = new THREE.PointsMaterial({ size: 0.06, color: "#fbbf24", transparent: true, opacity: 0.7, sizeAttenuation: true });
+    return { geo: g, mat: m };
   }, [count]);
 
   useFrame(({ clock }) => {
@@ -105,11 +106,7 @@ function Particles({ count = 60 }) {
     meshRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
-  return (
-    <points ref={meshRef} geometry={geo}>
-      <pointsMaterial size={0.06} color="#fbbf24" transparent opacity={0.7} sizeAttenuation />
-    </points>
-  );
+  return <points ref={meshRef} geometry={geo} material={mat} />;
 }
 
 // ─── Cloud puffs ───
@@ -165,8 +162,8 @@ function SceneContent({ islands, onNavigate }) {
       <pointLight position={[-4, 6, -2]} intensity={0.6} color="#fbbf24" />
       <pointLight position={[3, -2, 4]} intensity={0.3} color="#7c3aed" />
 
-      {/* Fog-like gradient background */}
-      <fog attach="fog" args={["#0f172a", 8, 20]} />
+      {/* Fog */}
+      <primitive object={new THREE.Fog("#0f172a", 8, 20)} attach="fog" />
 
       {islands.map((island, i) => (
         <IslandMesh
