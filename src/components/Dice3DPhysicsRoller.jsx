@@ -84,9 +84,9 @@ export default function Dice3DPhysicsRoller({ onRollComplete }) {
 
     // Cannon.js world
     const world = new CANNON.World();
-    world.gravity.set(0, -20, 0);
-    world.defaultContactMaterial.friction = 0.3;
-    world.defaultContactMaterial.restitution = 0.6;
+    world.gravity.set(0, -25, 0);
+    world.defaultContactMaterial.friction = 0.35;
+    world.defaultContactMaterial.restitution = 0.65;
     worldRef.current = world;
 
     // Ground plane
@@ -244,21 +244,37 @@ export default function Dice3DPhysicsRoller({ onRollComplete }) {
   };
 
   return (
-    <div className="w-full select-none">
-      <canvas ref={canvasRef} className="w-full h-64 rounded-2xl" />
-      <p className="text-center text-xs text-muted-foreground mt-2">
-        Physics-based 3D dice roller ✨
-      </p>
+    <div className="w-full select-none space-y-3">
+      {/* Cup Container */}
+      <div className="bg-gradient-to-b from-red-600 to-red-700 rounded-3xl p-4 shadow-2xl border-4 border-red-800">
+        {/* Cup Rim */}
+        <div className="bg-gradient-to-b from-yellow-100 to-yellow-50 rounded-full h-6 mb-2 shadow-inner border-2 border-yellow-200 flex items-center justify-center">
+          <div className="w-full h-1 bg-red-700 rounded-full opacity-30"></div>
+        </div>
+        
+        {/* Canvas (dice inside cup) */}
+        <div className="bg-gradient-to-b from-red-500 to-red-700 rounded-2xl overflow-hidden shadow-inner border-2 border-red-900">
+          <canvas ref={canvasRef} className="w-full h-64 block" />
+        </div>
+        
+        {/* Cup Bottom Rim */}
+        <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-full h-4 mt-2 shadow-inner border-2 border-yellow-200"></div>
+      </div>
+      
+      {/* Instructions */}
+      <p className="text-center text-sm text-foreground font-bold">Shake the cup! 🎲</p>
+      
+      {/* Roll Button */}
       <button
         onClick={roll}
         disabled={rolling}
-        className={`w-full mt-3 text-2xl font-black py-4 rounded-2xl transition-all ${
+        className={`w-full text-2xl font-black py-5 rounded-2xl transition-all shadow-lg transform ${
           rolling
-            ? "bg-muted text-muted-foreground"
-            : "bg-primary text-primary-foreground"
+            ? "bg-muted text-muted-foreground scale-95"
+            : "bg-red-600 text-white hover:bg-red-700 active:scale-95"
         }`}
       >
-        {rolling ? "🎲 Rolling..." : "🎲 Roll Dice"}
+        {rolling ? "🎲 Shaking..." : "🎲 Shake Cup"}
       </button>
     </div>
   );
