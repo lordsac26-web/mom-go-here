@@ -5,6 +5,7 @@ import { Home, Gamepad2, Settings, Menu, X, Star, BarChart2, BookOpen } from "lu
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import AmbientMusicPlayerV2 from "./AmbientMusicPlayerV2";
+import ParallaxBackground from "./ParallaxBackground";
 import { useAudioStore } from "@/stores/audioStore";
 
 export default function Layout() {
@@ -83,7 +84,10 @@ export default function Layout() {
   }, [menuOpen]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative">
+      {/* 7-Layer Parallax Background */}
+      <ParallaxBackground />
+
       {/* Ambient Music - managed via playerRef */}
 
       {/* Top Nav */}
