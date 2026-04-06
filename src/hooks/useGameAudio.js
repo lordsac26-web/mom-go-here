@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
 import { useAudioStore } from '@/stores/audioStore';
 
 /**
