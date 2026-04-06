@@ -6,96 +6,35 @@ import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
-
-function initBoard() {
-  const board = Array(8).fill(null).map(() => Array(8).fill(null));
-  for (let r = 0; r < 3; r++)
-    for (let c = 0; c < 8; c++)
-      if ((r + c) % 2 === 1) board[r][c] = { player: 2, king: false };
-  for (let r = 5; r < 8; r++)
-    for (let c = 0; c < 8; c++)
-      if ((r + c) % 2 === 1) board[r][c] = { player: 1, king: false };
-  return board;
-}
-
-function getMoves(board, r, c, jumpOnly = false) {
-  const piece = board[r][c];
-  if (!piece) return [];
-  const dirs = piece.king ? [-1, 1] : piece.player === 1 ? [-1] : [1];
-  const moves = [];
-
-  for (const dr of dirs) {
-    for (const dc of [-1, 1]) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr > 7 || nc < 0 || nc > 7) continue;
-      if (!board[nr][nc]) {
-        if (!jumpOnly) moves.push({ from: [r, c], to: [nr, nc], jump: null });
-      } else if (board[nr][nc].player !== piece.player) {
-        const jr = r + 2 * dr, jc = c + 2 * dc;
-        if (jr >= 0 && jr <= 7 && jc >= 0 && jc <= 7 && !board[jr][jc]) {
-          moves.push({ from: [r, c], to: [jr, jc], jump: [nr, nc] });
-        }
-      }
-    }
-  }
-  return moves;
-}
-
-function getAllMoves(board, player) {
-  const all = [];
-  for (let r = 0; r < 8; r++)
-    for (let c = 0; c < 8; c++)
-      if (board[r][c]?.player === player)
-        all.push(...getMoves(board, r, c));
-  const jumps = all.filter(m => m.jump);
-  return jumps.length ? jumps : all;
-}
-
-function applyMove(board, move) {
-  const nb = board.map(row => row.map(p => p ? { ...p } : null));
-  const [fr, fc] = move.from;
-  const [tr, tc] = move.to;
-  nb[tr][tc] = { ...nb[fr][fc] };
-  nb[fr][fc] = null;
-  if (move.jump) nb[move.jump[0]][move.jump[1]] = null;
-  if (tr === 0 && nb[tr][tc].player === 1) nb[tr][tc].king = true;
-  if (tr === 7 && nb[tr][tc].player === 2) nb[tr][tc].king = true;
-  return nb;
-}
-
-function computerMove(board) {
-  const moves = getAllMoves(board, 2);
-  if (!moves.length) return null;
-  return moves[Math.floor(Math.random() * moves.length)];
-}
+import BoardSquare from "../../components/checkers/BoardSquare";
+import ScoreBar from "../../components/checkers/ScoreBar";
+import {
+  initBoard, getAllMoves, applyMove, computerMove, countPieces,
+} from "../../components/checkers/CheckersEngine";
 
 export default function Checkers() {
   useGameTimer();
   const { tapVibrate, moveMade, pieceJumped, winVibrate, lossVibrate } = useHaptics();
   const { checkerFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, shower, fireworks, emojiRain } = useConfetti();
-  const [board, setBoard] = useState(initBoard());
+
+  const [board, setBoard] = useState(initBoard);
   const [selected, setSelected] = useState(null);
   const [turn, setTurn] = useState(1);
-  const [message, setMessage] = useState("Your turn! (🔴 pieces)");
+  const [message, setMessage] = useState("Your turn! Tap a red piece.");
   const [gameOver, setGameOver] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
+  const [lastMove, setLastMove] = useState(null); // {from, to}
 
-  // FIX (bug): use a ref for moveCount so setTimeout callbacks always see the latest value
   const moveCountRef = useRef(0);
-
-  // FIX (bug): guard against clicks while computer is thinking
   const thinkingRef = useRef(false);
-
-  // FIX (perf): track whether Zustand has been initialized so the effect doesn't re-fire
   const zustandInitRef = useRef(false);
 
-  const initializeGame = useGameStore((state) => state.initializeGame);
-  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
-  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
-  const gameStatus = useGameStore((state) => state.gameStatus);
+  const initializeGame = useGameStore(s => s.initializeGame);
+  const addHistoryEntry = useGameStore(s => s.addHistoryEntry);
+  const setPlayerScore = useGameStore(s => s.setPlayerScore);
+  const gameStatus = useGameStore(s => s.gameStatus);
 
-  // FIX (perf): only call initializeGame once using a ref guard instead of relying solely on gameStatus
   useEffect(() => {
     if (gameStatus === "setup" && !zustandInitRef.current) {
       zustandInitRef.current = true;
@@ -106,187 +45,278 @@ export default function Checkers() {
     }
   }, [gameStatus, initializeGame]);
 
-  // FIX (perf): memoize valid player moves so they aren't recomputed on every render
+  const counts = useMemo(() => countPieces(board), [board]);
+
   const playerMoves = useMemo(() => {
     if (turn !== 1 || gameOver) return [];
     return getAllMoves(board, 1);
   }, [board, turn, gameOver]);
 
-  // FIX (perf): memoize valid targets for the selected piece
+  const isJumpTurn = playerMoves.length > 0 && playerMoves[0].jumps.length > 0;
+
   const validTargets = useMemo(() => {
-    if (!selected) return new Set();
-    return new Set(
-      playerMoves
-        .filter(m => m.from[0] === selected[0] && m.from[1] === selected[1])
-        .map(m => `${m.to[0]},${m.to[1]}`)
-    );
+    if (!selected) return {};
+    const targets = {};
+    playerMoves
+      .filter(m => m.from[0] === selected[0] && m.from[1] === selected[1])
+      .forEach(m => {
+        targets[`${m.to[0]},${m.to[1]}`] = m.jumps.length > 0;
+      });
+    return targets;
   }, [playerMoves, selected]);
 
+  // Pieces that can move (highlight them)
+  const movablePieces = useMemo(() => {
+    const set = new Set();
+    playerMoves.forEach(m => set.add(`${m.from[0]},${m.from[1]}`));
+    return set;
+  }, [playerMoves]);
+
   function handleClick(r, c) {
-    // FIX (bug): block clicks while computer is thinking, not just on turn check
     if (turn !== 1 || gameOver || thinkingRef.current) return;
     const piece = board[r][c];
 
     if (selected) {
-      const move = playerMoves.find(
-        m => m.from[0] === selected[0] && m.from[1] === selected[1] &&
-             m.to[0] === r && m.to[1] === c
-      );
-      if (move) {
-        checkerFlipSound();
-        if (move.jump) { pieceJumped(); spark(); } else moveMade();
-
-        const newBoard = applyMove(board, move);
-        setBoard(newBoard);
-        setSelected(null);
-
-        // FIX (bug): update both state and ref together so setTimeout sees the correct value
-        const newMoveCount = moveCountRef.current + 1;
-        moveCountRef.current = newMoveCount;
-        setMoveCount(newMoveCount);
-
-        addHistoryEntry({
-          round: 1,
-          playerId: "player-1",
-          playerName: "You",
-          action: "move",
-          result: { from: move.from, to: move.to, jump: move.jump ? "yes" : "no" },
-        });
-
-        const compMoves = getAllMoves(newBoard, 2);
-        if (!compMoves.length) {
-          winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
-          setMessage("🎉 You win!");
-          setGameOver(true);
-          // FIX (bug): use ref value so the score is accurate
-          setPlayerScore("player-1", moveCountRef.current);
-          return;
-        }
-
-        setTurn(2);
-        setMessage("🤖 Computer thinking...");
-        // FIX (bug): set thinking guard before timeout to block stray clicks
-        thinkingRef.current = true;
-
-        setTimeout(() => {
-          const cm = computerMove(newBoard);
-          if (!cm) {
-            winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
-            setMessage("🎉 You win!");
-            setGameOver(true);
-            setPlayerScore("player-1", moveCountRef.current);
-            thinkingRef.current = false;
-            return;
-          }
-          const b2 = applyMove(newBoard, cm);
-          setBoard(b2);
-          addHistoryEntry({
-            round: 1,
-            playerId: "computer",
-            playerName: "Computer",
-            action: "move",
-            result: { from: cm.from, to: cm.to, jump: cm.jump ? "yes" : "no" },
-          });
-          const playerMovesAfter = getAllMoves(b2, 1);
-          if (!playerMovesAfter.length) {
-            lossVibrate();
-            setMessage("😔 Computer wins!");
-            setGameOver(true);
-            setPlayerScore("computer", moveCountRef.current);
-            thinkingRef.current = false;
-            return;
-          }
-          setTurn(1);
-          setMessage("Your turn! (🔴 pieces)");
-          // FIX (bug): release thinking guard only after computer has fully moved
-          thinkingRef.current = false;
-        }, 800);
+      const targetKey = `${r},${c}`;
+      if (targetKey in validTargets) {
+        // Execute this move
+        const move = playerMoves.find(
+          m => m.from[0] === selected[0] && m.from[1] === selected[1] &&
+               m.to[0] === r && m.to[1] === c
+        );
+        executeMove(move, 1);
         return;
       }
     }
 
-    if (piece?.player === 1 && playerMoves.some(m => m.from[0] === r && m.from[1] === c)) {
+    // Select a piece
+    if (piece?.player === 1 && movablePieces.has(`${r},${c}`)) {
+      tapVibrate();
       setSelected([r, c]);
     } else {
       setSelected(null);
     }
   }
 
+  function executeMove(move, player) {
+    checkerFlipSound();
+    if (move.jumps.length > 0) { pieceJumped(); spark(); } else moveMade();
+
+    const newBoard = applyMove(board, move);
+    setBoard(newBoard);
+    setSelected(null);
+    setLastMove({ from: move.from, to: move.to });
+
+    const newMoveCount = moveCountRef.current + 1;
+    moveCountRef.current = newMoveCount;
+    setMoveCount(newMoveCount);
+
+    addHistoryEntry({
+      round: 1,
+      playerId: player === 1 ? "player-1" : "computer",
+      playerName: player === 1 ? "You" : "Computer",
+      action: "move",
+      result: { from: move.from, to: move.to, captures: move.jumps.length },
+    });
+
+    // Check if opponent has moves
+    const opponent = player === 1 ? 2 : 1;
+    const oppMoves = getAllMoves(newBoard, opponent);
+
+    if (!oppMoves.length) {
+      if (player === 1) {
+        winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
+        setMessage("🎉 You win! All enemy pieces captured!");
+        setPlayerScore("player-1", moveCountRef.current);
+      } else {
+        lossVibrate();
+        setMessage("😔 Computer wins! Better luck next time.");
+        setPlayerScore("computer", moveCountRef.current);
+      }
+      setGameOver(true);
+      return;
+    }
+
+    if (player === 1) {
+      // Computer's turn
+      setTurn(2);
+      setMessage("🤖 Computer is thinking...");
+      thinkingRef.current = true;
+
+      setTimeout(() => {
+        const cm = computerMove(newBoard);
+        if (!cm) {
+          winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
+          setMessage("🎉 You win!");
+          setGameOver(true);
+          setPlayerScore("player-1", moveCountRef.current);
+          thinkingRef.current = false;
+          return;
+        }
+
+        const b2 = applyMove(newBoard, cm);
+        setBoard(b2);
+        setLastMove({ from: cm.from, to: cm.to });
+
+        addHistoryEntry({
+          round: 1, playerId: "computer", playerName: "Computer",
+          action: "move",
+          result: { from: cm.from, to: cm.to, captures: cm.jumps.length },
+        });
+
+        if (cm.jumps.length > 0) spark();
+
+        const playerMovesAfter = getAllMoves(b2, 1);
+        if (!playerMovesAfter.length) {
+          lossVibrate();
+          setMessage("😔 Computer wins!");
+          setGameOver(true);
+          setPlayerScore("computer", moveCountRef.current);
+          thinkingRef.current = false;
+          return;
+        }
+
+        setTurn(1);
+        const hasJumps = playerMovesAfter[0].jumps.length > 0;
+        setMessage(hasJumps ? "Your turn! You must jump! ⚡" : "Your turn! Tap a red piece.");
+        thinkingRef.current = false;
+      }, 700);
+    }
+  }
+
   function reset() {
-    tapVibrate();
-    uiClickSound();
+    tapVibrate(); uiClickSound();
     setBoard(initBoard());
     setSelected(null);
     setTurn(1);
-    setMessage("Your turn! (🔴 pieces)");
+    setMessage("Your turn! Tap a red piece.");
     setGameOver(false);
     setMoveCount(0);
+    setLastMove(null);
     moveCountRef.current = 0;
     thinkingRef.current = false;
   }
 
+  // Win/lose screen
+  if (gameOver) {
+    const won = message.includes("You win");
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
+        <div className="text-8xl mb-4">{won ? "🏆" : "😔"}</div>
+        <h1 className="text-4xl font-black text-primary mb-2">{won ? "Victory!" : "Defeat"}</h1>
+        <p className="text-xl text-foreground mb-1">Moves: {moveCount}</p>
+        <p className="text-lg text-muted-foreground mb-6">
+          Captured: {12 - counts.p2} black · Lost: {12 - counts.p1} red
+        </p>
+        <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
+          🔄 Play Again
+        </button>
+        <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen px-2 py-4 pb-24">
-      <div className="flex items-center justify-between px-2 mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
-        <div className="text-2xl font-black text-primary">⬛ Checkers</div>
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 mb-3">
+        <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
+        <div className="text-xl font-black text-primary">♟️ Checkers</div>
         <div className="flex gap-2">
           <GameInstructions
             title="Checkers"
-            emoji="⬛"
+            emoji="♟️"
             steps={[
-              "You play as the red pieces (🔴) at the bottom.",
-              "Tap one of your pieces to select it — possible moves light up in yellow.",
-              "Tap a highlighted square to move your piece diagonally forward.",
-              "Jump over the computer's pieces to capture them!",
-              "If a jump is available, you must take it.",
-              "Reach the far side to make your piece a King (👑) — kings can move backwards too!",
-              "Capture all of the computer's pieces to win."
+              "You play as red (bottom). Tap a glowing red piece to select it.",
+              "Tap a highlighted square to move diagonally forward.",
+              "Jumps are mandatory — if you can capture, you must!",
+              "Multi-jumps: after a capture, if you can jump again, you must continue.",
+              "Reach the top row to crown your piece into a King 👑 — kings move in all diagonal directions.",
+              "Capture all enemy pieces or block them to win!",
             ]}
           />
-          <button
-            onClick={reset}
-            className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
-          >
-            🔄
-          </button>
+          <button onClick={reset} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
 
-      <div className={`text-center text-2xl font-black mb-4 py-3 rounded-2xl mx-2 ${gameOver ? "bg-primary text-primary-foreground" : "bg-card text-foreground"}`}>
+      {/* Score Bar */}
+      <ScoreBar counts={counts} turn={turn} gameOver={gameOver} />
+
+      {/* Status Message */}
+      <div className={`text-center text-lg font-black mb-3 py-2.5 rounded-2xl mx-2 transition-all ${
+        isJumpTurn ? "bg-orange-900/40 border-2 border-orange-500 text-orange-300" :
+        turn === 2 ? "bg-card border-2 border-border text-muted-foreground" :
+        "bg-card border-2 border-primary/30 text-foreground"
+      }`}>
         {message}
       </div>
 
+      {/* Board */}
       <div className="flex justify-center px-2">
-        <div className="border-4 border-foreground rounded-xl overflow-hidden w-full max-w-sm">
+        <div
+          className="rounded-xl overflow-hidden w-full max-w-sm shadow-2xl"
+          style={{
+            border: "4px solid #5c3a1e",
+            boxShadow: "0 0 0 2px #3a2510, 0 8px 32px rgba(0,0,0,0.5)",
+          }}
+        >
           {board.map((row, r) => (
             <div key={r} className="flex">
               {row.map((piece, c) => {
                 const dark = (r + c) % 2 === 1;
                 const isSel = selected && selected[0] === r && selected[1] === c;
-                const isTarget = dark && validTargets.has(`${r},${c}`);
+                const targetKey = `${r},${c}`;
+                const isTarget = targetKey in validTargets;
+                const isJumpTarget = validTargets[targetKey] === true;
+                const isLastMove = lastMove && (
+                  (lastMove.from[0] === r && lastMove.from[1] === c) ||
+                  (lastMove.to[0] === r && lastMove.to[1] === c)
+                );
+                const canMove = piece?.player === 1 && movablePieces.has(`${r},${c}`) && turn === 1;
+
                 return (
-                  <button key={c} onClick={() => handleClick(r, c)}
-                    className={`flex-1 aspect-square flex items-center justify-center transition-all ${
-                      dark ? "bg-amber-900" : "bg-amber-100"
-                    } ${isTarget ? "ring-4 ring-inset ring-yellow-400" : ""}`}>
-                    {piece && (
-                      <div className={`checker-piece w-[75%] aspect-square flex items-center justify-center text-xs sm:text-lg font-black ${
-                        piece.player === 1 ? "bg-red-600" : "bg-gray-800"
-                      } ${isSel ? "ring-4 ring-yellow-300" : ""}`}>
-                        {piece.king ? "👑" : ""}
+                  <div key={c} className="flex-1 relative">
+                    {/* Movable piece glow ring */}
+                    {canMove && !isSel && (
+                      <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+                        <div className="w-[78%] aspect-square rounded-full ring-2 ring-yellow-400/40 animate-pulse" />
                       </div>
                     )}
-                  </button>
+                    <BoardSquare
+                      dark={dark}
+                      piece={piece}
+                      selected={isSel}
+                      isTarget={isTarget}
+                      isJumpTarget={isJumpTarget}
+                      lastMove={isLastMove}
+                      onClick={() => handleClick(r, c)}
+                    />
+                  </div>
                 );
               })}
             </div>
           ))}
         </div>
       </div>
-      <div className="text-center mt-4">
-        <span className="text-muted-foreground text-lg">🔴 = You &nbsp;&nbsp; ⚫ = Computer</span>
+
+      {/* Legend */}
+      <div className="flex justify-center gap-6 mt-4 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-red-400 to-red-700" /> You
+        </span>
+        <span className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-400 to-gray-800" /> CPU
+        </span>
+        <span className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-yellow-400/50" /> Move
+        </span>
+        <span className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-orange-400/60" /> Jump
+        </span>
       </div>
+
+      {/* Move counter */}
+      <p className="text-center text-sm text-muted-foreground mt-2">Moves: {moveCount}</p>
     </div>
   );
 }
