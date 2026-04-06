@@ -26,6 +26,7 @@ import BuzzWord from './pages/games/WordWhomp';
 import SlotMachine from './pages/games/SlotMachine';
 import Contacts from './pages/Contacts';
 import Rankings from './pages/Rankings';
+import Scripture from './pages/Scripture';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -74,6 +75,7 @@ const AuthenticatedApp = () => {
         <Route path="/games/slots" element={<SlotMachine />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/rankings" element={<Rankings />} />
+        <Route path="/scripture" element={<Scripture />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

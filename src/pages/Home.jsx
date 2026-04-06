@@ -115,14 +115,24 @@ export default function Home() {
 
       {/* Daily Inspiration link */}
       {religionInfo && (
-        <Link
-          to="/daily"
-          className="block bg-card border-2 border-primary rounded-2xl p-5 text-center shadow-xl mb-4"
-        >
-          <span className="text-4xl">{religionInfo.emoji}</span>
-          <p className="text-2xl font-black text-primary mt-2">{religionInfo.label}</p>
-          <p className="text-muted-foreground text-lg">Tap to read today's reading</p>
-        </Link>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Link
+            to="/daily"
+            className="bg-card border-2 border-primary rounded-2xl p-4 text-center shadow-xl"
+          >
+            <span className="text-3xl">{religionInfo.emoji}</span>
+            <p className="text-lg font-black text-primary mt-1">{religionInfo.label}</p>
+            <p className="text-muted-foreground text-sm">Today's reading</p>
+          </Link>
+          <Link
+            to="/scripture"
+            className="bg-card border-2 border-border rounded-2xl p-4 text-center shadow-xl hover:border-primary transition-colors"
+          >
+            <span className="text-3xl">📖</span>
+            <p className="text-lg font-black text-foreground mt-1">Read Scripture</p>
+            <p className="text-muted-foreground text-sm">Browse chapters</p>
+          </Link>
+        </div>
       )}
 
       {/* Weather */}
