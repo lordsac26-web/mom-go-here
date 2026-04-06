@@ -1,0 +1,62 @@
+{
+  "name": "SavedGame",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Owner of the save"
+    },
+    "game_name": {
+      "type": "string",
+      "description": "Identifier for the game (e.g. solitaire, yahtzee)"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable game name for display"
+    },
+    "save_type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "auto"
+      ],
+      "description": "Whether save was manual or auto"
+    },
+    "game_state": {
+      "type": "object",
+      "description": "Full serialized game state snapshot"
+    },
+    "progress": {
+      "type": "object",
+      "description": "Summary progress data (level, score, round, etc.)"
+    },
+    "inventory": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Player inventory items if applicable"
+    },
+    "current_level": {
+      "type": "number",
+      "description": "Current level / round number"
+    },
+    "score": {
+      "type": "number",
+      "description": "Current score at time of save"
+    },
+    "play_time_seconds": {
+      "type": "number",
+      "description": "Total play time in seconds"
+    },
+    "thumbnail_emoji": {
+      "type": "string",
+      "description": "Emoji representing the game for display"
+    }
+  },
+  "required": [
+    "user_email",
+    "game_name",
+    "game_state"
+  ]
+}
