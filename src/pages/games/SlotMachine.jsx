@@ -471,9 +471,13 @@ export default function SlotMachine() {
         <BonusRound
           baseWin={bonusRound.baseWin}
           scatterCount={bonusRound.scatterCount}
-          onComplete={(bonusWin) => {
-            setBalance(prev => prev + bonusWin);
-            setLastWin(bonusWin);
+          onComplete={(extraWinnings) => {
+            // extraWinnings is ONLY the bonus portion (multiplied - base)
+            // because base win was already credited during the normal spin
+            if (extraWinnings > 0) {
+              setBalance(prev => prev + extraWinnings);
+              setLastWin(prev => prev + extraWinnings);
+            }
             setBonusRound(null);
             if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
           }}

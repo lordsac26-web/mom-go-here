@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
+import { X, HelpCircle } from "lucide-react";
 
 const BOX_COUNT = 9;
 
@@ -90,11 +91,28 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
   }
 
   const finalMultiplier = totalMultiplier || 1;
-  const bonusWin = Math.round(baseWin * finalMultiplier);
+  // Bonus win = multiplied total. The base win was already credited during the normal spin,
+  // so we pass only the EXTRA winnings back to the parent: (multiplied - base)
+  const totalBonusValue = Math.round(baseWin * finalMultiplier);
+  const extraWinnings = totalBonusValue - baseWin;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center px-4 overflow-y-auto py-6">
       <div ref={containerRef} className="w-full max-w-sm" style={{ opacity: 0 }}>
+        {/* Rules Banner */}
+        <div className="bg-gray-800/90 border border-yellow-600/60 rounded-2xl px-4 py-3 mb-4 text-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <HelpCircle size={16} className="text-yellow-400 shrink-0" />
+            <span className="font-black text-yellow-400 uppercase tracking-wider text-xs">How Bonus Works</span>
+          </div>
+          <ol className="space-y-1 text-gray-300 leading-snug text-xs list-decimal list-inside">
+            <li>You earned <strong className="text-cyan-300">{maxPicks} pick{maxPicks > 1 ? "s" : ""}</strong> from landing <strong className="text-yellow-300">{scatterCount} scatter{scatterCount > 1 ? "s" : ""} 💰</strong></li>
+            <li>Tap a gift box to reveal a <strong className="text-yellow-300">multiplier</strong> (2x–50x)</li>
+            <li>All multipliers are <strong className="text-green-300">added together</strong>, then applied to your <strong className="text-cyan-300">{baseWin.toLocaleString()}</strong> base win</li>
+            <li>Collect your bonus and return to spinning!</li>
+          </ol>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-4">
           <div className="text-4xl mb-1">🎁</div>
@@ -158,15 +176,21 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
             <div className="text-center bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl py-4 px-4 border-2 border-yellow-300 mb-3">
               <div className="text-sm font-bold text-yellow-900 uppercase">Total Multiplier</div>
               <div className="text-4xl font-black text-gray-900">{finalMultiplier}x</div>
+              <div className="text-xs font-bold text-yellow-900/80 mt-1">
+                {baseWin.toLocaleString()} × {finalMultiplier} = {totalBonusValue.toLocaleString()}
+              </div>
               <div className="text-lg font-black text-gray-900 mt-1">
-                🎉 Bonus Win: +{bonusWin.toLocaleString()}
+                🎉 Bonus: +{extraWinnings.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-yellow-900/60 mt-0.5">
+                (Base win of {baseWin.toLocaleString()} already credited)
               </div>
             </div>
             <button
-              onClick={() => onComplete(bonusWin)}
+              onClick={() => onComplete(extraWinnings)}
               className="w-full bg-green-600 text-white text-xl font-black py-4 rounded-2xl border-2 border-green-400 active:scale-95 transition-transform"
             >
-              💰 Collect {bonusWin.toLocaleString()}
+              💰 Collect +{extraWinnings.toLocaleString()}
             </button>
           </div>
         )}
