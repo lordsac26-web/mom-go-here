@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import { NATURE_SOUNDS } from "./NatureSoundsData";
+import { Slider } from "@/components/ui/slider";
 
 export default function NatureSoundsToggle() {
   const muteAll = useAudioStore(s => s.muteAll);
@@ -12,6 +13,8 @@ export default function NatureSoundsToggle() {
   const activeNatureSound = useAudioStore(s => s.activeNatureSound);
   const setActiveNatureSound = useAudioStore(s => s.setActiveNatureSound);
   const toggleMuteNature = useAudioStore(s => s.toggleMuteNature);
+  const natureVolume = useAudioStore(s => s.natureVolume);
+  const setNatureVolume = useAudioStore(s => s.setNatureVolume);
 
   const [showPicker, setShowPicker] = useState(false);
 
@@ -68,12 +71,29 @@ export default function NatureSoundsToggle() {
                 </button>
               ))}
               {activeNatureSound && (
-                <button
-                  onClick={() => { setActiveNatureSound(null); setShowPicker(false); }}
-                  className="w-full text-center text-sm font-bold text-destructive py-2 rounded-xl hover:bg-destructive/10 mt-1"
-                >
-                  Stop Sound
-                </button>
+                <>
+                  {/* Nature volume slider */}
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-foreground">🔊 Volume</span>
+                      <span className="text-xs text-muted-foreground">{Math.round(natureVolume * 100)}%</span>
+                    </div>
+                    <Slider
+                      value={[natureVolume * 100]}
+                      min={0}
+                      max={100}
+                      step={5}
+                      onValueChange={(vals) => setNatureVolume(vals[0] / 100)}
+                      className="w-full"
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setActiveNatureSound(null); setShowPicker(false); }}
+                    className="w-full text-center text-sm font-bold text-destructive py-2 rounded-xl hover:bg-destructive/10 mt-2"
+                  >
+                    Stop Sound
+                  </button>
+                </>
               )}
             </div>
           </div>
