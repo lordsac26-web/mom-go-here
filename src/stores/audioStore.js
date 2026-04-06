@@ -11,6 +11,11 @@ export const useAudioStore = create((set) => ({
   currentStationName: '',
   isPlayerActive: false,
 
+  // Nature sounds
+  activeNatureSound: null,
+  natureVolume: 0.5,
+  muteNature: false,
+
   // Actions
   setSfxVolume: (vol) => set({ sfxVolume: Math.max(0, Math.min(1, vol)) }),
   setMusicVolume: (vol) => set({ musicVolume: Math.max(0, Math.min(1, vol)) }),
@@ -20,6 +25,11 @@ export const useAudioStore = create((set) => ({
   setCurrentStreamUrl: (url) => set({ currentStreamUrl: url }),
   setCurrentStationName: (name) => set({ currentStationName: name }),
   setPlayerActive: (val) => set({ isPlayerActive: val }),
+
+  // Nature sound actions
+  setActiveNatureSound: (key) => set({ activeNatureSound: key }),
+  setNatureVolume: (vol) => set({ natureVolume: Math.max(0, Math.min(1, vol)) }),
+  toggleMuteNature: () => set((state) => ({ muteNature: !state.muteNature })),
   
   // Derived: Is SFX enabled?
   isSfxEnabled: () => {

@@ -4,6 +4,7 @@ import { useGameAudio } from '@/hooks/useGameAudio';
 import useHaptics from '@/hooks/useHaptics';
 import VolumeSlider from './VolumeSlider';
 import MusicGenrePicker from './MusicGenrePicker';
+import NatureSoundsPicker from './NatureSoundsPicker';
 
 /**
  * Audio settings panel for volume sliders and mute toggles.
@@ -82,6 +83,9 @@ export default function AudioSettings() {
 
       {/* Music Genre Picker */}
       <MusicGenrePicker />
+
+      {/* Nature Sounds */}
+      <NatureSoundsPicker />
 
       {/* Info */}
       <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">

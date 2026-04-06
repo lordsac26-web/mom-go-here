@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import ParallaxBackground from "./ParallaxBackground";
 import PersistentAudioStream from "./PersistentAudioStream";
+import NatureSoundsPlayer from "./NatureSoundsPlayer";
+import NatureSoundsToggle from "./NatureSoundsToggle";
 import MiniMusicPlayer from "./MiniMusicPlayer";
 
 const NAV_ITEMS = [
@@ -24,8 +26,9 @@ export default function Layout() {
       {/* 7-Layer Parallax Background */}
       <ParallaxBackground />
 
-      {/* Persistent audio stream for music */}
+      {/* Persistent audio streams */}
       <PersistentAudioStream />
+      <NatureSoundsPlayer />
 
       {/* Top Nav — clean header with logo + music player */}
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
@@ -34,7 +37,10 @@ export default function Layout() {
             <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-9 h-9 rounded-lg" />
             <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
-          <MiniMusicPlayer />
+          <div className="flex items-center gap-2">
+            <NatureSoundsToggle />
+            <MiniMusicPlayer />
+          </div>
         </div>
       </header>
 
