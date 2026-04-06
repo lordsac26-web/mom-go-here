@@ -11,6 +11,13 @@ module.exports = {
       "from-pink-600", "to-rose-900", "border-pink-500",
       "from-yellow-600", "to-amber-900", "border-yellow-500",
       "from-gray-800", "to-gray-950", "border-gray-500",
+      // Card back design colors
+      "from-blue-700", "via-blue-800", "to-blue-950", "border-blue-500", "border-blue-400/30", "border-blue-300/15", "border-blue-500/60",
+      "from-red-700", "via-red-800", "to-red-950", "border-red-500", "border-red-400/30", "border-red-300/15", "border-red-500/60",
+      "from-emerald-700", "via-emerald-800", "to-emerald-950", "border-emerald-500", "border-emerald-400/30", "border-emerald-300/15", "border-emerald-500/60",
+      "from-purple-700", "via-purple-800", "to-purple-950", "border-purple-500", "border-purple-400/30", "border-purple-300/15", "border-purple-500/60",
+      "from-gray-900", "via-yellow-900", "to-gray-950", "border-yellow-600", "border-yellow-500/30", "border-yellow-400/15", "border-yellow-600/60",
+      "from-cyan-700", "via-sky-800", "to-blue-950", "border-cyan-500", "border-cyan-400/30", "border-cyan-300/15", "border-cyan-500/60",
     ],
   theme: {
   	extend: {

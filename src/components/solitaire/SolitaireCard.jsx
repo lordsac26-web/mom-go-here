@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { getDesign } from "./cardBackDesigns";
 
 /**
  * 3D Flip Card for Solitaire — powered by framer-motion.
@@ -15,11 +16,13 @@ const flipSpring = {
   mass: 0.8,
 };
 
-export default function SolitaireCard({ card, selected, onClick, layoutId }) {
+export default function SolitaireCard({ card, selected, onClick, layoutId, cardBackKey }) {
   if (!card) return null;
 
   const faceUp = card.faceUp;
   const red = RED.has(card.suit);
+  const design = getDesign(cardBackKey);
+  const Pattern = design.pattern;
 
   return (
     <motion.div
@@ -41,19 +44,15 @@ export default function SolitaireCard({ card, selected, onClick, layoutId }) {
       >
         {/* ═══ BACK FACE (face-down) ═══ */}
         <div
-          className="absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border-2 border-blue-500 shadow-lg"
+          className={`absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border-2 ${design.borderColor} shadow-lg`}
           style={{ backfaceVisibility: "hidden" }}
         >
-          {/* Rich card back pattern */}
-          <div className="w-full h-full bg-gradient-to-br from-blue-700 via-blue-800 to-blue-950 flex items-center justify-center">
-            <div className="absolute inset-1 rounded-md border border-blue-400/30" />
-            <div className="absolute inset-2 rounded-sm border border-blue-300/15" />
-            {/* Diamond pattern overlay */}
+          <div className={`w-full h-full bg-gradient-to-br ${design.gradient} flex items-center justify-center`}>
+            <div className={`absolute inset-1 rounded-md border ${design.innerBorder}`} />
+            <div className={`absolute inset-2 rounded-sm border ${design.innerBorder2}`} />
             <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 40 40">
-              <pattern id="cardBack" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-                <path d="M5 0L10 5L5 10L0 5Z" fill="white" />
-              </pattern>
-              <rect width="40" height="40" fill="url(#cardBack)" />
+              <Pattern />
+              <rect width="40" height="40" fill={`url(#${design.patternId})`} />
             </svg>
             <span className="text-xl sm:text-2xl relative z-10">🂠</span>
           </div>

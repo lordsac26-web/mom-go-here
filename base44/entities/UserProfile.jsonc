@@ -53,6 +53,10 @@
     },
     "last_verse_index": {
       "type": "number"
+    },
+    "card_back_design": {
+      "type": "string",
+      "description": "Solitaire card back design key"
     }
   },
   "required": [

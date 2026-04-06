@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,8 @@ import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import SolitaireCard from "../../components/solitaire/SolitaireCard";
 import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -128,12 +130,21 @@ function applyTableauMove(g, selected, targetColIdx) {
 
 export default function Solitaire() {
   useGameTimer();
+  const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null);
   const [won, setWon] = useState(false);
   const [drawKey, setDrawKey] = useState(0);
   const [stuck, setStuck] = useState(false);
+  const [cardBackKey, setCardBackKey] = useState("classic_blue");
+
+  useEffect(() => {
+    if (!user?.email) return;
+    base44.entities.UserProfile.filter({ user_email: user.email }).then(profiles => {
+      if (profiles[0]?.card_back_design) setCardBackKey(profiles[0].card_back_design);
+    });
+  }, [user]);
 
   function drawCard() {
     tapVibrate();
@@ -296,6 +307,7 @@ export default function Solitaire() {
             stockCount={game.stock.length}
             onDraw={drawCard}
             drawKey={drawKey}
+            cardBackKey={cardBackKey}
           />
         </div>
         {/* Waste */}
@@ -309,7 +321,7 @@ export default function Solitaire() {
                 exit={{ x: 20, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                <SolitaireCard card={wasteTop} selected={selected?.source === "waste"} />
+                <SolitaireCard card={wasteTop} selected={selected?.source === "waste"} cardBackKey={cardBackKey} />
               </motion.div>
             ) : (
               <div className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl" />
@@ -336,7 +348,7 @@ export default function Solitaire() {
                     transition={{ type: "spring", stiffness: 350, damping: 22 }}
                     className="w-full h-full"
                   >
-                    <SolitaireCard card={top} />
+                    <SolitaireCard card={top} cardBackKey={cardBackKey} />
                   </motion.div>
                 ) : (
                   <span className="text-lg sm:text-2xl text-green-600">{SUIT_ORDER[i]}</span>
@@ -370,6 +382,7 @@ export default function Solitaire() {
                     card={card}
                     selected={selected?.source === "tableau" && selected.colIdx === ci && selected.cardIdx === ci2}
                     onClick={() => handleTableauClick(ci, ci2)}
+                    cardBackKey={cardBackKey}
                   />
                 </motion.div>
               ))

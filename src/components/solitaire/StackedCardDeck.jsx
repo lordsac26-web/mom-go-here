@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getDesign } from "./cardBackDesigns";
 
 /**
  * StackedCardDeck — A "react-placards" inspired stacked card effect for Solitaire.
@@ -20,27 +21,20 @@ const LAYER_OFFSET_Y = 2.5;    // px shift down per layer
 const LAYER_OFFSET_X = 1.5;    // px shift right per layer  
 const LAYER_SCALE_STEP = 0.03; // scale shrink per layer
 
-// Colors for stacked layers (darkest = deepest)
-const LAYER_COLORS = [
-  "from-blue-700 via-blue-800 to-blue-950",   // top (hidden by top card anim)
-  "from-blue-750 via-blue-850 to-blue-950",
-  "from-blue-800 via-blue-900 to-blue-950",
-  "from-blue-850 via-blue-950 to-slate-950",
-];
+// Layer colors are now derived from the selected design
 
-// Card back pattern (shared SVG)
-function CardBackPattern({ opacity = 0.1 }) {
+// Card back pattern now uses the design's pattern
+function CardBackPattern({ design, opacity = 0.1 }) {
+  const Pattern = design.pattern;
   return (
     <svg className="absolute inset-0 w-full h-full" style={{ opacity }} viewBox="0 0 40 40">
-      <pattern id="deckBack" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-        <path d="M5 0L10 5L5 10L0 5Z" fill="white" />
-      </pattern>
-      <rect width="40" height="40" fill="url(#deckBack)" />
+      <Pattern />
+      <rect width="40" height="40" fill={`url(#${design.patternId})`} />
     </svg>
   );
 }
 
-function StackLayer({ index, totalLayers }) {
+function StackLayer({ index, totalLayers, design }) {
   const depth = totalLayers - index;
   const offsetY = depth * LAYER_OFFSET_Y;
   const offsetX = depth * LAYER_OFFSET_X;
@@ -49,7 +43,7 @@ function StackLayer({ index, totalLayers }) {
 
   return (
     <motion.div
-      className="absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border border-blue-500/60"
+      className={`absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border ${design.borderColor}/60`}
       initial={{ y: offsetY + 10, x: offsetX + 5, scale: scale - 0.05, opacity: 0 }}
       animate={{ y: offsetY, x: offsetX, scale, opacity: 1 }}
       transition={{ type: "spring", stiffness: 250, damping: 22, delay: index * 0.04 }}
@@ -58,15 +52,16 @@ function StackLayer({ index, totalLayers }) {
         boxShadow: `${offsetX}px ${offsetY + 2}px ${4 + depth * 3}px rgba(0,0,0,${shadowOpacity})`,
       }}
     >
-      <div className={`w-full h-full bg-gradient-to-br ${LAYER_COLORS[Math.min(index, LAYER_COLORS.length - 1)]}`}>
-        <div className="absolute inset-1 rounded-md border border-blue-400/20" />
-        <CardBackPattern opacity={0.06 - depth * 0.01} />
+      <div className={`w-full h-full bg-gradient-to-br ${design.gradient}`}>
+        <div className={`absolute inset-1 rounded-md border ${design.innerBorder}`} />
+        <CardBackPattern design={design} opacity={0.06 - depth * 0.01} />
       </div>
     </motion.div>
   );
 }
 
-export default function StackedCardDeck({ stockCount, onDraw, drawKey }) {
+export default function StackedCardDeck({ stockCount, onDraw, drawKey, cardBackKey }) {
+  const design = getDesign(cardBackKey);
   const [exitDirection, setExitDirection] = useState(1);
   const prevKey = useRef(drawKey);
 
@@ -90,7 +85,7 @@ export default function StackedCardDeck({ stockCount, onDraw, drawKey }) {
     >
       {/* Stacked layers behind the top card */}
       {!isEmpty && Array.from({ length: showLayers }).map((_, i) => (
-        <StackLayer key={`layer-${i}`} index={i} totalLayers={showLayers} />
+        <StackLayer key={`layer-${i}`} index={i} totalLayers={showLayers} design={design} />
       ))}
 
       {/* Top card with draw animation */}
@@ -98,7 +93,7 @@ export default function StackedCardDeck({ stockCount, onDraw, drawKey }) {
         {!isEmpty ? (
           <motion.div
             key={`top-${drawKey}`}
-            className="absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border-2 border-blue-500 shadow-xl"
+            className={`absolute inset-0 rounded-lg sm:rounded-xl overflow-hidden border-2 ${design.borderColor} shadow-xl`}
             initial={{ y: 0, x: 0, scale: 1, rotateZ: 0, opacity: 1 }}
             animate={{
               y: 0,
@@ -118,10 +113,10 @@ export default function StackedCardDeck({ stockCount, onDraw, drawKey }) {
             }}
             style={{ zIndex: 10 }}
           >
-            <div className="w-full h-full bg-gradient-to-br from-blue-700 via-blue-800 to-blue-950 flex items-center justify-center">
-              <div className="absolute inset-1 rounded-md border border-blue-400/30" />
-              <div className="absolute inset-2 rounded-sm border border-blue-300/15" />
-              <CardBackPattern />
+            <div className={`w-full h-full bg-gradient-to-br ${design.gradient} flex items-center justify-center`}>
+              <div className={`absolute inset-1 rounded-md border ${design.innerBorder}`} />
+              <div className={`absolute inset-2 rounded-sm border ${design.innerBorder2}`} />
+              <CardBackPattern design={design} />
               <span className="text-xl sm:text-2xl relative z-10">🂠</span>
             </div>
           </motion.div>

@@ -6,6 +6,7 @@ import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
 import SettingsGameManager from "@/components/SettingsGameManager";
 import MusicPlayerFull from "@/components/MusicPlayerFull";
+import CardBackPicker from "@/components/solitaire/CardBackPicker";
 
 const RELIGIONS = [
   { value: "None",         label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -71,6 +72,7 @@ export default function Settings() {
   const [loadError, setLoadError] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [location, setLocation] = useState(null);
+  const [cardBackDesign, setCardBackDesign] = useState("classic_blue");
 
   // FIX (bug): useCallback + AbortController prevents stale closure and race conditions
   // (same pattern fixed in Memories.jsx — loadProfile was defined outside the effect
@@ -90,6 +92,7 @@ export default function Settings() {
         setDisplayName(profiles[0].display_name || "");
         setBirthday(profiles[0].birthday || "");
         setReligion(profiles[0].religion || "None");
+        setCardBackDesign(profiles[0].card_back_design || "classic_blue");
       }
     } catch (err) {
       if (signal?.aborted) return;
@@ -121,6 +124,7 @@ export default function Settings() {
         display_name: safeName,
         birthday,
         religion,
+        card_back_design: cardBackDesign,
         ...(location && {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -206,6 +210,9 @@ export default function Settings() {
 
         {/* Game Selection */}
         <SettingsGameManager />
+
+        {/* Card Back Design */}
+        <CardBackPicker selected={cardBackDesign} onChange={setCardBackDesign} />
 
         {/* Chat Bubble Settings */}
         <ChatBubbleSettings />
