@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +8,7 @@ import SolitaireCard from "../../components/solitaire/SolitaireCard";
 import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import useConfetti from "../../hooks/useConfetti";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -132,12 +133,16 @@ export default function Solitaire() {
   useGameTimer();
   const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { fireworks } = useConfetti();
+  const gameStartRef = useRef(Date.now());
+  const statsRecordedRef = useRef(false);
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null);
   const [won, setWon] = useState(false);
   const [drawKey, setDrawKey] = useState(0);
   const [stuck, setStuck] = useState(false);
   const [cardBackKey, setCardBackKey] = useState("classic_blue");
+  const [winTime, setWinTime] = useState(null);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -145,6 +150,39 @@ export default function Solitaire() {
       if (profiles[0]?.card_back_design) setCardBackKey(profiles[0].card_back_design);
     });
   }, [user]);
+
+  // Record stats when game ends
+  async function recordStats(didWin) {
+    if (!user?.email || statsRecordedRef.current) return;
+    statsRecordedRef.current = true;
+    const elapsed = Math.round((Date.now() - gameStartRef.current) / 1000);
+    const rows = await base44.entities.SolitaireStats.filter({ user_email: user.email });
+    const s = rows[0];
+    if (s) {
+      const played = (s.games_played || 0) + 1;
+      const won = (s.games_won || 0) + (didWin ? 1 : 0);
+      const best = didWin ? Math.min(s.best_time_seconds || Infinity, elapsed) : (s.best_time_seconds || null);
+      const streak = didWin ? (s.current_streak || 0) + 1 : 0;
+      const bestStreak = Math.max(s.best_streak || 0, streak);
+      await base44.entities.SolitaireStats.update(s.id, {
+        games_played: played,
+        games_won: won,
+        best_time_seconds: best,
+        current_streak: streak,
+        best_streak: bestStreak,
+      });
+    } else {
+      await base44.entities.SolitaireStats.create({
+        user_email: user.email,
+        games_played: 1,
+        games_won: didWin ? 1 : 0,
+        best_time_seconds: didWin ? elapsed : null,
+        current_streak: didWin ? 1 : 0,
+        best_streak: didWin ? 1 : 0,
+      });
+    }
+    if (didWin) setWinTime(elapsed);
+  }
 
   function drawCard() {
     tapVibrate();
@@ -159,7 +197,7 @@ export default function Solitaire() {
         card.faceUp = true;
         g.waste.push(card);
       }
-      if (!hasAnyMoves(g)) setTimeout(() => setStuck(true), 300);
+      if (!hasAnyMoves(g)) setTimeout(() => { setStuck(true); recordStats(false); }, 300);
       return g;
     });
     setSelected(null);
@@ -184,7 +222,7 @@ export default function Solitaire() {
           // by reading the result synchronously. setWon is called in a separate
           // setState to avoid side effects inside a state updater (React Strict Mode
           // can call updaters twice, which would call setWon twice).
-          if (checkWin(next)) setTimeout(() => setWon(true), 0);
+          if (checkWin(next)) setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0);
           return next;
         });
         setSelected(null);
@@ -212,7 +250,7 @@ export default function Solitaire() {
     // which could bake in a stale value if selected changed between renders.
     setGame(prev => {
       const next = applyTableauMove(prev, selected, colIdx);
-      if (checkWin(next)) setTimeout(() => setWon(true), 0);
+      if (checkWin(next)) setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0);
       return next;
     });
     setSelected(null);
@@ -246,7 +284,7 @@ export default function Solitaire() {
         }
         g.foundations[fIdx].push(card);
         // FIX (bug): win check moved outside the updater via setTimeout(0)
-        if (checkWin(g)) { winVibrate(); setTimeout(() => setWon(true), 0); }
+        if (checkWin(g)) { winVibrate(); setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0); }
         return g;
       });
       setSelected(null);
@@ -259,12 +297,20 @@ export default function Solitaire() {
     setWon(false);
     setStuck(false);
     setDrawKey(0);
+    setWinTime(null);
+    gameStartRef.current = Date.now();
+    statsRecordedRef.current = false;
   }
 
   if (won) return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
+      {winTime != null && (
+        <p className="text-2xl font-bold text-muted-foreground mb-4">
+          ⏱️ Time: {Math.floor(winTime / 60)}:{(winTime % 60).toString().padStart(2, "0")}
+        </p>
+      )}
       <button onClick={resetGame}
         className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
         🔄 New Game

@@ -1,0 +1,28 @@
+{
+  "name": "SolitaireStats",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "games_played": {
+      "type": "number"
+    },
+    "games_won": {
+      "type": "number"
+    },
+    "best_time_seconds": {
+      "type": "number",
+      "description": "Best completion time in seconds"
+    },
+    "current_streak": {
+      "type": "number"
+    },
+    "best_streak": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}
