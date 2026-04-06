@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import gsap from "gsap";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
@@ -10,6 +11,8 @@ import SlotControls from "../../components/slots/SlotControls";
 import WinDisplay from "../../components/slots/WinDisplay";
 import PaylineOverlay from "../../components/slots/PaylineOverlay";
 import PayTable from "../../components/slots/PayTable";
+import CasinoFrame from "../../components/slots/CasinoFrame";
+import NeonSign from "../../components/slots/NeonSign";
 import {
   ALL_SYMBOLS, REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
@@ -265,52 +268,12 @@ export default function SlotMachine() {
     });
   }
 
-  // FIX (perf): replace 30 Framer Motion animated divs with a single CSS animation
-  // This significantly reduces CPU usage, especially on slower devices
-  const MarqueeLights = ({ reverse = false }) => (
-    <div style={{
-      display: "flex",
-      justifyContent: "center",
-      gap: "6px",
-      margin: reverse ? "8px 0 0" : "0 0 8px",
-    }}>
-      {Array.from({ length: 15 }).map((_, i) => {
-        const colors = ["#ef4444", "#eab308", "#22c55e", "#3b82f6", "#ec4899"];
-        const color = colors[i % 5];
-        const delay = `${(reverse ? 14 - i : i) * 0.1}s`;
-        return (
-          <div
-            key={i}
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              backgroundColor: color,
-              animation: `marqueePulse 0.8s ${delay} infinite`,
-              opacity: 0.3,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 flex flex-col pb-24">
-      {/* Inject CSS keyframes once */}
-      <style>{`
-        @keyframes marqueePulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 1; }
-        }
-      `}</style>
-
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 px-3 py-2 flex items-center justify-between shadow-lg">
-        <Link to="/games" className="text-gray-900 text-lg font-bold">← Back</Link>
-        <div className="text-center">
-          <div className="text-2xl font-black text-gray-900 tracking-tight">🎰 Lucky Slots</div>
-        </div>
+      <div className="bg-gradient-to-r from-gray-900 via-yellow-900/30 to-gray-900 px-3 py-3 flex items-center justify-between shadow-lg border-b-2 border-yellow-600/50">
+        <Link to="/games" className="text-yellow-400 text-lg font-bold">← Back</Link>
+        <NeonSign text="LUCKY SLOTS" spinning={spinning} />
         <PayTable />
       </div>
 
@@ -331,11 +294,9 @@ export default function SlotMachine() {
       {/* Machine Body */}
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 relative">
         <div className="w-full max-w-md">
-          {/* FIX (perf): CSS-animated marquee lights replace 30 Framer Motion instances */}
-          <MarqueeLights />
-
+          <CasinoFrame spinning={spinning}>
           {/* Reel Window */}
-          <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-4 border-yellow-600 rounded-2xl p-3 shadow-2xl relative overflow-hidden">
+          <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-4 border-yellow-600 rounded-2xl p-3 shadow-[0_0_30px_rgba(234,179,8,0.15),inset_0_2px_10px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none rounded-2xl z-10" />
 
             <div className="relative" ref={gridRef}>
@@ -372,8 +333,7 @@ export default function SlotMachine() {
 
             <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} />
           </div>
-
-          <MarqueeLights reverse />
+          </CasinoFrame>
         </div>
 
         <div className="text-center mt-2">
