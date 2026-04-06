@@ -1,32 +1,103 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, Send, MessageCircle, GripHorizontal } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { X, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/stores/uiStore";
+import ChatBubbleMessage from "./chat/ChatBubbleMessage";
+import TypingIndicator from "./chat/TypingIndicator";
+import ChatEmptyState from "./chat/ChatEmptyState";
+import ChatInput from "./chat/ChatInput";
+
+// Window animation variants
+const windowVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.4,
+    y: 60,
+    borderRadius: "50%",
+    filter: "blur(8px)",
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    borderRadius: "16px",
+    filter: "blur(0px)",
+    transition: {
+      type: "spring",
+      stiffness: 350,
+      damping: 28,
+      mass: 0.9,
+      staggerChildren: 0.05,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.3,
+    y: 80,
+    borderRadius: "50%",
+    filter: "blur(6px)",
+    transition: { duration: 0.25, ease: "easeIn" },
+  },
+};
+
+const overlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } },
+};
+
+// Floating bubble animation
+const bubbleVariants = {
+  hidden: { scale: 0, rotate: -180 },
+  visible: {
+    scale: 1,
+    rotate: 0,
+    transition: { type: "spring", stiffness: 400, damping: 18 },
+  },
+  exit: {
+    scale: 0,
+    rotate: 180,
+    transition: { duration: 0.2 },
+  },
+  hover: {
+    scale: 1.12,
+    boxShadow: "0 0 0 8px rgba(245,158,11,0.15), 0 8px 32px rgba(0,0,0,0.3)",
+  },
+  tap: { scale: 0.88 },
+};
+
+const headerVariants = {
+  hidden: { opacity: 0, y: -20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 22, delay: 0.05 },
+  },
+};
 
 export default function AIChatBot() {
   const [open, setOpen] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [waitingForReply, setWaitingForReply] = useState(false);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
   const conversationRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const bubbleRef = useRef(null);
 
-  const chatBubbleEnabled = useUIStore((state) => state.chatBubbleEnabled);
-  const chatBubblePosition = useUIStore((state) => state.chatBubblePosition);
-  const setChatBubblePosition = useUIStore((state) => state.setChatBubblePosition);
+  const chatBubbleEnabled = useUIStore((s) => s.chatBubbleEnabled);
 
+  // Auto-scroll on new messages
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Smooth scroll to bottom
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
     }
-  }, [messages]);
+  }, [messages, waitingForReply]);
 
   async function initConversation() {
     setLoading(true);
@@ -52,9 +123,7 @@ export default function AIChatBot() {
     const unsub = base44.agents.subscribeToConversation(conversation.id, (data) => {
       const msgs = data.messages || [];
       setMessages(msgs);
-      // Update the conversation ref with latest data
       conversationRef.current = { ...conversationRef.current, messages: msgs };
-      // If the last message is from the assistant, we're no longer waiting
       const lastMsg = msgs[msgs.length - 1];
       if (lastMsg && lastMsg.role === "assistant" && lastMsg.content) {
         setWaitingForReply(false);
@@ -68,171 +137,162 @@ export default function AIChatBot() {
     if (!conversation) initConversation();
   }
 
-  async function handleSend() {
-    if (!input.trim() || sending || !conversationRef.current) return;
+  const handleSend = useCallback(async (text) => {
+    if (!text || sending || !conversationRef.current) return;
     setSending(true);
     setWaitingForReply(true);
-    const msg = input.trim();
-    setInput("");
-    // Use the ref to always have the latest conversation state
-    await base44.agents.addMessage(conversationRef.current, { role: "user", content: msg });
+    await base44.agents.addMessage(conversationRef.current, { role: "user", content: text });
     setSending(false);
+  }, [sending]);
+
+  // Handle suggestion click from empty state
+  function handleSuggestion(text) {
+    handleSend(text);
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
-  function handleBubbleMouseDown(e) {
-    if (e.button !== 0) return; // Only left click
-    if (!bubbleRef.current) return;
-    setDragging(true);
-    const rect = bubbleRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  }
-
-  useEffect(() => {
-    if (!dragging) return;
-
-    function handleMouseMove(e) {
-      if (!bubbleRef.current) return;
-      const x = e.clientX - dragOffset.x;
-      const y = e.clientY - dragOffset.y;
-      setChatBubblePosition(x, y);
-    }
-
-    function handleMouseUp() {
-      setDragging(false);
-    }
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [dragging, dragOffset, setChatBubblePosition]);
-
-  const visibleMessages = messages.filter(m => (m.role === "user" || m.role === "assistant") && m.content);
+  const visibleMessages = messages.filter(
+    (m) => (m.role === "user" || m.role === "assistant") && m.content
+  );
 
   if (!chatBubbleEnabled) return null;
 
   return (
     <>
-      {/* Floating button */}
-      {!open && (
-        <button
-          ref={bubbleRef}
-          onMouseDown={handleBubbleMouseDown}
-          onClick={handleOpen}
-          className="fixed z-50 bg-primary text-primary-foreground w-16 h-16 rounded-full shadow-2xl flex items-center justify-center animate-pulse-gold cursor-grab active:cursor-grabbing"
-          style={{
-            left: chatBubblePosition.x > 0 ? `${chatBubblePosition.x}px` : "auto",
-            right: chatBubblePosition.x === 0 ? "1rem" : "auto",
-            bottom: chatBubblePosition.y > 0 ? `${chatBubblePosition.y}px` : "6rem",
-          }}
-          aria-label="Chat with AI"
-        >
-          <MessageCircle size={32} />
-        </button>
-      )}
+      {/* Floating Action Button */}
+      <AnimatePresence>
+        {!open && (
+          <motion.button
+            key="fab"
+            onClick={handleOpen}
+            className="fixed z-50 right-4 bottom-24 bg-gradient-to-br from-primary via-amber-500 to-orange-500 text-primary-foreground w-16 h-16 rounded-full shadow-2xl flex items-center justify-center"
+            variants={bubbleVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            whileHover="hover"
+            whileTap="tap"
+            aria-label="Chat with AI"
+          >
+            <MessageCircle size={30} />
+            {/* Pulse ring */}
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-primary"
+              animate={{
+                scale: [1, 1.4, 1.4],
+                opacity: [0.6, 0, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+            />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-      {/* Chat window — full screen on mobile, floating on desktop */}
-      {open && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:inset-auto sm:bottom-24 sm:right-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:border-2 sm:border-border sm:shadow-2xl">
-          {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl shrink-0 cursor-grab active:cursor-grabbing" onMouseDown={handleBubbleMouseDown}>
-            <div className="flex items-center gap-3">
-              <GripHorizontal size={20} className="opacity-70" />
-              <span className="text-3xl">🌸</span>
-              <div>
-                <p className="text-lg font-black leading-tight">Mom's Helper</p>
-                <p className="text-sm opacity-80">Ask me anything!</p>
-              </div>
-            </div>
-            <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-white/20">
-              <X size={24} />
-            </button>
-          </div>
+      {/* Chat Window */}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Mobile backdrop */}
+            <motion.div
+              className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-sm sm:hidden"
+              variants={overlayVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              onClick={() => setOpen(false)}
+            />
 
-          {/* Messages — scrollable middle section */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-            {loading && (
-              <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-
-            {!loading && visibleMessages.length === 0 && (
-              <div className="text-center py-8">
-                <span className="text-5xl">👋</span>
-                <p className="text-lg font-bold text-foreground mt-3">Hi there!</p>
-                <p className="text-muted-foreground text-base mt-1">I'm here to help. Ask me about games, settings, or just chat!</p>
-              </div>
-            )}
-
-            {visibleMessages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-sm"
-                    : "bg-card border border-border text-foreground rounded-bl-sm"
-                }`}>
-                  {msg.role === "user" ? (
-                    <p className="text-base">{msg.content}</p>
-                  ) : (
-                    <ReactMarkdown className="text-base prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                      {msg.content}
-                    </ReactMarkdown>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {(sending || waitingForReply) && (
-              <div className="flex justify-start">
-                <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
-                  <div className="flex gap-1">
-                    <div className="w-2.5 h-2.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2.5 h-2.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2.5 h-2.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <motion.div
+              className="fixed inset-0 z-[60] flex flex-col bg-background sm:inset-auto sm:bottom-24 sm:right-4 sm:w-[400px] sm:h-[620px] sm:rounded-2xl sm:border-2 sm:border-border sm:shadow-2xl overflow-hidden"
+              variants={windowVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              style={{ originX: 1, originY: 1 }}
+            >
+              {/* Header */}
+              <motion.div
+                className="bg-gradient-to-r from-primary via-amber-500 to-orange-500 text-primary-foreground px-4 py-3 flex items-center justify-between sm:rounded-t-2xl shrink-0"
+                variants={headerVariants}
+              >
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm"
+                    animate={{ rotate: [0, 5, -5, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <span className="text-2xl">🌸</span>
+                  </motion.div>
+                  <div>
+                    <p className="text-lg font-black leading-tight">Mom's Helper</p>
+                    <div className="flex items-center gap-1.5">
+                      <motion.div
+                        className="w-2 h-2 rounded-full bg-green-300"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                      <p className="text-xs opacity-90 font-semibold">Online</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+                <motion.button
+                  onClick={() => setOpen(false)}
+                  className="p-2 rounded-xl hover:bg-white/20 transition-colors"
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.85 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                >
+                  <X size={22} />
+                </motion.button>
+              </motion.div>
 
-          {/* Input — pinned to bottom, safe area aware */}
-          <div className="shrink-0 p-3 border-t border-border bg-card sm:rounded-b-2xl pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                className="flex-1 bg-secondary border-2 border-border rounded-xl px-4 py-3 text-base text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || sending}
-                className={`px-4 rounded-xl transition-all ${
-                  input.trim() && !sending
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
+              {/* Messages Area */}
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
               >
-                <Send size={22} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                {loading && (
+                  <motion.div
+                    className="flex justify-center py-12"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <motion.div
+                      className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                    />
+                  </motion.div>
+                )}
+
+                {!loading && visibleMessages.length === 0 && !waitingForReply && (
+                  <ChatEmptyState onSuggestionClick={handleSuggestion} />
+                )}
+
+                <AnimatePresence initial={false}>
+                  {visibleMessages.map((msg, i) => (
+                    <ChatBubbleMessage
+                      key={`${msg.role}-${i}-${msg.content?.slice(0, 15)}`}
+                      message={msg}
+                      isLatest={i === visibleMessages.length - 1}
+                    />
+                  ))}
+
+                  {(sending || waitingForReply) && (
+                    <TypingIndicator key="typing" />
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Input */}
+              <ChatInput onSend={handleSend} disabled={sending} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
