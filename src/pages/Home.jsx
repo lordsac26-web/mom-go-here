@@ -11,6 +11,7 @@ import SolitaireStatsDashboard from "../components/SolitaireStatsDashboard";
 import HomeStreakWidget from "../components/HomeStreakWidget";
 import ResumeGameWidget from "../components/ResumeGameWidget";
 import DailyChallengeWidget from "../components/DailyChallengeWidget";
+import DailyLoginBonus from "../components/DailyLoginBonus";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -95,6 +96,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">
+      {/* Daily Login Bonus */}
+      <DailyLoginBonus userEmail={user?.email} />
+
       {/* Greeting */}
       <div className="text-center mb-4">
         <h1 className="text-4xl font-black text-primary mb-1">

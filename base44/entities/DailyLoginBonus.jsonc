@@ -1,0 +1,44 @@
+{
+  "name": "DailyLoginBonus",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "current_streak": {
+      "type": "number",
+      "description": "Consecutive days claimed"
+    },
+    "best_streak": {
+      "type": "number"
+    },
+    "last_claim_date": {
+      "type": "string",
+      "description": "YYYY-MM-DD of last claim"
+    },
+    "total_claimed": {
+      "type": "number",
+      "description": "Total credits ever claimed from daily bonuses"
+    },
+    "total_days_claimed": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
