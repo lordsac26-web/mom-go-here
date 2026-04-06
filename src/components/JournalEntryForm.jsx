@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Camera, Sparkles, Send, X, Image } from "lucide-react";
+import { Camera, Sparkles, Send, X, Image, Upload } from "lucide-react";
 import { toast } from "sonner";
+import CameraCapture from "./CameraCapture";
 
 const PROMPTS = [
   "What made you smile today?",
@@ -20,6 +21,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   async function handlePhoto(e) {
     const file = e.target.files?.[0];
@@ -63,7 +65,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
         <p className="text-xl font-bold text-primary italic">"{prompt}"</p>
       </div>
 
-      {/* Photo upload */}
+      {/* Photo section */}
       {photoPreview ? (
         <div className="relative mb-4">
           <img src={photoPreview} alt="Preview" className="w-full rounded-xl border-2 border-border max-h-64 object-cover" />
@@ -75,12 +77,35 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
           </button>
         </div>
       ) : (
-        <label className="flex items-center justify-center gap-3 bg-secondary border-2 border-dashed border-border rounded-xl py-6 mb-4 cursor-pointer hover:border-primary transition-colors">
-          <Camera size={28} className="text-muted-foreground" />
-          <span className="text-lg font-bold text-muted-foreground">Add a photo</span>
-          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
-        </label>
+        <div className="flex gap-3 mb-4">
+          {/* Take Photo button */}
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-2 bg-secondary border-2 border-dashed border-border rounded-xl py-5 cursor-pointer hover:border-primary transition-colors"
+          >
+            <Camera size={28} className="text-primary" />
+            <span className="text-base font-bold text-muted-foreground">Take Photo</span>
+          </button>
+          {/* Choose from gallery */}
+          <label className="flex-1 flex flex-col items-center justify-center gap-2 bg-secondary border-2 border-dashed border-border rounded-xl py-5 cursor-pointer hover:border-primary transition-colors">
+            <Upload size={28} className="text-muted-foreground" />
+            <span className="text-base font-bold text-muted-foreground">Upload Photo</span>
+            <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+          </label>
+        </div>
       )}
+
+      {/* Camera Capture Modal */}
+      <CameraCapture
+        open={cameraOpen}
+        onCapture={(file, preview) => {
+          setPhoto(file);
+          setPhotoPreview(preview);
+          setCameraOpen(false);
+        }}
+        onClose={() => setCameraOpen(false)}
+      />
 
       {/* Text area */}
       <textarea
