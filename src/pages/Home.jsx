@@ -7,6 +7,7 @@ import TiltCard from "../components/TiltCard";
 import UpcomingBirthdays from "../components/UpcomingBirthdays";
 import WeatherWidget from "../components/WeatherWidget";
 import SolitaireStatsDashboard from "../components/SolitaireStatsDashboard";
+import HomeStreakWidget from "../components/HomeStreakWidget";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -126,6 +127,9 @@ export default function Home() {
 
       {/* Weather */}
       <WeatherWidget latitude={profile?.latitude} longitude={profile?.longitude} city={profile?.city} />
+
+      {/* Engagement Streaks */}
+      <HomeStreakWidget userEmail={user?.email} />
 
       {/* Solitaire Stats */}
       <SolitaireStatsDashboard userEmail={user?.email} />

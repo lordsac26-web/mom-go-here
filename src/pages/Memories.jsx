@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus } from "lucide-react";
+import useStreakTracker from "../hooks/useStreakTracker";
+import StreakBanner from "../components/StreakBanner";
 import JournalEntryForm from "../components/JournalEntryForm";
 import JournalTimeline from "../components/JournalTimeline";
 
@@ -17,6 +19,7 @@ export default function Memories() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const { streakData, newBadges } = useStreakTracker(user?.email, "memories");
 
   // FIX (bug): wrap in useCallback so handleSaved can reference it without a stale closure,
   // and so the function identity is stable across renders.
@@ -99,6 +102,8 @@ export default function Memories() {
         <h1 className="text-4xl font-black text-primary">📔 My Memories</h1>
         <p className="text-muted-foreground text-xl mt-1">Your daily photo journal</p>
       </div>
+
+      <StreakBanner streakData={streakData} pageType="memories" newBadges={newBadges} />
 
       {/* New entry button / form */}
       {showForm ? (

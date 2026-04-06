@@ -1,0 +1,45 @@
+{
+  "name": "EngagementStreak",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "daily_dates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Dates (YYYY-MM-DD) user visited Daily page"
+    },
+    "memories_dates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Dates (YYYY-MM-DD) user visited Memories page"
+    },
+    "daily_current_streak": {
+      "type": "number"
+    },
+    "daily_best_streak": {
+      "type": "number"
+    },
+    "memories_current_streak": {
+      "type": "number"
+    },
+    "memories_best_streak": {
+      "type": "number"
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Earned badge keys"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

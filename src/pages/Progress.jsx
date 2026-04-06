@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AchievementGrid from "../components/AchievementGrid";
+import StreakDashboard from "../components/StreakDashboard";
 
 const GOAL_MINUTES = 15;
 
@@ -140,6 +141,11 @@ export default function Progress() {
           <span>🟡 Partial</span>
           <span>⬜ No play</span>
         </div>
+      </div>
+
+      {/* Engagement Streaks */}
+      <div className="mt-6 max-w-lg mx-auto">
+        <StreakDashboard />
       </div>
 
       {/* Achievements */}

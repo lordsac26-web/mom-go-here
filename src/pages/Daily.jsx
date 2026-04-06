@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { RefreshCw, BookmarkPlus, Check } from "lucide-react";
+import useStreakTracker from "../hooks/useStreakTracker";
+import StreakBanner from "../components/StreakBanner";
 
 const RELIGION_CONFIG = {
   Christianity: { label: "Daily Scripture", emoji: "✝️" },
@@ -20,6 +22,7 @@ export default function Daily() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { streakData, newBadges } = useStreakTracker(user?.email, "daily");
 
   useEffect(() => {
     if (user?.email) loadProfile();
@@ -91,6 +94,8 @@ export default function Daily() {
         <span className="text-5xl">{config.emoji}</span>
         <h1 className="text-4xl font-black text-primary mt-2">{config.label}</h1>
       </div>
+
+      <StreakBanner streakData={streakData} pageType="daily" newBadges={newBadges} />
 
       {verse ? (
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl space-y-4">
