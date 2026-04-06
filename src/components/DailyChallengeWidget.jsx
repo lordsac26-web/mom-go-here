@@ -2,25 +2,16 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Zap, Check } from "lucide-react";
-import { ALL_GAMES } from "./GameTileManager";
+import { getDailyGame, getTodayStr } from "../utils/dailyGame";
 
-const BRAIN_GAMES = ALL_GAMES.filter(g => g.path !== "/games/artstudio");
 
-function getDailyGame(dateStr) {
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
-    hash |= 0;
-  }
-  return BRAIN_GAMES[Math.abs(hash) % BRAIN_GAMES.length];
-}
 
 export default function DailyChallengeWidget({ userEmail }) {
   const [record, setRecord] = useState(null);
   const [totalZen, setTotalZen] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getTodayStr();
   const dailyGame = getDailyGame(todayStr);
 
   useEffect(() => {
