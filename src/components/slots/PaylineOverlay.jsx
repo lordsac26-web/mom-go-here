@@ -7,9 +7,11 @@ import { PAYLINES, PAYLINE_COLORS } from "./slotConfig";
  * Winning lines animate in with a stroke-dashoffset reveal,
  * then pulse with a neon glow.
  */
-export default function PaylineOverlay({ activePaylines, winningLines, gridRect }) {
+export default function PaylineOverlay({ activePaylines, winningLines, gridRect, previewLines }) {
   const svgRef = useRef(null);
   const tlRef = useRef(null);
+  const previewRef = useRef(null);
+  const previewTlRef = useRef(null);
 
   useEffect(() => {
     // Kill any running timeline
@@ -90,11 +92,117 @@ export default function PaylineOverlay({ activePaylines, winningLines, gridRect 
     return () => { tl.kill(); };
   }, [winningLines, gridRect]);
 
-  if (!gridRect || !winningLines.length) return null;
+  // GSAP preview animation
+  useEffect(() => {
+    if (previewTlRef.current) { previewTlRef.current.kill(); previewTlRef.current = null; }
+    if (!previewRef.current || !gridRect || !previewLines || previewLines.length === 0) return;
+
+    const paths = previewRef.current.querySelectorAll(".preview-line");
+    const labels = previewRef.current.querySelectorAll(".preview-label");
+    if (!paths.length) return;
+
+    const tl = gsap.timeline();
+    previewTlRef.current = tl;
+
+    // Draw each preview line in staggered sequence
+    paths.forEach((path, i) => {
+      const len = path.getTotalLength();
+      gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 0.8 });
+      tl.to(path, {
+        strokeDashoffset: 0,
+        duration: 0.3,
+        ease: "power2.out",
+      }, i * 0.04);
+    });
+
+    // Fade in labels
+    tl.fromTo(labels, { opacity: 0, scale: 0.5 }, {
+      opacity: 1, scale: 1, duration: 0.2, stagger: 0.02, ease: "back.out(2)",
+    }, 0.1);
+
+    // Gentle pulse
+    tl.to(paths, {
+      opacity: 0.4, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut", stagger: 0.02,
+    }, "+=0.2");
+
+    return () => tl.kill();
+  }, [previewLines, gridRect]);
+
+  if (!gridRect) return null;
 
   const cellW = gridRect.width / 5;
   const cellH = gridRect.height / 3;
 
+  const showPreview = previewLines && previewLines.length > 0;
+  const showWins = winningLines && winningLines.length > 0;
+
+  if (!showPreview && !showWins) return null;
+
+  // Preview mode: show all active paylines
+  if (showPreview && !showWins) {
+    return (
+      <svg
+        ref={previewRef}
+        className="absolute inset-0 pointer-events-none z-20"
+        width={gridRect.width}
+        height={gridRect.height}
+        viewBox={`0 0 ${gridRect.width} ${gridRect.height}`}
+      >
+        {previewLines.map((lineIdx) => {
+          const line = PAYLINES[lineIdx];
+          if (!line) return null;
+          const color = PAYLINE_COLORS[lineIdx];
+          const d = line.map((row, reel) => {
+            const x = reel * cellW + cellW / 2;
+            const y = row * cellH + cellH / 2;
+            return `${reel === 0 ? "M" : "L"} ${x} ${y}`;
+          }).join(" ");
+
+          // Label position at left edge
+          const labelX = 2;
+          const labelY = line[0] * cellH + cellH / 2;
+
+          return (
+            <g key={lineIdx}>
+              <path
+                className="preview-line"
+                d={d}
+                fill="none"
+                stroke={color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0"
+              />
+              <g className="preview-label">
+                <rect
+                  x={labelX}
+                  y={labelY - 8}
+                  width={20}
+                  height={16}
+                  rx={4}
+                  fill={color}
+                  opacity="0.9"
+                />
+                <text
+                  x={labelX + 10}
+                  y={labelY + 4}
+                  textAnchor="middle"
+                  fill="white"
+                  fontSize="9"
+                  fontWeight="bold"
+                >
+                  {lineIdx + 1}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // Win mode: existing GSAP path-drawing animation
   return (
     <svg
       ref={svgRef}
@@ -120,7 +228,7 @@ export default function PaylineOverlay({ activePaylines, winningLines, gridRect 
         })}
       </defs>
 
-      {winningLines.map((lineIdx) => {
+      {(winningLines || []).map((lineIdx) => {
         const line = PAYLINES[lineIdx];
         const color = PAYLINE_COLORS[lineIdx];
         const d = line.map((row, reel) => {

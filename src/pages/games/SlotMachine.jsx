@@ -67,6 +67,8 @@ export default function SlotMachine() {
   const [autoSpin, setAutoSpin] = useState(false);
   const [topOffMessage, setTopOffMessage] = useState(false);
   const [reelStrip] = useState(buildReelStrip);
+  const [previewLines, setPreviewLines] = useState(null);
+  const previewTimerRef = useRef(null);
 
   const gridRef = useRef(null);
   const [gridRect, setGridRect] = useState(null);
@@ -304,6 +306,7 @@ export default function SlotMachine() {
                 activePaylines={activePaylines}
                 winningLines={winningLines}
                 gridRect={gridRect}
+                previewLines={previewLines}
               />
               <div className="flex justify-center gap-1.5 sm:gap-2">
                 {Array.from({ length: REELS }).map((_, reelIdx) => (
@@ -357,7 +360,14 @@ export default function SlotMachine() {
         bet={bet}
         onBetChange={setBet}
         activePaylines={activePaylines}
-        onPaylinesChange={setActivePaylines}
+        onPaylinesChange={(newVal) => {
+          setActivePaylines(newVal);
+          // Show preview of all active lines
+          if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+          const lines = Array.from({ length: newVal }, (_, i) => i);
+          setPreviewLines(lines);
+          previewTimerRef.current = setTimeout(() => setPreviewLines(null), 2000);
+        }}
         onSpin={handleSpin}
         spinning={spinning}
         autoSpin={autoSpin}
