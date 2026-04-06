@@ -27,6 +27,7 @@ import SlotMachine from './pages/games/SlotMachine';
 import Contacts from './pages/Contacts';
 import Rankings from './pages/Rankings';
 import Scripture from './pages/Scripture';
+import DailyChallenge from './pages/DailyChallenge';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -76,6 +77,7 @@ const AuthenticatedApp = () => {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/rankings" element={<Rankings />} />
         <Route path="/scripture" element={<Scripture />} />
+        <Route path="/daily-challenge" element={<DailyChallenge />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import AchievementGrid from "../components/AchievementGrid";
 import StreakDashboard from "../components/StreakDashboard";
 import WarmLoader from "../components/WarmLoader";
+import ZenWeeklyChart from "../components/ZenWeeklyChart";
 
 const GOAL_MINUTES = 15;
 
@@ -25,12 +26,17 @@ function formatDate(dateStr) {
 export default function Progress() {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
+  const [zenRecords, setZenRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    base44.entities.DailyProgress.filter({ user_email: user.email }).then(data => {
-      setRecords(data);
+    Promise.all([
+      base44.entities.DailyProgress.filter({ user_email: user.email }),
+      base44.entities.ZenPoints.filter({ user_email: user.email }, "-date", 30),
+    ]).then(([progress, zen]) => {
+      setRecords(progress);
+      setZenRecords(zen);
       setLoading(false);
     });
   }, [user]);
@@ -138,6 +144,11 @@ export default function Progress() {
           <span>🟡 Partial</span>
           <span>⬜ No play</span>
         </div>
+      </div>
+
+      {/* Zen Points Weekly */}
+      <div className="mt-6 max-w-lg mx-auto">
+        <ZenWeeklyChart records={zenRecords} />
       </div>
 
       {/* Engagement Streaks */}
