@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
@@ -6,253 +6,327 @@ import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import MahjongTile from "../../components/MahjongTile";
 import useConfetti from "../../hooks/useConfetti";
-import GridRevealWrapper from "../../components/GridRevealWrapper";
+import { LAYOUTS } from "../../components/mahjong/MahjongLayout";
+import {
+  generateTiles,
+  isTileFree,
+  canMatch,
+  hasValidMoves,
+  remainingCount,
+  getFreeTiles,
+} from "../../components/mahjong/MahjongEngine";
 
-// Authentic Mahjong tile definitions with suits
-const TILE_DEFS = [
-  // Characters (萬) 1-9
-  ...Array.from({ length: 9 }, (_, i) => ({ suit: "characters", value: i + 1, key: `char-${i + 1}` })),
-  // Circles (筒) 1-9
-  ...Array.from({ length: 9 }, (_, i) => ({ suit: "circles", value: i + 1, key: `circ-${i + 1}` })),
-  // Bamboo (條) 1-9
-  ...Array.from({ length: 9 }, (_, i) => ({ suit: "bamboo", value: i + 1, key: `bamb-${i + 1}` })),
-  // Winds
-  { suit: "wind", value: "east", key: "wind-e" },
-  { suit: "wind", value: "south", key: "wind-s" },
-  { suit: "wind", value: "west", key: "wind-w" },
-  { suit: "wind", value: "north", key: "wind-n" },
-  // Dragons
-  { suit: "dragon", value: "red", key: "drag-r" },
-  { suit: "dragon", value: "green", key: "drag-g" },
-  { suit: "dragon", value: "white", key: "drag-w" },
+const DIFFICULTY_OPTIONS = [
+  { key: "easy", label: "Easy (72 tiles)", sub: "Fortress layout" },
+  { key: "classic", label: "Classic (144 tiles)", sub: "Traditional Turtle" },
 ];
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
-
-const DIFFICULTIES = [
-  { label: "Easy (12 pairs)", pairs: 12, cols: 6 },
-  { label: "Hard (24 pairs)", pairs: 24, cols: 8 },
-];
-
-function buildTiles(pairCount) {
-  // FIX (bug): guard against requesting more pairs than tile definitions exist
-  if (pairCount > TILE_DEFS.length) {
-    throw new Error(`Cannot create ${pairCount} pairs — only ${TILE_DEFS.length} unique tiles available.`);
-  }
-  const selected = shuffle(TILE_DEFS).slice(0, pairCount);
-  const pairs = [...selected, ...selected];
-  return shuffle(pairs).map((def, i) => ({
-    id: i,
-    suit: def.suit,
-    value: def.value,
-    key: def.key,
-    matched: false,
-    selected: false,
-  }));
-}
 
 export default function Mahjong() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { mahjongTileSound, matchSound, winSound, uiClickSound } = useGameAudio();
-  const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
-  const [diffIdx, setDiffIdx] = useState(null);
+  const { spark, burst, fireworks, emojiRain } = useConfetti();
+
+  const [difficulty, setDifficulty] = useState(null);
   const [tiles, setTiles] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [matches, setMatches] = useState(0);
+  const [moves, setMoves] = useState(0);
   const [message, setMessage] = useState("");
   const [won, setWon] = useState(false);
-  const [moves, setMoves] = useState(0);
+  const [stuck, setStuck] = useState(false);
 
-  // FIX (bug): store the mismatch deselect timeout so it can be cancelled on new selection
-  const mismatchTimeoutRef = useRef(null);
+  const mismatchRef = useRef(null);
+  const totalPairs = tiles.length / 2;
 
-  const diff = diffIdx !== null ? DIFFICULTIES[diffIdx] : null;
-  const total = tiles.length / 2;
+  // Compute free tiles for highlighting
+  const freeTileIds = useMemo(() => {
+    if (!tiles.length) return new Set();
+    return new Set(getFreeTiles(tiles).map(t => t.id));
+  }, [tiles]);
+
+  // Compute board bounds for positioning
+  const bounds = useMemo(() => {
+    if (!tiles.length) return { minRow: 0, maxRow: 0, minCol: 0, maxCol: 0, maxLayer: 0 };
+    const active = tiles.filter(t => !t.removed);
+    if (!active.length) return { minRow: 0, maxRow: 0, minCol: 0, maxCol: 0, maxLayer: 0 };
+    return {
+      minRow: Math.min(...active.map(t => t.row)),
+      maxRow: Math.max(...active.map(t => t.row)),
+      minCol: Math.min(...active.map(t => t.col)),
+      maxCol: Math.max(...active.map(t => t.col)),
+      maxLayer: Math.max(...active.map(t => t.layer)),
+    };
+  }, [tiles]);
+
+  function startGame(key) {
+    uiClickSound();
+    if (mismatchRef.current) clearTimeout(mismatchRef.current);
+    const layout = LAYOUTS[key];
+    const newTiles = generateTiles(layout.positions);
+    setDifficulty(key);
+    setTiles(newTiles);
+    setSelectedId(null);
+    setMatches(0);
+    setMoves(0);
+    setMessage("");
+    setWon(false);
+    setStuck(false);
+  }
+
+  function handleShuffle() {
+    // Reshuffle remaining tiles in place (keeps positions, reassigns tile faces)
+    uiClickSound();
+    const remaining = tiles.filter(t => !t.removed);
+    const removed = tiles.filter(t => t.removed);
+    const positions = remaining.map(t => ({ row: t.row, col: t.col, layer: t.layer }));
+    const newTiles = generateTiles(positions);
+    // Give them new IDs offset from removed max
+    const maxId = Math.max(...tiles.map(t => t.id)) + 1;
+    const reshuffled = newTiles.map((t, i) => ({ ...t, id: maxId + i }));
+    setTiles([...removed, ...reshuffled]);
+    setSelectedId(null);
+    setStuck(false);
+    setMessage("🔀 Tiles reshuffled!");
+    setTimeout(() => setMessage(""), 1500);
+  }
 
   function handleClick(id) {
+    const tile = tiles.find(t => t.id === id);
+    if (!tile || tile.removed) return;
+    
+    // Check if tile is free
+    if (!isTileFree(tile, tiles)) {
+      setMessage("🔒 That tile is blocked!");
+      setTimeout(() => setMessage(""), 1200);
+      return;
+    }
+
     tapVibrate();
     mahjongTileSound();
 
     if (selectedId === null) {
-      // FIX (bug): cancel any pending mismatch deselect before making a new selection
-      if (mismatchTimeoutRef.current) {
-        clearTimeout(mismatchTimeoutRef.current);
-        mismatchTimeoutRef.current = null;
-        // Clear any previously highlighted mismatch tiles before starting fresh
-        setTiles(prev => prev.map(t => ({ ...t, selected: false })));
+      // Clear pending mismatch
+      if (mismatchRef.current) {
+        clearTimeout(mismatchRef.current);
+        mismatchRef.current = null;
       }
-      setTiles(prev => prev.map(t => t.id === id ? { ...t, selected: true } : t));
       setSelectedId(id);
       return;
     }
 
     if (selectedId === id) {
-      setTiles(prev => prev.map(t => t.id === id ? { ...t, selected: false } : t));
       setSelectedId(null);
       return;
     }
 
-    // FIX (perf): look up both tiles in one pass and batch the state update
     const first = tiles.find(t => t.id === selectedId);
-    const second = tiles.find(t => t.id === id);
     setMoves(m => m + 1);
 
-    if (first.key === second.key) {
+    if (canMatch(first, tile)) {
+      // Match!
       const newMatches = matches + 1;
       matchSound();
       spark();
-      if (newMatches === total) {
-        winVibrate(); winSound(); fireworks(); emojiRain(["🀄", "🎉", "⭐"]);
+      successVibrate();
+
+      const updated = tiles.map(t =>
+        t.id === selectedId || t.id === id ? { ...t, removed: true } : t
+      );
+      setTiles(updated);
+      setMatches(newMatches);
+      setSelectedId(null);
+
+      const left = remainingCount(updated);
+      if (left === 0) {
+        winVibrate(); winSound(); fireworks(); emojiRain(["🀄", "🎉", "⭐", "🏆"]);
         setWon(true);
         setMessage("");
       } else {
-        const pct = newMatches / total;
-        if (pct === 0.25 || pct === 0.5 || pct === 0.75) burst();
-        successVibrate();
+        if (newMatches % 5 === 0) burst();
         setMessage("✅ Match!");
+        setTimeout(() => setMessage(""), 1000);
+        // Check for deadlock
+        if (!hasValidMoves(updated)) {
+          setStuck(true);
+        }
       }
-      // FIX (perf): single map pass — mark both matched tiles at once
-      setTiles(prev =>
-        prev.map(t =>
-          t.id === selectedId || t.id === id
-            ? { ...t, matched: true, selected: false }
-            : t
-        )
-      );
-      setMatches(newMatches);
-      setSelectedId(null);
-      setTimeout(() => setMessage(""), 1000);
     } else {
-      setMessage("❌ No match, try again!");
-      setTiles(prev =>
-        prev.map(t =>
-          t.id === selectedId || t.id === id ? { ...t, selected: true } : t
-        )
-      );
-      // FIX (bug): store timeout ID so a new selection can cancel it
-      mismatchTimeoutRef.current = setTimeout(() => {
-        setTiles(prev =>
-          prev.map(t =>
-            t.id === selectedId || t.id === id ? { ...t, selected: false } : t
-          )
-        );
-        setMessage("");
-        mismatchTimeoutRef.current = null;
-      }, 900);
+      // No match
+      setMessage("❌ Tiles don't match!");
       setSelectedId(null);
+      mismatchRef.current = setTimeout(() => {
+        setMessage("");
+        mismatchRef.current = null;
+      }, 1000);
     }
-  }
-
-  function startGame(idx) {
-    uiClickSound();
-    // FIX (bug): cancel any pending timeout when restarting mid-game
-    if (mismatchTimeoutRef.current) {
-      clearTimeout(mismatchTimeoutRef.current);
-      mismatchTimeoutRef.current = null;
-    }
-    setDiffIdx(idx);
-    setTiles(buildTiles(DIFFICULTIES[idx].pairs));
-    setSelectedId(null);
-    setMatches(0);
-    setMessage("");
-    setWon(false);
-    setMoves(0);
   }
 
   function reset() {
-    if (diffIdx === null) return;
-    startGame(diffIdx);
+    if (difficulty) startGame(difficulty);
   }
 
   function backToMenu() {
     uiClickSound();
-    if (mismatchTimeoutRef.current) {
-      clearTimeout(mismatchTimeoutRef.current);
-      mismatchTimeoutRef.current = null;
-    }
-    setDiffIdx(null);
+    if (mismatchRef.current) clearTimeout(mismatchRef.current);
+    setDifficulty(null);
     setTiles([]);
     setWon(false);
-    setMoves(0);
-    setMatches(0);
+    setStuck(false);
   }
 
-  // Difficulty selection screen
-  if (diffIdx === null) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
-      <div className="text-8xl mb-4">🀄</div>
-      <h1 className="text-4xl font-black text-primary mb-2 text-center">Mahjong</h1>
-      <p className="text-xl text-muted-foreground text-center mb-8">Match pairs of tiles to clear the board!</p>
-      <div className="space-y-4 w-full max-w-sm">
-        {DIFFICULTIES.map((d, i) => (
-          <button
-            key={i}
-            onClick={() => startGame(i)}
-            className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white text-2xl font-black py-5 rounded-2xl shadow-xl"
-          >
-            {d.label}
-          </button>
-        ))}
+  // ── Difficulty selection ──
+  if (difficulty === null) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
+        <div className="text-8xl mb-4">🀄</div>
+        <h1 className="text-4xl font-black text-primary mb-2 text-center">Mahjong Solitaire</h1>
+        <p className="text-xl text-muted-foreground text-center mb-2">Match free tiles to clear the board</p>
+        <p className="text-base text-muted-foreground text-center mb-8 max-w-sm">
+          Only tiles with a free left or right side and nothing on top can be selected. Match identical tiles to remove them.
+        </p>
+        <div className="space-y-4 w-full max-w-sm">
+          {DIFFICULTY_OPTIONS.map(d => (
+            <button
+              key={d.key}
+              onClick={() => startGame(d.key)}
+              className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white text-2xl font-black py-5 rounded-2xl shadow-xl"
+            >
+              <div>{d.label}</div>
+              <div className="text-sm font-semibold text-white/70">{d.sub}</div>
+            </button>
+          ))}
+        </div>
+        <Link to="/games" className="mt-8 text-primary text-xl font-bold">← Back to Games</Link>
       </div>
-      <Link to="/games" className="mt-8 text-primary text-xl font-bold">← Back to Games</Link>
-    </div>
-  );
+    );
+  }
 
-  if (won) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-4">All Tiles Matched!</h1>
-      <p className="text-2xl text-foreground mb-1">Difficulty: {diff.label}</p>
-      <p className="text-2xl text-foreground mb-2">Moves: {moves}</p>
-      <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-        🔄 Play Again
-      </button>
-      <button onClick={backToMenu} className="text-primary text-xl font-bold mb-2">Choose Difficulty</button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
-    </div>
-  );
+  // ── Win screen ──
+  if (won) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
+        <div className="text-8xl mb-4">🎉</div>
+        <h1 className="text-4xl font-black text-primary mb-4">Board Cleared!</h1>
+        <p className="text-2xl text-foreground mb-1">Layout: {LAYOUTS[difficulty].name}</p>
+        <p className="text-2xl text-foreground mb-2">Moves: {moves} | Matches: {matches}</p>
+        <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
+          🔄 Play Again
+        </button>
+        <button onClick={backToMenu} className="text-primary text-xl font-bold mb-2">Choose Layout</button>
+        <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      </div>
+    );
+  }
+
+  // ── Game board ──
+  // Calculate tile dimensions based on screen
+  const TILE_W = difficulty === "easy" ? 42 : 34;
+  const TILE_H = TILE_W * 1.33;
+  const LAYER_OFFSET = 4;
+
+  const boardWidth = (bounds.maxCol - bounds.minCol + 1) * TILE_W + bounds.maxLayer * LAYER_OFFSET + TILE_W;
+  const boardHeight = (bounds.maxRow - bounds.minRow + 1) * TILE_H + bounds.maxLayer * LAYER_OFFSET + TILE_H;
 
   return (
     <div className="min-h-screen px-2 py-4 pb-24">
-      <div className="flex items-center justify-between px-2 mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 mb-3">
+        <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
         <div className="text-center">
-          <div className="text-2xl font-black text-primary">🀄 Mahjong</div>
-          <div className="text-muted-foreground">Pairs: {matches}/{total} | Moves: {moves}</div>
+          <div className="text-xl font-black text-primary">🀄 Mahjong</div>
+          <div className="text-sm text-muted-foreground">
+            Matched: {matches} | Left: {remainingCount(tiles)} | Moves: {moves}
+          </div>
         </div>
         <div className="flex gap-2">
           <GameInstructions
-            title="Mahjong"
+            title="Mahjong Solitaire"
             emoji="🀄"
             steps={[
-              "Tap a tile to select it — it highlights in yellow.",
-              "Tap a second tile with the same symbol to make a match.",
-              "Matched tiles disappear from the board.",
-              "If the tiles don't match, they deselect — try again!",
-              "Remove all tiles from the board to win.",
-              "Try to finish in as few moves as possible!"
+              "Only 'free' tiles can be selected — tiles with nothing on top AND at least one open side (left or right).",
+              "Free tiles have a subtle glow. Blocked tiles appear slightly darker.",
+              "Tap two matching free tiles to remove them from the board.",
+              "Tiles match if they are the same type: same suit and number, same wind, or same dragon.",
+              "Clear all tiles from the board to win!",
+              "If you get stuck, use the Shuffle button to rearrange remaining tiles.",
             ]}
           />
-          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+          <button onClick={reset} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
 
       {message && (
-        <div className="text-center text-2xl font-black text-primary mb-3">{message}</div>
+        <div className="text-center text-xl font-black text-primary mb-2">{message}</div>
       )}
 
-      <p className="text-center text-muted-foreground text-lg mb-4">Tap two matching tiles to remove them</p>
+      {/* Stuck warning */}
+      {stuck && (
+        <div className="text-center mb-3">
+          <div className="bg-destructive/20 border-2 border-destructive rounded-2xl p-3 max-w-sm mx-auto">
+            <p className="text-lg font-bold text-destructive">No more moves available!</p>
+            <button
+              onClick={handleShuffle}
+              className="mt-2 bg-primary text-primary-foreground px-5 py-2 rounded-xl font-bold text-lg"
+            >
+              🔀 Shuffle Tiles
+            </button>
+          </div>
+        </div>
+      )}
 
-      <GridRevealWrapper
-        cols={diff.cols}
-        pattern="auto"
-        revealKey={matches === 0 ? diffIdx : -1}
-        className="grid gap-1.5 sm:gap-2 px-1 max-w-md mx-auto"
-        style={{ gridTemplateColumns: `repeat(${diff.cols}, 1fr)` }}
-      >
-        {tiles.map(tile => <MahjongTile key={tile.id} tile={tile} onClick={handleClick} />)}
-      </GridRevealWrapper>
+      {/* Board — scrollable container */}
+      <div className="overflow-auto pb-4 flex justify-center">
+        <div
+          className="relative"
+          style={{
+            width: `${boardWidth}px`,
+            height: `${boardHeight}px`,
+            minWidth: `${boardWidth}px`,
+          }}
+        >
+          {/* Render tiles sorted by layer (bottom first) so higher tiles render on top */}
+          {tiles
+            .filter(t => !t.removed)
+            .sort((a, b) => a.layer - b.layer || a.row - b.row || a.col - b.col)
+            .map(tile => {
+              const isFree = freeTileIds.has(tile.id);
+              const isSelected = tile.id === selectedId;
+              const left = (tile.col - bounds.minCol) * TILE_W + tile.layer * LAYER_OFFSET;
+              const top = (tile.row - bounds.minRow) * TILE_H - tile.layer * LAYER_OFFSET;
+
+              return (
+                <div
+                  key={tile.id}
+                  className="absolute"
+                  style={{
+                    left: `${left}px`,
+                    top: `${top}px`,
+                    width: `${TILE_W}px`,
+                    height: `${TILE_H}px`,
+                    zIndex: tile.layer * 100 + Math.round(tile.row * 10),
+                  }}
+                >
+                  <MahjongTile
+                    tile={{ ...tile, selected: isSelected }}
+                    onClick={handleClick}
+                    isFree={isFree}
+                  />
+                </div>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Shuffle button at bottom */}
+      <div className="text-center mt-3">
+        <button
+          onClick={handleShuffle}
+          className="bg-secondary text-foreground px-5 py-2 rounded-xl font-bold text-base border border-border"
+        >
+          🔀 Shuffle Remaining
+        </button>
+      </div>
     </div>
   );
 }

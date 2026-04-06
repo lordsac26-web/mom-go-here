@@ -1,8 +1,11 @@
 /**
- * Authentic Mahjong tile component with CSS 3D depth and
- * clearly rendered suit markings using SVG drawings.
+ * Authentic Mahjong tile component with CSS 3D depth,
+ * free-tile glow, and clearly rendered suit markings using SVG drawings.
  *
- * Suits: Bamboo (條), Circles (筒), Characters (萬), Winds, Dragons
+ * Props:
+ * - tile: { id, suit, value, selected, removed }
+ * - onClick: (id) => void
+ * - isFree: boolean — whether the tile can be selected
  */
 
 // ─── Rendering helpers ────────────────────────────────────────
@@ -67,7 +70,6 @@ function CircleFace({ value }) {
 
 function BambooFace({ value }) {
   if (value === 1) {
-    // Special: bird on bamboo
     return (
       <g>
         <BambooStick x={24} y={20} height={22} color="#1a7a4c" />
@@ -90,13 +92,7 @@ function BambooFace({ value }) {
     for (let c = 0; c < cols && idx < value; c++) {
       const color = idx % 2 === 0 ? "#1a7a4c" : "#c41e3a";
       sticks.push(
-        <BambooStick
-          key={idx}
-          x={startX + c * gapX}
-          y={startY + r * gapY}
-          height={h}
-          color={color}
-        />
+        <BambooStick key={idx} x={startX + c * gapX} y={startY + r * gapY} height={h} color={color} />
       );
       idx++;
     }
@@ -132,37 +128,58 @@ function DragonFace({ dragon }) {
   );
 }
 
+function FlowerFace({ value }) {
+  const flowers = {
+    plum: "🌸",
+    orchid: "🌺",
+    chrysanthemum: "🌼",
+    bamboo_flower: "🎋",
+  };
+  return (
+    <text x="24" y="34" textAnchor="middle" fontSize="24">{flowers[value] || "🌸"}</text>
+  );
+}
+
+function SeasonFace({ value }) {
+  const seasons = {
+    spring: "🌱",
+    summer: "☀️",
+    autumn: "🍂",
+    winter: "❄️",
+  };
+  return (
+    <text x="24" y="34" textAnchor="middle" fontSize="24">{seasons[value] || "🌱"}</text>
+  );
+}
+
 // ─── Tile face selector ───────────────────────────────────────
 
 function TileFace({ tile }) {
   switch (tile.suit) {
-    case "characters":
-      return <CharacterFace value={tile.value} />;
-    case "circles":
-      return <CircleFace value={tile.value} />;
-    case "bamboo":
-      return <BambooFace value={tile.value} />;
-    case "wind":
-      return <WindFace wind={tile.value} />;
-    case "dragon":
-      return <DragonFace dragon={tile.value} />;
-    default:
-      return null;
+    case "characters": return <CharacterFace value={tile.value} />;
+    case "circles": return <CircleFace value={tile.value} />;
+    case "bamboo": return <BambooFace value={tile.value} />;
+    case "wind": return <WindFace wind={tile.value} />;
+    case "dragon": return <DragonFace dragon={tile.value} />;
+    case "flower": return <FlowerFace value={tile.value} />;
+    case "season": return <SeasonFace value={tile.value} />;
+    default: return null;
   }
 }
 
 // ─── Main tile component ──────────────────────────────────────
 
-export default function MahjongTile({ tile, onClick }) {
-  if (tile.matched) {
-    return <div className="aspect-[3/4]" />;
-  }
+export default function MahjongTile({ tile, onClick, isFree = true }) {
+  if (tile.removed) return null;
+
+  const blocked = !isFree;
 
   return (
     <button
       onClick={() => onClick(tile.id)}
-      className="group relative aspect-[3/4] select-none focus:outline-none"
-      aria-label={`${tile.suit} ${tile.value}`}
+      disabled={blocked}
+      className={`group relative w-full h-full select-none focus:outline-none ${blocked ? "cursor-not-allowed" : ""}`}
+      aria-label={`${tile.suit} ${tile.value}${blocked ? " (blocked)" : ""}`}
     >
       {/* 3D base shadow */}
       <div
@@ -170,7 +187,7 @@ export default function MahjongTile({ tile, onClick }) {
         style={{
           background: "linear-gradient(135deg, #6b5c3e 0%, #4a3f2c 100%)",
           transform: "translate(3px, 3px)",
-          borderRadius: "8px",
+          borderRadius: "6px",
         }}
       />
 
@@ -180,7 +197,7 @@ export default function MahjongTile({ tile, onClick }) {
         style={{
           background: "linear-gradient(180deg, #8a7d5a 0%, #5c4f35 100%)",
           transform: "translate(2px, 2px)",
-          borderRadius: "8px",
+          borderRadius: "6px",
         }}
       />
 
@@ -189,18 +206,22 @@ export default function MahjongTile({ tile, onClick }) {
         className={`relative w-full h-full rounded-lg border-2 overflow-hidden transition-all duration-150
           ${tile.selected
             ? "border-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.5)] scale-110 z-20"
-            : "border-amber-300/70 group-hover:scale-105 group-hover:shadow-lg group-active:scale-95"
+            : blocked
+              ? "border-amber-900/40"
+              : "border-amber-300/70 group-hover:scale-105 group-hover:shadow-lg group-active:scale-95"
           }`}
         style={{
           background: tile.selected
             ? "linear-gradient(145deg, #fff9e6 0%, #fef3c7 40%, #fde68a 100%)"
-            : "linear-gradient(145deg, #fffef5 0%, #fefce8 40%, #fef9c3 100%)",
+            : blocked
+              ? "linear-gradient(145deg, #e8e4d4 0%, #d4d0c0 40%, #c8c4b4 100%)"
+              : "linear-gradient(145deg, #fffef5 0%, #fefce8 40%, #fef9c3 100%)",
           boxShadow: tile.selected
             ? "inset 0 1px 2px rgba(255,255,255,0.9), 0 0 20px rgba(250,204,21,0.4)"
             : "inset 0 1px 2px rgba(255,255,255,0.8), inset 0 -1px 2px rgba(0,0,0,0.05)",
         }}
       >
-        {/* Tile texture overlay */}
+        {/* Tile texture */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -209,12 +230,14 @@ export default function MahjongTile({ tile, onClick }) {
         />
 
         {/* SVG face */}
-        <svg
-          viewBox="0 0 48 48"
-          className="absolute inset-0 w-full h-full p-[8%]"
-        >
+        <svg viewBox="0 0 48 48" className={`absolute inset-0 w-full h-full p-[6%] ${blocked ? "opacity-50" : ""}`}>
           <TileFace tile={tile} />
         </svg>
+
+        {/* Free tile subtle glow */}
+        {isFree && !tile.selected && (
+          <div className="absolute inset-0 rounded-lg ring-1 ring-green-400/20" />
+        )}
 
         {/* Selection glow ring */}
         {tile.selected && (
