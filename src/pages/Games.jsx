@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import WarmLoader from "../components/WarmLoader";
 import MagneticCard from "../components/MagneticCard";
 import GameTileManager, { ALL_GAMES as MASTER_GAMES } from "../components/GameTileManager";
 import { Settings, Trophy } from "lucide-react";
@@ -47,13 +48,7 @@ export default function Games() {
     return () => controller.abort();
   }, [loadPrefs]);
 
-  if (loadingPrefs) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loadingPrefs) return <WarmLoader message="Loading your games..." />;
 
   async function handleGameUpdate(paths) {
     if (profileId) {

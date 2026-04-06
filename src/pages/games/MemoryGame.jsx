@@ -235,7 +235,7 @@ export default function MemoryGame() {
   const currentBg = MEMORY_BACKGROUNDS.find(b => b.key === bgKey) || MEMORY_BACKGROUNDS[0];
 
   if (!started) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
       <div className="text-8xl mb-4">🧠</div>
       <h1 className="text-4xl font-black text-primary mb-2 text-center">Memory Match</h1>
       <p className="text-xl text-muted-foreground text-center mb-8">Flip tiles to find matching pairs!</p>
@@ -255,7 +255,7 @@ export default function MemoryGame() {
   );
 
   if (won) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
       <p className="text-2xl text-foreground mb-2">Matched all {SIZES[sizeIdx].pairs} pairs!</p>
@@ -272,7 +272,7 @@ export default function MemoryGame() {
 
   const { cols } = SIZES[sizeIdx];
   return (
-    <div className="min-h-screen bg-background px-2 py-4 pb-24">
+    <div className="min-h-screen px-2 py-4 pb-24">
       <div className="flex items-center justify-between px-2 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-center">

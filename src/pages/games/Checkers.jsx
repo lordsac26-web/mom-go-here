@@ -226,7 +226,7 @@ export default function Checkers() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-2 py-4 pb-24">
+    <div className="min-h-screen px-2 py-4 pb-24">
       <div className="flex items-center justify-between px-2 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">⬛ Checkers</div>

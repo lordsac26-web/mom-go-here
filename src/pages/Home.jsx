@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import WarmLoader from "../components/WarmLoader";
 import HistoryFact from "../components/HistoryFact";
 import TiltCard from "../components/TiltCard";
 import UpcomingBirthdays from "../components/UpcomingBirthdays";
@@ -89,11 +90,7 @@ export default function Home() {
 
   const religionInfo = profile?.religion && RELIGION_LABELS[profile.religion];
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <WarmLoader message="Getting your day ready..." />;
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">

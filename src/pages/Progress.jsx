@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AchievementGrid from "../components/AchievementGrid";
 import StreakDashboard from "../components/StreakDashboard";
+import WarmLoader from "../components/WarmLoader";
 
 const GOAL_MINUTES = 15;
 
@@ -54,14 +55,10 @@ export default function Progress() {
 
   const last14 = getLastNDates(14);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <WarmLoader message="Loading your progress..." />;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-28">
+    <div className="min-h-screen px-4 py-6 pb-28">
       <h1 className="text-4xl font-black text-primary text-center mb-1">📊 Daily Progress</h1>
       <p className="text-center text-muted-foreground text-xl mb-6">Keep your brain active every day!</p>
 

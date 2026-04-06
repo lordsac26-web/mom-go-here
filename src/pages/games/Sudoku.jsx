@@ -200,7 +200,7 @@ export default function Sudoku() {
   }
 
   if (won) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">Puzzle Solved!</h1>
       <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
@@ -211,7 +211,7 @@ export default function Sudoku() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-2 py-4 pb-24">
+    <div className="min-h-screen px-2 py-4 pb-24">
       <div className="flex items-center justify-between px-2 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🔢 Sudoku</div>

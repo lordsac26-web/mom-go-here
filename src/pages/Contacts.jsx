@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { ArrowLeft, Plus, Trash2, Edit2, X, Check } from "lucide-react";
+import WarmLoader from "../components/WarmLoader";
 import EventForm from "../components/EventForm";
 import EventList from "../components/EventList";
 
@@ -196,14 +197,10 @@ export default function Contacts() {
     setShowEventForm(true);
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <WarmLoader message="Loading your contacts..." />;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       {/* Back Nav */}
       <Link to="/" className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 mb-6 shadow-lg hover:bg-muted transition-colors">
         <ArrowLeft size={20} className="text-primary" />

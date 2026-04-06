@@ -200,7 +200,7 @@ export default function WordWhomp() {
   if (gameOver) {
     const allFound = foundWords.length === allWords.length;
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
         <div className="text-8xl mb-4">{allFound ? "🐝" : "⏰"}</div>
         <h1 className="text-4xl font-black text-primary mb-2">
           {allFound ? <BeeFlightTitle text="Perfect Buzz!" size="text-4xl" /> : "Time's Up!"}
@@ -235,7 +235,7 @@ export default function WordWhomp() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-3 py-4 pb-24">
+    <div className="min-h-screen px-3 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>

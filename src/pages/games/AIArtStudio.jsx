@@ -105,7 +105,7 @@ export default function AIArtStudio() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-4 pb-24">
+    <div className="min-h-screen px-4 py-4 pb-24">
       <div className="flex items-center justify-between mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-2xl font-black text-primary">🎨 AI Art Studio</div>

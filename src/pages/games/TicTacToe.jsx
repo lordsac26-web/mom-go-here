@@ -143,7 +143,7 @@ export default function TicTacToe() {
   const CELL_SIZE = GRID_SIZE / 3;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
       <div className="flex items-center justify-between w-full px-4 mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <GameInstructions

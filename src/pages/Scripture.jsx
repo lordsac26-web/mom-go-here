@@ -70,7 +70,7 @@ export default function Scripture() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background px-4 py-6 pb-24 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen px-4 py-6 pb-24 flex flex-col items-center justify-center gap-4">
         <p className="text-xl text-destructive font-bold">{error}</p>
         <button onClick={handleRefresh} className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-lg">
           Try Again
@@ -81,7 +81,7 @@ export default function Scripture() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Link to="/" className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 shadow-lg hover:bg-muted transition-colors">

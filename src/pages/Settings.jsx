@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AudioSettings from "@/components/AudioSettings";
+import WarmLoader from "../components/WarmLoader";
 import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
 import SettingsGameManager from "@/components/SettingsGameManager";
@@ -149,11 +150,7 @@ export default function Settings() {
     setLocation(loc);
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <WarmLoader message="Loading your settings..." />;
 
   // FIX (bug): surface load errors rather than showing an empty/broken settings form
   if (loadError) return (

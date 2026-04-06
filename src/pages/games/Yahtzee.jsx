@@ -194,7 +194,7 @@ export default function Yahtzee() {
   }
 
   if (gameOver) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎲</div>
       <h1 className="text-4xl font-black text-primary mb-4">Game Over!</h1>
       <p className="text-3xl text-foreground mb-2">Final Score: <span className="text-primary font-black">{totalScore}</span></p>
@@ -209,7 +209,7 @@ export default function Yahtzee() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-4 py-4 pb-24">
+    <div className="min-h-screen px-4 py-4 pb-24">
       <div className="flex items-center justify-between mb-4">
         <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
         <div className="text-center">

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus } from "lucide-react";
+import WarmLoader from "../components/WarmLoader";
 import useStreakTracker from "../hooks/useStreakTracker";
 import StreakBanner from "../components/StreakBanner";
 import JournalEntryForm from "../components/JournalEntryForm";
@@ -73,13 +74,7 @@ export default function Memories() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <WarmLoader message="Loading your memories..." />;
 
   // FIX (bug): surface fetch errors to the user instead of showing an empty timeline
   if (error) {
