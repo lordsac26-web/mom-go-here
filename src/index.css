@@ -114,6 +114,7 @@ header, nav {
 main {
   position: relative;
   z-index: 8;
+  background: transparent;
 }
 
 .ai-chatbot-container {

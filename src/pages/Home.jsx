@@ -96,7 +96,7 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       {/* Greeting */}
       <div className="text-center mb-4">
         <h1 className="text-4xl font-black text-primary mb-1">
