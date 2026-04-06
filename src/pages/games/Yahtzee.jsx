@@ -4,7 +4,7 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
-import Dice3DPhysicsRoller from "../../components/Dice3DPhysicsRoller";
+import Dice2DRoller from "../../components/Dice2DRoller";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
 
@@ -239,13 +239,9 @@ export default function Yahtzee() {
         </div>
       </div>
 
-      {/* 3D Physics Dice Roller */}
+      {/* Dice Roller */}
       <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden space-y-3">
-        <div className="bg-gradient-to-b from-red-600 to-red-700 rounded-3xl p-3 shadow-2xl border-4 border-red-800">
-          <div className="bg-gradient-to-b from-yellow-100 to-yellow-50 rounded-full h-5 mb-2 shadow-inner border-2 border-yellow-200" />
-          <Dice3DPhysicsRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} />
-          <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-full h-3 mt-2 shadow-inner border-2 border-yellow-200" />
-        </div>
+        <Dice2DRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} />
 
         <button
           onClick={roll}
@@ -256,18 +252,21 @@ export default function Yahtzee() {
               : "bg-red-600 text-white hover:bg-red-700 active:scale-95"
           }`}
         >
-          {isRolling ? "🎲 Shaking..." : rollsLeft === 0 ? "🎲 No rolls left" : `🎲 Shake Cup (${rollsLeft} left)`}
+          {isRolling ? "🎲 Rolling..." : rollsLeft === 0 ? "🎲 No rolls left" : `🎲 Roll Dice (${rollsLeft} left)`}
         </button>
 
         <div className="flex justify-center gap-2 flex-wrap">
           {dice.map((d, i) => (
             <button key={i} onClick={() => toggleHold(i)}
-              className={`text-sm px-3 py-2 rounded-lg border-2 transition-all ${held[i] ? "border-primary bg-primary/20 text-primary font-black" : "border-border bg-secondary text-foreground"}`}>
+              disabled={rollsLeft === 3}
+              className={`text-sm px-3 py-2 rounded-lg border-2 transition-all ${
+                held[i] ? "border-primary bg-primary/20 text-primary font-black" : "border-border bg-secondary text-foreground"
+              }`}>
               Die {i + 1}: {DIE_FACES[d]} {held[i] ? "🔒" : ""}
             </button>
           ))}
         </div>
-        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm">Hold dice to keep them 👆</p>}
+        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm">Tap dice above to hold them 👆</p>}
       </div>
 
       {/* Scorecard */}
