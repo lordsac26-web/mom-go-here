@@ -16,6 +16,9 @@ import NeonSign from "../../components/slots/NeonSign";
 import SlotStatsOverlay from "../../components/slots/SlotStatsOverlay";
 import AchievementToast from "../../components/slots/AchievementToast";
 import useSlotAchievements from "../../hooks/useSlotAchievements";
+import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/SlotAudioSettings";
+import BonusRound from "../../components/slots/BonusRound";
+import DailyRewardToast, { checkDailyReward } from "../../components/slots/DailyRewardToast";
 import {
   ALL_SYMBOLS, REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
@@ -73,7 +76,17 @@ export default function SlotMachine() {
   const [previewLines, setPreviewLines] = useState(null);
   const previewTimerRef = useRef(null);
   const [showStats, setShowStats] = useState(false);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
+  const [bonusRound, setBonusRound] = useState(null); // { baseWin, scatterCount }
+  const [dailyReward, setDailyReward] = useState(null);
+  const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
   const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
+
+  // Daily reward check on mount
+  useEffect(() => {
+    const reward = checkDailyReward();
+    if (reward) setDailyReward(reward);
+  }, []);
 
   const gridRef = useRef(null);
   const [gridRect, setGridRect] = useState(null);
@@ -156,12 +169,22 @@ export default function SlotMachine() {
               scoreHit(); matchSound(); spark();
             }
 
-            setTimeout(() => {
-              setShowWin(false);
-              setWinningLines([]);
-              setSpinning(false);
-              if (autoSpinRef.current) setTimeout(() => doSpin(), 800);
-            }, 2500);
+            // Check for bonus round trigger (3+ scatters)
+            if (result.scatterCount >= 3) {
+              setTimeout(() => {
+                setShowWin(false);
+                setWinningLines([]);
+                setSpinning(false);
+                setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+              }, 2500);
+            } else {
+              setTimeout(() => {
+                setShowWin(false);
+                setWinningLines([]);
+                setSpinning(false);
+                if (autoSpinRef.current) setTimeout(() => doSpin(), 800);
+              }, 2500);
+            }
           } else {
             setLastWin(0);
             setSpinning(false);
@@ -288,12 +311,20 @@ export default function SlotMachine() {
       <div className="bg-gradient-to-r from-gray-900 via-yellow-900/30 to-gray-900 px-3 py-3 flex items-center justify-between shadow-lg border-b-2 border-yellow-600/50">
         <Link to="/games" className="text-yellow-400 text-lg font-bold">← Back</Link>
         <NeonSign text="LUCKY SLOTS" spinning={spinning} />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowAudioSettings(true)}
+            className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold flex items-center border border-gray-600 text-sm"
+            title="Audio Settings"
+          >
+            🎚️
+          </button>
           <button
             onClick={() => setShowStats(true)}
-            className="bg-gray-800 text-yellow-300 px-3 py-2 rounded-xl font-bold flex items-center gap-1 border border-gray-600 text-sm"
+            className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold flex items-center border border-gray-600 text-sm"
+            title="Stats"
           >
-            🏆 <span className="hidden sm:inline">Stats</span>
+            🏆
           </button>
           <PayTable />
         </div>
@@ -378,8 +409,42 @@ export default function SlotMachine() {
       {/* Achievement Toast */}
       <AchievementToast badge={newBadge} />
 
+      {/* Daily Reward Toast */}
+      {dailyReward && (
+        <DailyRewardToast
+          reward={dailyReward.reward}
+          streak={dailyReward.streak}
+          onDismiss={() => {
+            setBalance(prev => prev + dailyReward.reward);
+            setDailyReward(null);
+          }}
+        />
+      )}
+
+      {/* Bonus Round */}
+      {bonusRound && (
+        <BonusRound
+          baseWin={bonusRound.baseWin}
+          scatterCount={bonusRound.scatterCount}
+          onComplete={(bonusWin) => {
+            setBalance(prev => prev + bonusWin);
+            setLastWin(bonusWin);
+            setBonusRound(null);
+            if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
+          }}
+        />
+      )}
+
       {/* Stats Overlay */}
       <SlotStatsOverlay open={showStats} onClose={() => setShowStats(false)} stats={stats} />
+
+      {/* Audio Settings Overlay */}
+      <SlotAudioSettings
+        open={showAudioSettings}
+        onClose={() => setShowAudioSettings(false)}
+        prefs={audioPrefs}
+        updatePrefs={updateAudioPrefs}
+      />
 
       <SlotControls
         balance={balance}
