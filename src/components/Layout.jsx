@@ -31,7 +31,7 @@ export default function Layout() {
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-3xl">🌸</span>
+            <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-9 h-9 rounded-lg" />
             <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
           <MiniMusicPlayer />
