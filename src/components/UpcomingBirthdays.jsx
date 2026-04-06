@@ -63,10 +63,10 @@ export default function UpcomingBirthdays({ userEmail }) {
       }
     });
 
-    // Add personal events (only future / today)
+    // Add personal events (all upcoming)
     personalEvents.forEach(pe => {
       const days = getDaysUntilBirthday(pe.event_date);
-      if (days >= 0 && days <= 30) {
+      if (days >= 0) {
         events.push({
           id: pe.id,
           name: pe.title,
