@@ -8,15 +8,11 @@ import React, {
   useMemo,
   useEffect,
 } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { RigidBody, Physics, CuboidCollider } from "@react-three/rapier";
 import * as THREE from "three";
 
 // ─── Pip dot textures for each face ───
-// Face mapping for a standard die (opposite faces sum to 7):
-// +X = 3, -X = 4, +Y = 2, -Y = 5, +Z = 1, -Z = 6
-// Three.js box face order: +X, -X, +Y, -Y, +Z, -Z
-
 const PIP_POSITIONS = {
   1: [[0, 0]],
   2: [[-0.3, -0.3], [0.3, 0.3]],
@@ -32,16 +28,13 @@ function createFaceTexture(pips, size = 256) {
   canvas.height = size;
   const ctx = canvas.getContext("2d");
 
-  // Die face background — crisp white with rounded feel
   ctx.fillStyle = "#f5f5f0";
   ctx.fillRect(0, 0, size, size);
 
-  // Subtle border/edge
   ctx.strokeStyle = "#d0d0c8";
   ctx.lineWidth = 4;
   ctx.strokeRect(2, 2, size - 4, size - 4);
 
-  // Draw pips
   const positions = PIP_POSITIONS[pips];
   const center = size / 2;
   const scale = size * 0.38;
@@ -63,9 +56,11 @@ function createFaceTexture(pips, size = 256) {
 // Standard die: +X=3, -X=4, +Y=2, -Y=5, +Z=1, -Z=6
 const FACE_ORDER = [3, 4, 2, 5, 1, 6];
 
-function useDiceMaterials() {
-  return useMemo(() => {
-    return FACE_ORDER.map((pips) => {
+// Create materials array once (module-level singleton)
+let _diceMaterials = null;
+function getDiceMaterials() {
+  if (!_diceMaterials) {
+    _diceMaterials = FACE_ORDER.map((pips) => {
       const tex = createFaceTexture(pips);
       return new THREE.MeshStandardMaterial({
         map: tex,
@@ -73,20 +68,29 @@ function useDiceMaterials() {
         metalness: 0.0,
       });
     });
-  }, []);
+  }
+  return _diceMaterials;
+}
+
+// Create box geometry once
+let _dieGeometry = null;
+function getDieGeometry() {
+  if (!_dieGeometry) {
+    _dieGeometry = new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE);
+  }
+  return _dieGeometry;
 }
 
 // ─── Read the top face from a quaternion ───
 function getTopFace(quaternion) {
   const q = quaternion;
-  // Check which local axis points most upward (world +Y)
   const dirs = [
-    new THREE.Vector3(1, 0, 0),  // +X → face 3
-    new THREE.Vector3(-1, 0, 0), // -X → face 4
-    new THREE.Vector3(0, 1, 0),  // +Y → face 2
-    new THREE.Vector3(0, -1, 0), // -Y → face 5
-    new THREE.Vector3(0, 0, 1),  // +Z → face 1
-    new THREE.Vector3(0, 0, -1), // -Z → face 6
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(-1, 0, 0),
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, -1, 0),
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 0, -1),
   ];
   const faceValues = [3, 4, 2, 5, 1, 6];
 
@@ -95,7 +99,7 @@ function getTopFace(quaternion) {
 
   dirs.forEach((dir, i) => {
     dir.applyQuaternion(q);
-    const dot = dir.y; // how much this axis points up
+    const dot = dir.y;
     if (dot > maxDot) {
       maxDot = dot;
       topFace = faceValues[i];
@@ -108,21 +112,36 @@ function getTopFace(quaternion) {
 // ─── Single Die ───
 const DIE_SIZE = 0.5;
 
+// Imperative die mesh — bypasses R3F's applyProps entirely
+function DieMesh() {
+  const groupRef = useRef();
+
+  useEffect(() => {
+    if (!groupRef.current) return;
+    const geometry = new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE);
+    const materials = getDiceMaterials();
+    const mesh = new THREE.Mesh(geometry, materials);
+    groupRef.current.add(mesh);
+    return () => {
+      groupRef.current?.remove(mesh);
+      geometry.dispose();
+    };
+  }, []);
+
+  return <group ref={groupRef} />;
+}
+
 function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
   const rigidRef = useRef();
-  const meshRef = useRef();
-  const materials = useDiceMaterials();
   const settledRef = useRef(false);
   const settleCounterRef = useRef(0);
   const hasReportedRef = useRef(false);
 
-  // Spread dice across X axis
   const spacing = 1.1;
   const totalWidth = (totalDice - 1) * spacing;
   const startX = -totalWidth / 2;
   const initialX = startX + index * spacing;
 
-  // On roll trigger, apply impulse
   useEffect(() => {
     if (rollTrigger === 0) return;
     if (held) return;
@@ -134,13 +153,11 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
     const body = rigidRef.current;
     if (!body) return;
 
-    // Reset position above the tray
     body.setTranslation(
       { x: initialX + (Math.random() - 0.5) * 0.3, y: 3 + Math.random(), z: (Math.random() - 0.5) * 0.5 },
       true
     );
 
-    // Random rotation
     const euler = new THREE.Euler(
       Math.random() * Math.PI * 2,
       Math.random() * Math.PI * 2,
@@ -149,7 +166,6 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
     const quat = new THREE.Quaternion().setFromEuler(euler);
     body.setRotation({ x: quat.x, y: quat.y, z: quat.z, w: quat.w }, true);
 
-    // Wake it up and apply forces
     body.wakeUp();
     body.setLinvel({ x: (Math.random() - 0.5) * 3, y: -2, z: (Math.random() - 0.5) * 3 }, true);
     body.setAngvel(
@@ -162,7 +178,6 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
     );
   }, [rollTrigger, held, initialX]);
 
-  // Check if die has settled
   useFrame(() => {
     if (hasReportedRef.current) return;
     const body = rigidRef.current;
@@ -177,7 +192,6 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
     if (speed < 0.15) {
       settleCounterRef.current++;
       if (settleCounterRef.current > 30) {
-        // Settled — read the top face
         const rot = body.rotation();
         const quat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
         const value = getTopFace(quat);
@@ -189,7 +203,6 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
     }
   });
 
-  // If held, make it kinematic (frozen in place)
   const bodyType = held ? "kinematicPosition" : "dynamic";
 
   return (
@@ -204,17 +217,31 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
       linearDamping={0.3}
       angularDamping={0.3}
     >
-      <mesh ref={(node) => {
-        meshRef.current = node;
-        if (node) node.material = materials;
-      }}>
-        <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
-      </mesh>
+      <DieMesh />
     </RigidBody>
   );
 }
 
-// ─── Tray (walls + floor) ───
+// ─── Tray — uses plain color string (no material JSX) ───
+function TrayFloor() {
+  const groupRef = useRef();
+
+  useEffect(() => {
+    if (!groupRef.current) return;
+    const geometry = new THREE.BoxGeometry(4, 0.2, 2);
+    const material = new THREE.MeshStandardMaterial({ color: "#2d5a27", roughness: 0.9 });
+    const mesh = new THREE.Mesh(geometry, material);
+    groupRef.current.add(mesh);
+    return () => {
+      groupRef.current?.remove(mesh);
+      geometry.dispose();
+      material.dispose();
+    };
+  }, []);
+
+  return <group ref={groupRef} />;
+}
+
 function DiceTray() {
   const wallThickness = 0.1;
   const floorY = -0.05;
@@ -227,13 +254,9 @@ function DiceTray() {
       {/* Floor */}
       <RigidBody type="fixed" position={[0, floorY, 0]}>
         <CuboidCollider args={[trayWidth / 2, wallThickness, trayDepth / 2]} />
-        <mesh>
-          <boxGeometry args={[trayWidth, wallThickness * 2, trayDepth]} />
-          <meshStandardMaterial color="#2d5a27" roughness={0.9} />
-        </mesh>
+        <TrayFloor />
       </RigidBody>
 
-      {/* Walls — invisible colliders */}
       {/* Left */}
       <RigidBody type="fixed" position={[-trayWidth / 2, wallHeight / 2, 0]}>
         <CuboidCollider args={[wallThickness, wallHeight / 2, trayDepth / 2]} />
@@ -261,7 +284,6 @@ function DiceScene({ held, rollTrigger, onAllSettled }) {
   const settledCountRef = useRef(0);
   const rollTriggerRef = useRef(0);
 
-  // Reset tracking on new roll
   useEffect(() => {
     if (rollTrigger === 0) return;
     if (rollTrigger === rollTriggerRef.current) return;
@@ -269,12 +291,10 @@ function DiceScene({ held, rollTrigger, onAllSettled }) {
 
     const unheldCount = held.filter((h) => !h).length;
     if (unheldCount === 0) {
-      // All held — immediately report current values
       onAllSettled(resultsRef.current);
       return;
     }
     settledCountRef.current = 0;
-    // Keep held dice results, clear unheld
     resultsRef.current = resultsRef.current.map((v, i) => (held[i] ? v : null));
   }, [rollTrigger, held, onAllSettled]);
 
@@ -294,10 +314,7 @@ function DiceScene({ held, rollTrigger, onAllSettled }) {
   return (
     <>
       <ambientLight intensity={0.8} />
-      <directionalLight
-        position={[3, 8, 4]}
-        intensity={1.2}
-      />
+      <directionalLight position={[3, 8, 4]} intensity={1.2} />
       <pointLight position={[-2, 4, -1]} intensity={0.5} />
 
       <Physics gravity={[0, -15, 0]}>
@@ -320,6 +337,7 @@ function DiceScene({ held, rollTrigger, onAllSettled }) {
 // ─── Main Component ───
 const Dice3DPhysicsRoller = forwardRef(({ onRollComplete, held }, ref) => {
   const [rollTrigger, setRollTrigger] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   useImperativeHandle(ref, () => ({
     roll: () => setRollTrigger((t) => t + 1),
@@ -332,12 +350,24 @@ const Dice3DPhysicsRoller = forwardRef(({ onRollComplete, held }, ref) => {
     [onRollComplete]
   );
 
+  // Fallback if WebGL/Canvas fails
+  if (hasError) {
+    return (
+      <div className="w-full h-[200px] flex items-center justify-center bg-secondary/50 rounded-2xl">
+        <p className="text-muted-foreground text-lg font-bold">🎲 3D dice unavailable — using quick roll</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: "100%", height: "200px", touchAction: "none" }}>
       <Canvas
         camera={{ position: [0, 5, 4], fov: 45, near: 0.1, far: 50 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", () => setHasError(true));
+        }}
       >
         <DiceScene
           held={held}
