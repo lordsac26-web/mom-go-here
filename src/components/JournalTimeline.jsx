@@ -1,7 +1,11 @@
+import { useState } from "react";
 import moment from "moment";
 import { BookOpen, Sparkles } from "lucide-react";
+import MemoryViewer from "./MemoryViewer";
 
 export default function JournalTimeline({ entries }) {
+  const [viewIndex, setViewIndex] = useState(null);
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12">
@@ -13,9 +17,14 @@ export default function JournalTimeline({ entries }) {
   }
 
   return (
+    <>
     <div className="space-y-4">
-      {entries.map((entry) => (
-        <div key={entry.id} className="bg-card border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+      {entries.map((entry, idx) => (
+        <div
+          key={entry.id}
+          className="bg-card border-2 border-border rounded-2xl overflow-hidden shadow-lg cursor-pointer active:scale-[0.98] transition-transform"
+          onClick={() => setViewIndex(idx)}
+        >
           {/* Photo */}
           {entry.photo_url && (
             <img
@@ -48,5 +57,18 @@ export default function JournalTimeline({ entries }) {
         </div>
       ))}
     </div>
+
+    {/* Memory Viewer Modal */}
+    {viewIndex !== null && (
+      <MemoryViewer
+        entry={entries[viewIndex]}
+        onClose={() => setViewIndex(null)}
+        onPrev={() => setViewIndex((i) => Math.max(0, i - 1))}
+        onNext={() => setViewIndex((i) => Math.min(entries.length - 1, i + 1))}
+        hasPrev={viewIndex > 0}
+        hasNext={viewIndex < entries.length - 1}
+      />
+    )}
+    </>
   );
 }
