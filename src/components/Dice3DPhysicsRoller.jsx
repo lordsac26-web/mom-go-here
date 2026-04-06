@@ -110,6 +110,7 @@ const DIE_SIZE = 0.5;
 
 function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
   const rigidRef = useRef();
+  const meshRef = useRef();
   const materials = useDiceMaterials();
   const settledRef = useRef(false);
   const settleCounterRef = useRef(0);
@@ -203,11 +204,8 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
       linearDamping={0.3}
       angularDamping={0.3}
     >
-      <mesh>
+      <mesh ref={meshRef} material={materials}>
         <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
-        {materials.map((mat, idx) => (
-          <primitive key={idx} object={mat} attach={`material-${idx}`} />
-        ))}
       </mesh>
     </RigidBody>
   );
