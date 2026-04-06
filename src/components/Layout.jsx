@@ -2,7 +2,6 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
-import ParallaxBackground from "./ParallaxBackground";
 import PersistentAudioStream from "./PersistentAudioStream";
 
 import MiniMusicPlayer from "./MiniMusicPlayer";
@@ -23,8 +22,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
-      {/* 7-Layer Parallax Background */}
-      <ParallaxBackground />
+
 
       {/* Persistent audio stream */}
       <PersistentAudioStream />
