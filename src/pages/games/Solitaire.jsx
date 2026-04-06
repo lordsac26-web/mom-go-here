@@ -61,6 +61,51 @@ function checkWin(g) {
   return g.foundations.every(f => f.length === 13);
 }
 
+function hasAnyMoves(g) {
+  // Can draw from stock?
+  if (g.stock.length > 0) return true;
+
+  // Can recycle waste to stock?
+  if (g.waste.length > 0 && g.stock.length === 0) return true;
+
+  // Check waste top card
+  const wasteCard = g.waste.length ? g.waste[g.waste.length - 1] : null;
+  if (wasteCard) {
+    for (const col of g.tableau) {
+      const target = col.length ? col[col.length - 1] : null;
+      if (canPlaceOnTableau(wasteCard, target)) return true;
+    }
+    for (const f of g.foundations) {
+      if (canPlaceOnFoundation(wasteCard, f)) return true;
+    }
+  }
+
+  // Check tableau face-up cards
+  for (let ci = 0; ci < g.tableau.length; ci++) {
+    const col = g.tableau[ci];
+    for (let cardIdx = 0; cardIdx < col.length; cardIdx++) {
+      const card = col[cardIdx];
+      if (!card.faceUp) continue;
+
+      // Can move to foundation? (only top card)
+      if (cardIdx === col.length - 1) {
+        for (const f of g.foundations) {
+          if (canPlaceOnFoundation(card, f)) return true;
+        }
+      }
+
+      // Can move stack to another column?
+      for (let ti = 0; ti < g.tableau.length; ti++) {
+        if (ti === ci) continue;
+        const target = g.tableau[ti].length ? g.tableau[ti][g.tableau[ti].length - 1] : null;
+        if (canPlaceOnTableau(card, target)) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // CardView replaced by SolitaireCard component with 3D flip
 
 // FIX (perf + bug): extracted the move-card-to-tableau logic into a shared
@@ -88,6 +133,7 @@ export default function Solitaire() {
   const [selected, setSelected] = useState(null);
   const [won, setWon] = useState(false);
   const [drawKey, setDrawKey] = useState(0);
+  const [stuck, setStuck] = useState(false);
 
   function drawCard() {
     tapVibrate();
@@ -102,6 +148,7 @@ export default function Solitaire() {
         card.faceUp = true;
         g.waste.push(card);
       }
+      if (!hasAnyMoves(g)) setTimeout(() => setStuck(true), 300);
       return g;
     });
     setSelected(null);
@@ -195,11 +242,19 @@ export default function Solitaire() {
     }
   }
 
+  function resetGame() {
+    setGame(initGame());
+    setSelected(null);
+    setWon(false);
+    setStuck(false);
+    setDrawKey(0);
+  }
+
   if (won) return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
-      <button onClick={() => { setGame(initGame()); setSelected(null); setWon(false); }}
+      <button onClick={resetGame}
         className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
         🔄 New Game
       </button>
@@ -229,7 +284,7 @@ export default function Solitaire() {
               "Keep going until all cards are on the foundations — you win!"
             ]}
           />
-          <button onClick={() => { setGame(initGame()); setSelected(null); }} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold">🔄</button>
+          <button onClick={resetGame} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold">🔄</button>
         </div>
       </div>
 
@@ -322,6 +377,45 @@ export default function Solitaire() {
           </div>
         ))}
       </div>
+      {/* No Moves Alert */}
+      <AnimatePresence>
+        {stuck && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setStuck(false)}
+          >
+            <motion.div
+              className="bg-card border-2 border-primary rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
+              initial={{ scale: 0.7, y: 40 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.7, y: 40 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-6xl mb-3">😔</div>
+              <h2 className="text-2xl font-black text-foreground mb-2">No Moves Left!</h2>
+              <p className="text-muted-foreground text-lg mb-6">There are no more available moves. Start a new game?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStuck(false)}
+                  className="flex-1 bg-secondary text-foreground text-lg font-bold py-3 rounded-2xl"
+                >
+                  Keep Looking
+                </button>
+                <button
+                  onClick={resetGame}
+                  className="flex-1 bg-primary text-primary-foreground text-lg font-black py-3 rounded-2xl"
+                >
+                  🔄 New Game
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
