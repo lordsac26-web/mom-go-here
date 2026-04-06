@@ -63,7 +63,7 @@ export default function Games() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       <div className="flex items-center justify-between mb-2 px-2">
         <div />
         <h1 className="text-4xl font-black text-primary text-center">🎮 Choose a Game</h1>

@@ -97,7 +97,7 @@ export default function Memories() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       <div className="text-center mb-6">
         <h1 className="text-4xl font-black text-primary">📔 My Memories</h1>
         <p className="text-muted-foreground text-xl mt-1">Your daily photo journal</p>

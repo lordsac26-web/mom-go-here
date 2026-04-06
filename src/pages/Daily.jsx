@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { RefreshCw, BookmarkPlus, Check } from "lucide-react";
@@ -76,20 +77,20 @@ export default function Daily() {
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-background px-4 py-6 pb-24 text-center">
+      <div className="min-h-screen px-4 py-6 pb-24 text-center">
         <h1 className="text-4xl font-black text-primary mb-4">⭐ Daily Inspiration</h1>
         <div className="bg-card border border-border rounded-2xl p-6 shadow">
           <p className="text-xl text-foreground mb-4">No faith preference set yet.</p>
-          <a href="/settings" className="text-primary text-lg font-bold underline">
+          <Link to="/settings" className="text-primary text-lg font-bold underline">
             Go to Settings to choose your daily reading →
-          </a>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       <div className="text-center mb-6">
         <span className="text-5xl">{config.emoji}</span>
         <h1 className="text-4xl font-black text-primary mt-2">{config.label}</h1>

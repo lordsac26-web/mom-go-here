@@ -169,7 +169,7 @@ export default function Settings() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 pb-24">
+    <div className="min-h-screen px-4 py-6 pb-24">
       <h1 className="text-4xl font-black text-primary text-center mb-2">⚙️ Settings</h1>
       <p className="text-center text-muted-foreground text-xl mb-6">Update your preferences</p>
 
