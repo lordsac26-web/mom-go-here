@@ -241,7 +241,7 @@ export default function Yahtzee() {
 
       {/* Dice Roller */}
       <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden space-y-3">
-        <Dice2DRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} />
+        <Dice2DRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} onToggleHold={toggleHold} />
 
         <button
           onClick={roll}

@@ -45,7 +45,7 @@ function DieFace({ value, held, rolling, onClick, index }) {
   );
 }
 
-const Dice2DRoller = forwardRef(({ onRollComplete, held }, ref) => {
+const Dice2DRoller = forwardRef(({ onRollComplete, held, onToggleHold }, ref) => {
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [rolling, setRolling] = useState(false);
   const intervalRef = useRef(null);
@@ -99,7 +99,7 @@ const Dice2DRoller = forwardRef(({ onRollComplete, held }, ref) => {
           value={d}
           held={held[i]}
           rolling={rolling && !held[i]}
-          onClick={() => {}}
+          onClick={() => onToggleHold?.(i)}
         />
       ))}
     </div>
