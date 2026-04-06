@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { ArrowLeft, Plus, Trash2, Edit2, X, Check } from "lucide-react";
+import EventForm from "../components/EventForm";
+import EventList from "../components/EventList";
 
 const RELATIONSHIPS = ["Family", "Friend", "Neighbor", "Coworker", "Other"];
 
@@ -120,12 +122,19 @@ function ContactForm({ initial, onSave, onCancel }) {
 export default function Contacts() {
   const { user } = useAuth();
   const [contacts, setContacts] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [tab, setTab] = useState("contacts");
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   useEffect(() => {
-    if (user) loadContacts();
+    if (user) {
+      loadContacts();
+      loadEvents();
+    }
   }, [user]);
 
   async function loadContacts() {
@@ -161,6 +170,32 @@ export default function Contacts() {
     setShowForm(true);
   }
 
+  async function loadEvents() {
+    const list = await base44.entities.PersonalEvent.filter({ user_email: user.email });
+    setEvents(list);
+  }
+
+  async function handleEventSave(data) {
+    if (editingEvent) {
+      await base44.entities.PersonalEvent.update(editingEvent.id, { ...data, notified_day_before: false, notified_day_of: false });
+    } else {
+      await base44.entities.PersonalEvent.create({ user_email: user.email, ...data, notified_day_before: false, notified_day_of: false });
+    }
+    setShowEventForm(false);
+    setEditingEvent(null);
+    loadEvents();
+  }
+
+  async function handleEventDelete(id) {
+    await base44.entities.PersonalEvent.delete(id);
+    loadEvents();
+  }
+
+  function startEditEvent(ev) {
+    setEditingEvent(ev);
+    setShowEventForm(true);
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -178,75 +213,132 @@ export default function Contacts() {
 
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-black text-primary">👥 My Contacts</h1>
-          <p className="text-muted-foreground text-lg mt-1">Keep track of birthdays & anniversaries</p>
+          <h1 className="text-4xl font-black text-primary">👥 Contacts & Events</h1>
+          <p className="text-muted-foreground text-lg mt-1">Birthdays, anniversaries & personal events</p>
         </div>
 
-        {/* Add button */}
-        {!showForm && (
+        {/* Tab Switcher */}
+        <div className="flex gap-2 mb-6">
           <button
-            onClick={() => { setEditingContact(null); setShowForm(true); }}
-            className="w-full bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl mb-6 flex items-center justify-center gap-2 shadow-xl"
+            onClick={() => setTab("contacts")}
+            className={`flex-1 py-3 rounded-2xl text-lg font-black text-center transition-all ${
+              tab === "contacts" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+            }`}
           >
-            <Plus size={24} /> Add Contact
+            👥 Contacts
           </button>
+          <button
+            onClick={() => setTab("events")}
+            className={`flex-1 py-3 rounded-2xl text-lg font-black text-center transition-all ${
+              tab === "events" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            📅 Events
+          </button>
+        </div>
+
+        {tab === "contacts" && (
+          <>
+            {/* Add button */}
+            {!showForm && (
+              <button
+                onClick={() => { setEditingContact(null); setShowForm(true); }}
+                className="w-full bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl mb-6 flex items-center justify-center gap-2 shadow-xl"
+              >
+                <Plus size={24} /> Add Contact
+              </button>
+            )}
+
+            {/* Form */}
+            {showForm && (
+              <div className="mb-6">
+                <ContactForm
+                  initial={editingContact}
+                  onSave={handleSave}
+                  onCancel={() => { setShowForm(false); setEditingContact(null); }}
+                />
+              </div>
+            )}
+
+            {/* Contact List */}
+            {contacts.length === 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 text-center">
+                <span className="text-6xl block mb-4">🎂</span>
+                <p className="text-xl font-bold text-foreground mb-2">No contacts yet!</p>
+                <p className="text-muted-foreground text-lg">Add friends and family to get birthday reminders on your home screen.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {contacts.map(c => {
+                  const daysUntil = getDaysUntilBirthday(c.birthday);
+                  return (
+                    <div key={c.id} className="bg-card border border-border rounded-2xl p-4 shadow flex items-center gap-3">
+                      <span className="text-3xl flex-shrink-0">
+                        {daysUntil === 0 ? "🎉" : daysUntil <= 7 ? "🎂" : "👤"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-lg font-bold text-foreground truncate">{c.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          🎂 {formatBirthday(c.birthday)}
+                          {c.relationship ? ` · ${c.relationship}` : ""}
+                        </p>
+                        {c.anniversary && (
+                          <p className="text-sm text-muted-foreground">
+                            💍 Anniversary: {formatBirthday(c.anniversary)}
+                          </p>
+                        )}
+                        <p className="text-sm font-bold text-primary">
+                          {daysUntil === 0 ? "🎉 Birthday TODAY!" : daysUntil === 1 ? "Tomorrow!" : `${daysUntil} days away`}
+                        </p>
+                        {c.notes && <p className="text-sm text-muted-foreground mt-1 truncate">{c.notes}</p>}
+                      </div>
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                        <button onClick={() => startEdit(c)} className="p-2 rounded-lg bg-secondary hover:bg-muted">
+                          <Edit2 size={18} className="text-foreground" />
+                        </button>
+                        <button onClick={() => handleDelete(c.id)} className="p-2 rounded-lg bg-secondary hover:bg-destructive/20">
+                          <Trash2 size={18} className="text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Form */}
-        {showForm && (
-          <div className="mb-6">
-            <ContactForm
-              initial={editingContact}
-              onSave={handleSave}
-              onCancel={() => { setShowForm(false); setEditingContact(null); }}
-            />
-          </div>
-        )}
+        {tab === "events" && (
+          <>
+            {!showEventForm && (
+              <button
+                onClick={() => { setEditingEvent(null); setShowEventForm(true); }}
+                className="w-full bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl mb-6 flex items-center justify-center gap-2 shadow-xl"
+              >
+                <Plus size={24} /> Add Event
+              </button>
+            )}
 
-        {/* Contact List */}
-        {contacts.length === 0 ? (
-          <div className="bg-card border border-border rounded-2xl p-8 text-center">
-            <span className="text-6xl block mb-4">🎂</span>
-            <p className="text-xl font-bold text-foreground mb-2">No contacts yet!</p>
-            <p className="text-muted-foreground text-lg">Add friends and family to get birthday reminders on your home screen.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {contacts.map(c => {
-              const daysUntil = getDaysUntilBirthday(c.birthday);
-              return (
-                <div key={c.id} className="bg-card border border-border rounded-2xl p-4 shadow flex items-center gap-3">
-                  <span className="text-3xl flex-shrink-0">
-                    {daysUntil === 0 ? "🎉" : daysUntil <= 7 ? "🎂" : "👤"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-lg font-bold text-foreground truncate">{c.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      🎂 {formatBirthday(c.birthday)}
-                      {c.relationship ? ` · ${c.relationship}` : ""}
-                    </p>
-                    {c.anniversary && (
-                      <p className="text-sm text-muted-foreground">
-                        💍 Anniversary: {formatBirthday(c.anniversary)}
-                      </p>
-                    )}
-                    <p className="text-sm font-bold text-primary">
-                      {daysUntil === 0 ? "🎉 Birthday TODAY!" : daysUntil === 1 ? "Tomorrow!" : `${daysUntil} days away`}
-                    </p>
-                    {c.notes && <p className="text-sm text-muted-foreground mt-1 truncate">{c.notes}</p>}
-                  </div>
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <button onClick={() => startEdit(c)} className="p-2 rounded-lg bg-secondary hover:bg-muted">
-                      <Edit2 size={18} className="text-foreground" />
-                    </button>
-                    <button onClick={() => handleDelete(c.id)} className="p-2 rounded-lg bg-secondary hover:bg-destructive/20">
-                      <Trash2 size={18} className="text-destructive" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            {showEventForm && (
+              <div className="mb-6">
+                <EventForm
+                  initial={editingEvent}
+                  onSave={handleEventSave}
+                  onCancel={() => { setShowEventForm(false); setEditingEvent(null); }}
+                />
+              </div>
+            )}
+
+            {events.length === 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 text-center">
+                <span className="text-6xl block mb-4">📅</span>
+                <p className="text-xl font-bold text-foreground mb-2">No events yet!</p>
+                <p className="text-muted-foreground text-lg">Add personal events like socials, appointments, and get email reminders!</p>
+              </div>
+            ) : (
+              <EventList events={events} onEdit={startEditEvent} onDelete={handleEventDelete} />
+            )}
+          </>
         )}
       </div>
     </div>

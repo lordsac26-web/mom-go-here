@@ -1,0 +1,40 @@
+{
+  "name": "PersonalEvent",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string",
+      "description": "YYYY-MM-DD format"
+    },
+    "description": {
+      "type": "string"
+    },
+    "notify_day_before": {
+      "type": "boolean",
+      "description": "Send reminder 1 day before"
+    },
+    "notify_day_of": {
+      "type": "boolean",
+      "description": "Send reminder day of event"
+    },
+    "notified_day_before": {
+      "type": "boolean",
+      "description": "Already sent day-before notification"
+    },
+    "notified_day_of": {
+      "type": "boolean",
+      "description": "Already sent day-of notification"
+    }
+  },
+  "required": [
+    "user_email",
+    "title",
+    "event_date"
+  ]
+}

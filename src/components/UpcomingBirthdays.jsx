@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Gift, Heart, ChevronRight } from "lucide-react";
+import { Gift, Heart, ChevronRight, CalendarDays } from "lucide-react";
 
 function getDaysUntilBirthday(birthdayStr) {
   const [year, month, day] = birthdayStr.split("-").map(Number);
@@ -37,7 +37,10 @@ export default function UpcomingBirthdays({ userEmail }) {
   }, [userEmail]);
 
   async function loadContacts() {
-    const contacts = await base44.entities.Contact.filter({ user_email: userEmail });
+    const [contacts, personalEvents] = await Promise.all([
+      base44.entities.Contact.filter({ user_email: userEmail }),
+      base44.entities.PersonalEvent.filter({ user_email: userEmail }),
+    ]);
 
     const events = [];
 
@@ -60,7 +63,22 @@ export default function UpcomingBirthdays({ userEmail }) {
       }
     });
 
-    const sorted = events.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 3);
+    // Add personal events (only future / today)
+    personalEvents.forEach(pe => {
+      const days = getDaysUntilBirthday(pe.event_date);
+      if (days >= 0 && days <= 30) {
+        events.push({
+          id: pe.id,
+          name: pe.title,
+          eventType: "personal",
+          eventDate: pe.event_date,
+          daysUntil: days,
+          description: pe.description,
+        });
+      }
+    });
+
+    const sorted = events.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 5);
     setUpcoming(sorted);
     setLoading(false);
   }
@@ -81,7 +99,7 @@ export default function UpcomingBirthdays({ userEmail }) {
     <div className="bg-card border border-border rounded-2xl mb-4 shadow overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <Gift size={20} className="text-primary" />
+          <CalendarDays size={20} className="text-primary" />
           <span className="text-lg font-bold text-foreground">Upcoming Events</span>
         </div>
         <Link to="/contacts" className="text-primary text-sm font-bold flex items-center gap-1">
@@ -93,14 +111,16 @@ export default function UpcomingBirthdays({ userEmail }) {
           <div key={`${c.id}-${c.eventType}-${i}`} className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="text-2xl">
-                {c.eventType === "anniversary"
+                {c.eventType === "personal"
+                  ? (c.daysUntil === 0 ? "🎉" : c.daysUntil <= 3 ? "📌" : "📅")
+                  : c.eventType === "anniversary"
                   ? (c.daysUntil === 0 ? "💕" : c.daysUntil <= 7 ? "💍" : "💑")
                   : (c.daysUntil === 0 ? "🎉" : c.daysUntil <= 7 ? "🎂" : "🎈")}
               </span>
               <div>
                 <p className="text-base font-bold text-foreground">{c.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {c.eventType === "anniversary" ? "Anniversary" : "Birthday"} · {formatBirthday(c.eventDate)}{c.relationship ? ` · ${c.relationship}` : ""}
+                  {c.eventType === "personal" ? "Event" : c.eventType === "anniversary" ? "Anniversary" : "Birthday"} · {formatBirthday(c.eventDate)}{c.relationship ? ` · ${c.relationship}` : ""}
                 </p>
               </div>
             </div>
