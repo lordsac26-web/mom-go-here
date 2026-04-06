@@ -7,6 +7,7 @@ import PersistentAudioStream from "./PersistentAudioStream";
 import NatureSoundsPlayer from "./NatureSoundsPlayer";
 import NatureSoundsToggle from "./NatureSoundsToggle";
 import MiniMusicPlayer from "./MiniMusicPlayer";
+import HeaderSoundControls from "./HeaderSoundControls";
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -37,7 +38,8 @@ export default function Layout() {
             <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-9 h-9 rounded-lg" />
             <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <HeaderSoundControls />
             <NatureSoundsToggle />
             <MiniMusicPlayer />
           </div>
