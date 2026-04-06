@@ -261,7 +261,7 @@ export default function Checkers() {
           }}
         >
           {board.map((row, r) => (
-            <div key={r} className="flex">
+            <div key={r} className="grid grid-cols-8">
               {row.map((piece, c) => {
                 const dark = (r + c) % 2 === 1;
                 const isSel = selected && selected[0] === r && selected[1] === c;
@@ -275,7 +275,7 @@ export default function Checkers() {
                 const canMove = piece?.player === 1 && movablePieces.has(`${r},${c}`) && turn === 1;
 
                 return (
-                  <div key={c} className="flex-1 relative">
+                  <div key={c} className="relative">
                     {/* Movable piece glow ring */}
                     {canMove && !isSel && (
                       <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">

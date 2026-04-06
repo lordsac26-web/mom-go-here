@@ -7,7 +7,7 @@ export default function BoardSquare({ dark, piece, selected, isTarget, isJumpTar
   return (
     <button
       onClick={onClick}
-      className={`flex-1 aspect-square flex items-center justify-center relative transition-all
+      className={`w-full aspect-square flex items-center justify-center relative transition-all
         ${dark
           ? "bg-gradient-to-br from-green-900 via-green-800 to-green-900"
           : "bg-gradient-to-br from-amber-100 via-amber-50 to-amber-100"
