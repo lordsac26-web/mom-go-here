@@ -203,7 +203,7 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
       linearDamping={0.3}
       angularDamping={0.3}
     >
-      <mesh castShadow receiveShadow>
+      <mesh>
         <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
         {materials.map((mat, idx) => (
           <primitive key={idx} object={mat} attach={`material-${idx}`} />
@@ -226,7 +226,7 @@ function DiceTray() {
       {/* Floor */}
       <RigidBody type="fixed" position={[0, floorY, 0]}>
         <CuboidCollider args={[trayWidth / 2, wallThickness, trayDepth / 2]} />
-        <mesh receiveShadow>
+        <mesh>
           <boxGeometry args={[trayWidth, wallThickness * 2, trayDepth]} />
           <meshStandardMaterial color="#2d5a27" roughness={0.9} />
         </mesh>
@@ -292,15 +292,12 @@ function DiceScene({ held, rollTrigger, onAllSettled }) {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
+      <ambientLight intensity={0.8} />
       <directionalLight
         position={[3, 8, 4]}
         intensity={1.2}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
       />
-      <pointLight position={[-2, 4, -1]} intensity={0.4} />
+      <pointLight position={[-2, 4, -1]} intensity={0.5} />
 
       <Physics gravity={[0, -15, 0]}>
         <DiceTray />
@@ -337,7 +334,6 @@ const Dice3DPhysicsRoller = forwardRef(({ onRollComplete, held }, ref) => {
   return (
     <div style={{ width: "100%", height: "200px", touchAction: "none" }}>
       <Canvas
-        shadows
         camera={{ position: [0, 5, 4], fov: 45, near: 0.1, far: 50 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
