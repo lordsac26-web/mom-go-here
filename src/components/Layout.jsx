@@ -4,8 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import ParallaxBackground from "./ParallaxBackground";
 import PersistentAudioStream from "./PersistentAudioStream";
-import NatureSoundsPlayer from "./NatureSoundsPlayer";
-import NatureSoundsToggle from "./NatureSoundsToggle";
+
 import MiniMusicPlayer from "./MiniMusicPlayer";
 import HeaderSoundControls from "./HeaderSoundControls";
 
@@ -27,9 +26,8 @@ export default function Layout() {
       {/* 7-Layer Parallax Background */}
       <ParallaxBackground />
 
-      {/* Persistent audio streams */}
+      {/* Persistent audio stream */}
       <PersistentAudioStream />
-      <NatureSoundsPlayer />
 
       {/* Top Nav — clean header with logo + music player */}
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
@@ -40,7 +38,6 @@ export default function Layout() {
           </Link>
           <div className="flex items-center gap-1.5">
             <HeaderSoundControls />
-            <NatureSoundsToggle />
             <MiniMusicPlayer />
           </div>
         </div>
