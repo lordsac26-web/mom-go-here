@@ -204,7 +204,10 @@ function PhysicsDie({ index, held, onSettle, rollTrigger, totalDice }) {
       linearDamping={0.3}
       angularDamping={0.3}
     >
-      <mesh ref={meshRef} material={materials}>
+      <mesh ref={(node) => {
+        meshRef.current = node;
+        if (node) node.material = materials;
+      }}>
         <boxGeometry args={[DIE_SIZE, DIE_SIZE, DIE_SIZE]} />
       </mesh>
     </RigidBody>
