@@ -1,0 +1,38 @@
+{
+  "name": "ProgressiveJackpot",
+  "type": "object",
+  "properties": {
+    "pool_name": {
+      "type": "string",
+      "description": "Unique identifier for this jackpot pool"
+    },
+    "current_amount": {
+      "type": "number",
+      "description": "Current jackpot pool amount"
+    },
+    "total_contributions": {
+      "type": "number",
+      "description": "Total ever contributed to this pool"
+    },
+    "total_spins": {
+      "type": "number",
+      "description": "Total spins contributed"
+    },
+    "last_winner_email": {
+      "type": "string"
+    },
+    "last_winner_name": {
+      "type": "string"
+    },
+    "last_win_amount": {
+      "type": "number"
+    },
+    "last_win_date": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pool_name",
+    "current_amount"
+  ]
+}

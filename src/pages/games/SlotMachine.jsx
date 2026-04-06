@@ -19,6 +19,9 @@ import useSlotAchievements from "../../hooks/useSlotAchievements";
 import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/SlotAudioSettings";
 import BonusRound from "../../components/slots/BonusRound";
 import DailyRewardToast, { checkDailyReward } from "../../components/slots/DailyRewardToast";
+import JackpotTicker from "../../components/slots/JackpotTicker";
+import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
+import { base44 } from "@/api/base44Client";
 import {
   ALL_SYMBOLS, REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
@@ -81,11 +84,24 @@ export default function SlotMachine() {
   const [dailyReward, setDailyReward] = useState(null);
   const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
   const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
+  const [jackpotAmount, setJackpotAmount] = useState(0);
+  const [jackpotWin, setJackpotWin] = useState(null); // { winAmount }
 
   // Daily reward check on mount
   useEffect(() => {
     const reward = checkDailyReward();
     if (reward) setDailyReward(reward);
+  }, []);
+
+  // Fetch jackpot on mount + subscribe for real-time updates
+  useEffect(() => {
+    base44.functions.invoke("progressiveJackpot", { action: "get" })
+      .then(res => { if (res.data?.jackpot) setJackpotAmount(res.data.jackpot); });
+
+    const unsub = base44.entities.ProgressiveJackpot.subscribe((event) => {
+      if (event.data?.current_amount) setJackpotAmount(event.data.current_amount);
+    });
+    return unsub;
   }, []);
 
   const gridRef = useRef(null);
@@ -278,6 +294,16 @@ export default function SlotMachine() {
       setSpinning(true);
 
       recordSpin(currentBet);
+
+      // Contribute to progressive jackpot (fire-and-forget)
+      base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: currentBet })
+        .then(res => {
+          if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
+          if (res.data?.jackpotWin) {
+            setJackpotWin({ winAmount: res.data.winAmount });
+          }
+        });
+
       return prev - currentBet;
     });
   }
@@ -328,6 +354,11 @@ export default function SlotMachine() {
           </button>
           <PayTable />
         </div>
+      </div>
+
+      {/* Jackpot Ticker */}
+      <div className="px-3 pt-2">
+        <JackpotTicker amount={jackpotAmount} spinning={spinning} />
       </div>
 
       {/* Top-off notification */}
@@ -417,6 +448,20 @@ export default function SlotMachine() {
           onDismiss={() => {
             setBalance(prev => prev + dailyReward.reward);
             setDailyReward(null);
+          }}
+        />
+      )}
+
+      {/* Jackpot Win Overlay */}
+      {jackpotWin && (
+        <JackpotWinOverlay
+          winAmount={jackpotWin.winAmount}
+          onCollect={() => {
+            setBalance(prev => prev + jackpotWin.winAmount);
+            setLastWin(jackpotWin.winAmount);
+            setJackpotWin(null);
+            fireworks();
+            emojiRain(["💰", "🏆", "💎", "👑"]);
           }}
         />
       )}
