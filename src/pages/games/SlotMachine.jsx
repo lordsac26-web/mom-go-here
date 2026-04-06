@@ -13,6 +13,9 @@ import PaylineOverlay from "../../components/slots/PaylineOverlay";
 import PayTable from "../../components/slots/PayTable";
 import CasinoFrame from "../../components/slots/CasinoFrame";
 import NeonSign from "../../components/slots/NeonSign";
+import SlotStatsOverlay from "../../components/slots/SlotStatsOverlay";
+import AchievementToast from "../../components/slots/AchievementToast";
+import useSlotAchievements from "../../hooks/useSlotAchievements";
 import {
   ALL_SYMBOLS, REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
@@ -69,6 +72,8 @@ export default function SlotMachine() {
   const [reelStrip] = useState(buildReelStrip);
   const [previewLines, setPreviewLines] = useState(null);
   const previewTimerRef = useRef(null);
+  const [showStats, setShowStats] = useState(false);
+  const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
 
   const gridRef = useRef(null);
   const [gridRect, setGridRect] = useState(null);
@@ -138,6 +143,11 @@ export default function SlotMachine() {
             setBalance(prev => prev + result.totalWin);
             setWinningLines(result.wins.filter(w => w.type === "line").map(w => w.lineIndex));
 
+            // Record achievement stats
+            const lineWinCount = result.wins.filter(w => w.type === "line").length;
+            const hasScatter = result.wins.some(w => w.type === "scatter");
+            recordWin(result.totalWin, lineWinCount, hasScatter);
+
             if (result.totalWin >= 25000) {
               winVibrate(); winSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
             } else if (result.totalWin >= 5000) {
@@ -155,6 +165,7 @@ export default function SlotMachine() {
           } else {
             setLastWin(0);
             setSpinning(false);
+            recordLoss();
             if (autoSpinRef.current) setTimeout(() => doSpin(), 500);
           }
         }, 200);
@@ -243,6 +254,7 @@ export default function SlotMachine() {
       setGrid(newGrid);
       setSpinning(true);
 
+      recordSpin(currentBet);
       return prev - currentBet;
     });
   }
@@ -276,7 +288,15 @@ export default function SlotMachine() {
       <div className="bg-gradient-to-r from-gray-900 via-yellow-900/30 to-gray-900 px-3 py-3 flex items-center justify-between shadow-lg border-b-2 border-yellow-600/50">
         <Link to="/games" className="text-yellow-400 text-lg font-bold">← Back</Link>
         <NeonSign text="LUCKY SLOTS" spinning={spinning} />
-        <PayTable />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowStats(true)}
+            className="bg-gray-800 text-yellow-300 px-3 py-2 rounded-xl font-bold flex items-center gap-1 border border-gray-600 text-sm"
+          >
+            🏆 <span className="hidden sm:inline">Stats</span>
+          </button>
+          <PayTable />
+        </div>
       </div>
 
       {/* Top-off notification */}
@@ -355,6 +375,12 @@ export default function SlotMachine() {
       </div>
 
       {/* Controls — pass handleSpin instead of doSpin */}
+      {/* Achievement Toast */}
+      <AchievementToast badge={newBadge} />
+
+      {/* Stats Overlay */}
+      <SlotStatsOverlay open={showStats} onClose={() => setShowStats(false)} stats={stats} />
+
       <SlotControls
         balance={balance}
         bet={bet}
