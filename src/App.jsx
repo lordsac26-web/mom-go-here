@@ -9,7 +9,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Settings from './pages/Settings';
-import Daily from './pages/Daily';
+import Daily from './pages/Daily.jsx';
 import MemoryGame from './pages/games/MemoryGame';
 import TicTacToe from './pages/games/TicTacToe';
 import Yahtzee from './pages/games/Yahtzee';
