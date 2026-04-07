@@ -149,7 +149,7 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
   const extraWinnings = totalBonusValue - baseWin;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center px-4 overflow-y-auto py-6">
+    <div className="fixed inset-0 z-[70] bg-black/90 flex items-start sm:items-center justify-center px-4 overflow-y-auto py-4 sm:py-6">
       <div ref={containerRef} className="w-full max-w-sm" style={{ opacity: 0 }}>
         {/* Rules Banner */}
         <div className="bg-gray-800/90 border border-yellow-600/60 rounded-2xl px-4 py-3 mb-4 text-sm">
@@ -250,20 +250,16 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
               )}
             </div>
 
-            {/* Collect button — only visible after spin-up completes */}
-            <button
-              ref={collectBtnRef}
-              onClick={() => onComplete(extraWinnings)}
-              disabled={phase !== "done"}
-              className={`w-full text-xl font-black py-5 rounded-2xl border-2 transition-transform active:scale-95 ${
-                phase === "done" 
-                  ? "bg-green-600 text-white border-green-400" 
-                  : "bg-gray-700 text-gray-500 border-gray-600 pointer-events-none"
-              }`}
-              style={{ opacity: phase === "done" ? undefined : 0 }}
-            >
-              💰 Collect +{extraWinnings.toLocaleString()} & Return to Game
-            </button>
+            {/* Collect button — always visible once phase leaves picking */}
+            {phase === "done" && (
+              <button
+                ref={collectBtnRef}
+                onClick={() => onComplete(extraWinnings)}
+                className="w-full text-xl font-black py-5 rounded-2xl border-2 transition-transform active:scale-95 bg-green-600 text-white border-green-400 animate-pulse"
+              >
+                💰 Collect +{extraWinnings.toLocaleString()} & Return to Game
+              </button>
+            )}
           </div>
         )}
       </div>
