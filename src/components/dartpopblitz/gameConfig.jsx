@@ -23,9 +23,33 @@ export const STREAK_FOR_POWERUP = 4; // consecutive pops to earn a power-up
 // Dart limit presets  → balloon counts are roughly 60-70% of darts
 // (a skilled player should be able to clear, a less skilled one might not)
 export const DART_PRESETS = [
-  { darts: 10,  label: "Quick Game",   balloons: { basic: 5, tough: 1, small: 2, gold: 1, bomb: 0 } },
-  { darts: 50,  label: "Standard Game", balloons: { basic: 20, tough: 5, small: 8, gold: 4, bomb: 3 } },
-  { darts: 100, label: "Marathon",      balloons: { basic: 35, tough: 12, small: 15, gold: 8, bomb: 6 } },
+  {
+    darts: 10, label: "Quick Game",
+    balloons: { basic: 5, tough: 1, small: 2, gold: 1, bomb: 0 },
+    obstacles: [
+      { type: "platform", width: 60, speed: 0.8 },
+    ],
+  },
+  {
+    darts: 50, label: "Standard Game",
+    balloons: { basic: 20, tough: 5, small: 8, gold: 4, bomb: 3 },
+    obstacles: [
+      { type: "platform", width: 80, speed: 1.2 },
+      { type: "spinner", armLength: 45, speed: 0.025 },
+      { type: "pendulum", armLength: 55, bobRadius: 10, speed: 0.02 },
+    ],
+  },
+  {
+    darts: 100, label: "Marathon",
+    balloons: { basic: 35, tough: 12, small: 15, gold: 8, bomb: 6 },
+    obstacles: [
+      { type: "platform", width: 90, speed: 1.5 },
+      { type: "spinner", armLength: 55, speed: 0.035 },
+      { type: "pendulum", armLength: 65, bobRadius: 14, speed: 0.03 },
+      { type: "platform", width: 70, speed: 1.8 },
+      { type: "spinner", armLength: 40, speed: 0.04 },
+    ],
+  },
 ];
 
 // Physics

@@ -3,6 +3,7 @@ import {
   BALLOON_TYPES, POWERUPS, DART_SPEED, GRAVITY,
   SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP
 } from "./gameConfig";
+import { updateObstacles, checkDartObstacleCollision, drawObstacles } from "./obstacleGenerator";
 
 // ── Particles ──
 function spawnParticles(arr, x, y, color, count = 8) {
@@ -160,17 +161,18 @@ export default function DartPopBlitzCanvas({
   powerupInventory, setPowerupInventory,
   gameState, setGameState,
   totalPopped, setTotalPopped,
+  obstacles, setObstacles,
   sounds,
 }) {
   const canvasRef = useRef(null);
   const aimRef = useRef(null); // {x,y} of current aim position
   const launcherPos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
   const animFrameRef = useRef(null);
-  const gameDataRef = useRef({ balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped });
+  const gameDataRef = useRef({ balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles });
 
   // Keep ref in sync
   useEffect(() => {
-    gameDataRef.current = { balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped };
+    gameDataRef.current = { balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles };
   });
 
   // ── Shooting ──
@@ -264,6 +266,10 @@ export default function DartPopBlitzCanvas({
         return { ...b, wobble: b.wobble + b.wobbleSpeed };
       });
 
+      // Update obstacles
+      const updatedObstacles = updateObstacles(gd.obstacles || []);
+      setObstacles(updatedObstacles);
+
       // Update darts
       let updatedDarts = [...gd.darts];
       let updatedParticles = [...gd.particles];
@@ -303,6 +309,17 @@ export default function DartPopBlitzCanvas({
           if (nd.type !== "mini") missThisFrame = true;
           nd.alive = false;
           return nd;
+        }
+
+        // Obstacle collision (sniper pierces through obstacles)
+        if (nd.type !== "sniper" && updatedObstacles.length > 0) {
+          const obstHit = checkDartObstacleCollision(nd, updatedObstacles);
+          if (obstHit.hit) {
+            nd.alive = false;
+            spawnParticles(updatedParticles, nd.x, nd.y, "#94a3b8", 6);
+            sounds.playPop();
+            return nd;
+          }
         }
 
         // Collision with balloons
@@ -438,6 +455,11 @@ export default function DartPopBlitzCanvas({
         ctx.fillRect(gx, GAME_HEIGHT - 50, 2, 8 + Math.sin(gx) * 4);
       }
 
+      // Obstacles (draw behind balloons, in front of background)
+      if (gd.obstacles && gd.obstacles.length > 0) {
+        drawObstacles(ctx, gd.obstacles, Date.now());
+      }
+
       // Balloons
       gd.balloons.filter(b => b.alive).forEach(b => drawBalloon(ctx, b, 1));
 
@@ -472,7 +494,7 @@ export default function DartPopBlitzCanvas({
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [setBalloons, setDarts, setParticles, setScore, setStreak, setTotalPopped, setGameState, setPowerupInventory, sounds]);
+  }, [setBalloons, setDarts, setParticles, setScore, setStreak, setTotalPopped, setGameState, setPowerupInventory, setObstacles, sounds]);
 
   return (
     <canvas

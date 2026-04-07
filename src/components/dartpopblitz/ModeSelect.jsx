@@ -24,18 +24,24 @@ export default function ModeSelect({ onSelect }) {
               </div>
               <p className="text-muted-foreground text-sm font-semibold">
                 {totalBalloons} balloons • {preset.balloons.tough} tough • {preset.balloons.bomb} bombs
+                {preset.obstacles && preset.obstacles.length > 0 && (
+                  <span className="text-red-400"> • ⚡ {preset.obstacles.length} obstacle{preset.obstacles.length > 1 ? "s" : ""}</span>
+                )}
               </p>
             </button>
           );
         })}
       </div>
 
-      <div className="bg-card/60 border border-border rounded-xl p-3 mt-2 w-full">
+      <div className="bg-card/60 border border-border rounded-xl p-3 mt-2 w-full space-y-2">
         <p className="text-sm text-muted-foreground font-semibold text-center">
           🔱 <strong>Multi-Shot</strong> • 💥 <strong>MIRV Grenade</strong> • 🎯 <strong>Sniper Dart</strong>
         </p>
-        <p className="text-xs text-muted-foreground text-center mt-1">
+        <p className="text-xs text-muted-foreground text-center">
           Pop 4 balloons in a row to earn a random power-up!
+        </p>
+        <p className="text-xs text-red-400/80 text-center">
+          ⚡ Obstacles block your darts — only Sniper can pierce through them!
         </p>
       </div>
     </div>

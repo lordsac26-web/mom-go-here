@@ -12,6 +12,7 @@ import GameUI from "../../components/dartpopblitz/GameUI";
 import ModeSelect from "../../components/dartpopblitz/ModeSelect";
 import GameOver from "../../components/dartpopblitz/GameOver";
 import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
+import { generateObstacles } from "../../components/dartpopblitz/obstacleGenerator";
 
 const INSTRUCTIONS = [
   "Choose a dart count: 10 (quick), 50 (standard), or 100 (marathon).",
@@ -21,9 +22,10 @@ const INSTRUCTIONS = [
   "Tap a power-up to equip it before your next shot.",
   "🔱 Multi-Shot fires 3 darts at once.",
   "💥 MIRV Grenade explodes into cluster darts mid-flight.",
-  "🎯 Sniper Dart pierces through up to 5 balloons.",
+  "🎯 Sniper Dart pierces through balloons AND obstacles!",
   "💣 Bomb balloons explode and pop nearby balloons!",
-  "🛡️ Tough balloons need multiple hits to pop."
+  "🛡️ Tough balloons need multiple hits to pop.",
+  "⚡ Watch out for moving platforms, spinning blades, and pendulums — they destroy your darts!",
 ];
 
 export default function DartPopBlitz() {
@@ -48,6 +50,7 @@ export default function DartPopBlitz() {
   const [activePowerup, setActivePowerup] = useState(null);
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
   const [totalBalloons, setTotalBalloons] = useState(0);
+  const [obstacles, setObstacles] = useState([]);
   const savedRef = useRef(false);
 
   const startGame = useCallback((p) => {
@@ -63,6 +66,7 @@ export default function DartPopBlitz() {
     setTotalPopped(0);
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
+    setObstacles(generateObstacles(p.obstacles || []));
     setGameState("playing");
     savedRef.current = false;
   }, []);
@@ -167,6 +171,7 @@ export default function DartPopBlitz() {
         powerupInventory={powerupInventory} setPowerupInventory={setPowerupInventory}
         gameState={gameState} setGameState={setGameState}
         totalPopped={totalPopped} setTotalPopped={setTotalPopped}
+        obstacles={obstacles} setObstacles={setObstacles}
         sounds={sounds}
       />
     </div>
