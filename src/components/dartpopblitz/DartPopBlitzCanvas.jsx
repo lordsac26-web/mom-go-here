@@ -3,7 +3,8 @@ import {
   BALLOON_TYPES, POWERUPS, DART_SPEED, GRAVITY,
   SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP
 } from "./gameConfig";
-import { updateObstacles, checkDartObstacleCollision, drawObstacles } from "./obstacleGenerator";
+import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
+import { generateBalloons } from "./levelGenerator";
 
 // ── Offscreen static background ──────────────────────────────────────────────
 // FIX (perf): the sky gradient, clouds, and ground never change. Draw them once
@@ -308,8 +309,6 @@ export default function DartPopBlitzCanvas({
   useEffect(() => {
     // Initialise local state from preset when effect first runs / preset changes
     if (preset) {
-      const { generateBalloons } = require("./levelGenerator");
-      const { generateObstacles } = require("./obstacleGenerator");
       const b = generateBalloons(preset);
       Object.assign(stateRef.current, {
         balloons: b,
