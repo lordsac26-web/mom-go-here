@@ -16,7 +16,9 @@ import { generateObstacles } from "../../components/dartpopblitz/obstacleGenerat
 
 const INSTRUCTIONS = [
   "Choose a dart count: 10 (quick), 50 (standard), or 100 (marathon).",
-  "Tap or drag on the screen to aim, then release to shoot a dart.",
+  "Press & hold on the screen to aim — a power meter will oscillate up and down.",
+  "Release to fire! The dart launches at whatever power level the meter is at.",
+  "Higher power = faster dart. Time your release for maximum impact!",
   "Pop all the balloons before you run out of darts!",
   "Hit 4 balloons in a row to earn a random power-up.",
   "Tap a power-up to equip it before your next shot.",

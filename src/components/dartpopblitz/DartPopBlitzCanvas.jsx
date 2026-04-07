@@ -6,10 +6,7 @@ import {
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons } from "./levelGenerator";
 
-// ── Offscreen static background ──────────────────────────────────────────────
-// FIX (perf): the sky gradient, clouds, and ground never change. Draw them once
-// to an offscreen canvas and blit with drawImage every frame instead of
-// recreating gradient objects and fill paths 60 times per second.
+// ── Offscreen static background ──
 let staticBg = null;
 function getStaticBg() {
   if (staticBg) return staticBg;
@@ -45,7 +42,7 @@ function getStaticBg() {
   return oc;
 }
 
-// ── Particles ─────────────────────────────────────────────────────────────────
+// ── Particles ──
 function spawnParticles(arr, x, y, color, count = 8) {
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
@@ -61,7 +58,7 @@ function spawnParticles(arr, x, y, color, count = 8) {
   }
 }
 
-// ── Draw helpers ──────────────────────────────────────────────────────────────
+// ── Draw helpers ──
 function drawBalloon(ctx, b, scale) {
   ctx.save();
   ctx.translate(b.x, b.y + Math.sin(b.wobble) * b.wobbleAmp);
@@ -158,15 +155,14 @@ function drawAimLine(ctx, from, to) {
   ctx.restore();
 }
 
-// FIX (perf): constant launcher position extracted to module level so it isn't
-// reallocated as a new object on every render.
+// ── Constants ──
 const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
-const COMBO_WINDOW = 30; // frames (~0.5 s at 60 fps)
+const COMBO_WINDOW = 30;
+const POWER_MIN = 0.3;
+const POWER_MAX = 1.0;
+const POWER_SPEED = 0.025;
 
 export default function DartPopBlitzCanvas({
-  // FIX (structure, from parent refactor): the canvas now owns balloons/darts/
-  // particles/obstacles internally. The parent passes `preset` for initialisation
-  // and lightweight callbacks that fire infrequently (not every animation frame).
   preset,
   gameState,
   activePowerup, setActivePowerup,
@@ -182,8 +178,16 @@ export default function DartPopBlitzCanvas({
   const aimRef = useRef(null);
   const animFrameRef = useRef(null);
 
-  // ── All mutable game state lives in a single ref so the loop never has
-  //    stale-closure issues and never triggers React re-renders mid-frame. ──
+  // Power meter state
+  const powerRef = useRef({
+    active: false,
+    power: POWER_MIN,
+    direction: 1,
+    aimX: GAME_WIDTH / 2,
+    aimY: GAME_HEIGHT / 2,
+  });
+
+  // All mutable game state in a single ref
   const stateRef = useRef({
     balloons: [],
     darts: [],
@@ -195,15 +199,13 @@ export default function DartPopBlitzCanvas({
     totalPopped: 0,
     combo: 0,
     comboMultiplier: 1,
-    comboTimer: 0,       // frames remaining in combo window
-    comboFloats: [],     // floating text popups
+    comboTimer: 0,
+    comboFloats: [],
     gameState: "menu",
     activePowerup: null,
-    ended: false,        // FIX (bug): replaces savedRef — lives here so reset is in one place
+    ended: false,
   });
 
-  // Keep activePowerup and gameState in sync from props (set by parent)
-  // These are the only values that flow parent→canvas.
   useEffect(() => {
     stateRef.current.activePowerup = activePowerup;
   }, [activePowerup]);
@@ -212,8 +214,8 @@ export default function DartPopBlitzCanvas({
     stateRef.current.gameState = gameState;
   }, [gameState]);
 
-  // ── Shooting ──────────────────────────────────────────────────────────────
-  const shoot = useCallback((targetX, targetY) => {
+  // ── Shooting ──
+  const shoot = useCallback((targetX, targetY, powerMultiplier = 1) => {
     const s = stateRef.current;
     if (s.gameState !== "playing" || s.dartsRemaining <= 0) return;
 
@@ -222,8 +224,9 @@ export default function DartPopBlitzCanvas({
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 10) return;
 
-    const vx = (dx / dist) * DART_SPEED;
-    const vy = (dy / dist) * DART_SPEED;
+    const speed = DART_SPEED * powerMultiplier;
+    const vx = (dx / dist) * speed;
+    const vy = (dy / dist) * speed;
     const pw = s.activePowerup;
 
     if (pw === "multishot") {
@@ -249,7 +252,7 @@ export default function DartPopBlitzCanvas({
       sounds.playSniper();
       s.darts.push({
         x: LAUNCHER_POS.x, y: LAUNCHER_POS.y,
-        vx: vx * 1.5, vy: vy * 1.5,
+        vx: vx * 1.3, vy: vy * 1.3,
         type: "sniper", color: "#a855f7", finColor: "#7c3aed",
         pierce: SNIPER_PIERCE, alive: true,
       });
@@ -262,52 +265,65 @@ export default function DartPopBlitzCanvas({
       });
     }
 
-    // FIX (bug): decrement directly in the ref so the game loop reads the
-    // correct value in the same frame — no waiting for a setState round-trip.
     s.dartsRemaining--;
     onDartsRemainingChange(s.dartsRemaining);
 
-    // Clear powerup only after successfully shooting
     if (pw) {
       s.activePowerup = null;
       setActivePowerup(null);
     }
   }, [sounds, setActivePowerup, onDartsRemainingChange]);
 
-  // ── Input helpers ─────────────────────────────────────────────────────────
+  // ── Input helpers ──
   const getCanvasPos = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = GAME_WIDTH / rect.width;
     const scaleY = GAME_HEIGHT / rect.height;
-    // FIX (bug): touchend has empty .touches — use .changedTouches instead.
     const touch = e.changedTouches?.[0] ?? e.touches?.[0];
     const clientX = touch ? touch.clientX : e.clientX;
     const clientY = touch ? touch.clientY : e.clientY;
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
   }, []);
 
+  // Press down → start power meter + record aim direction
+  const handlePointerDown = useCallback((e) => {
+    e.preventDefault();
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+    const pm = powerRef.current;
+    pm.active = true;
+    pm.power = POWER_MIN;
+    pm.direction = 1;
+    pm.aimX = pos.x;
+    pm.aimY = pos.y;
+    aimRef.current = pos;
+  }, [getCanvasPos]);
+
+  // Move → update aim direction while holding
   const handlePointerMove = useCallback((e) => {
     e.preventDefault();
     const pos = getCanvasPos(e);
-    if (pos) aimRef.current = pos;
+    if (!pos) return;
+    aimRef.current = pos;
+    powerRef.current.aimX = pos.x;
+    powerRef.current.aimY = pos.y;
   }, [getCanvasPos]);
 
-  // FIX (bug): unified pointer-up handler for both mouse and touch so both
-  // paths go through the same aim-then-shoot logic. The old code had
-  // onMouseUp={handleClick} (direct shoot) vs onTouchEnd={handlePointerUp}
-  // (preferred aimRef) which produced different behaviour per input type.
+  // Release → fire dart at current power level
   const handlePointerUp = useCallback((e) => {
     e.preventDefault();
-    const pos = getCanvasPos(e) ?? aimRef.current;
-    if (pos) shoot(pos.x, pos.y);
+    const pm = powerRef.current;
+    if (!pm.active) return;
+    pm.active = false;
+    const pos = getCanvasPos(e) ?? aimRef.current ?? { x: pm.aimX, y: pm.aimY };
+    shoot(pos.x, pos.y, pm.power);
     aimRef.current = null;
   }, [getCanvasPos, shoot]);
 
-  // ── Game Loop ─────────────────────────────────────────────────────────────
+  // ── Game Loop ──
   useEffect(() => {
-    // Initialise local state from preset when effect first runs / preset changes
     if (preset) {
       const b = generateBalloons(preset);
       Object.assign(stateRef.current, {
@@ -341,13 +357,21 @@ export default function DartPopBlitzCanvas({
         return;
       }
 
+      // ── Power meter oscillation ──
+      const pm = powerRef.current;
+      if (pm.active) {
+        pm.power += POWER_SPEED * pm.direction;
+        if (pm.power >= POWER_MAX) { pm.power = POWER_MAX; pm.direction = -1; }
+        if (pm.power <= POWER_MIN) { pm.power = POWER_MIN; pm.direction = 1; }
+      }
+
       // ── Balloon wobble ──
       for (const b of s.balloons) {
         if (b.alive) b.wobble += b.wobbleSpeed;
       }
 
       // ── Obstacles ──
-      updateObstacles(s.obstacles); // mutates in-place
+      updateObstacles(s.obstacles);
 
       // ── Combo timer ──
       if (s.comboTimer > 0) {
@@ -355,8 +379,6 @@ export default function DartPopBlitzCanvas({
         if (s.comboTimer === 0) {
           s.combo = 0;
           s.comboMultiplier = 1;
-          // Notify parent so GameUI combo bar resets
-          // (infrequent — only on combo expiry)
         }
       }
 
@@ -369,18 +391,11 @@ export default function DartPopBlitzCanvas({
       let scoreAdd = 0;
       let poppedAdd = 0;
       let hitThisFrame = false;
-      // FIX (bug): track which darts exited without hitting anything for miss logic.
-      // Previously a dart that was killed by hitting a balloon could also trip
-      // missThisFrame if it happened to be off-screen coordinates simultaneously.
       let missThisFrame = false;
       let newStreak = s.streak;
       let popsThisFrame = 0;
-      // FIX (bug): track which balloon indices were popped this frame for correct
-      // combo float placement (old code used all dead balloons including prior frames).
       const poppedThisFrame = [];
 
-      // FIX (perf): mutate darts in-place rather than mapping to new objects every frame.
-      // At 60fps with many darts this saves significant GC pressure.
       for (let di = 0; di < s.darts.length; di++) {
         const d = s.darts[di];
         if (!d.alive) continue;
@@ -395,9 +410,6 @@ export default function DartPopBlitzCanvas({
           d.alive = false;
           sounds.playExplosion();
           spawnParticles(s.particles, d.x, d.y, "#f97316", 12);
-          // FIX (bug): push MIRV children after the loop completes so they
-          // aren't processed in the same iteration that created them. This
-          // ensures they get a full physics step on their first frame.
           const mirvX = d.x, mirvY = d.y;
           setTimeout(() => {
             for (let i = 0; i < 6; i++) {
@@ -414,7 +426,7 @@ export default function DartPopBlitzCanvas({
           continue;
         }
 
-        // Off-screen — only count as miss if the dart never hit anything
+        // Off-screen
         if (d.x < -30 || d.x > GAME_WIDTH + 30 || d.y < -30 || d.y > GAME_HEIGHT + 30) {
           if (d.type !== "mini") missThisFrame = true;
           d.alive = false;
@@ -428,8 +440,6 @@ export default function DartPopBlitzCanvas({
             d.alive = false;
             spawnParticles(s.particles, d.x, d.y, "#94a3b8", 6);
             sounds.playPop();
-            // FIX (bug): obstacle hit does NOT count as a miss (dart did hit something)
-            // and does NOT set hitThisFrame (didn't hit a balloon). No streak change.
             continue;
           }
         }
@@ -439,9 +449,9 @@ export default function DartPopBlitzCanvas({
         for (let bi = 0; bi < s.balloons.length; bi++) {
           const b = s.balloons[bi];
           if (!b.alive) continue;
-          const dx = d.x - b.x;
-          const dy = d.y - (b.y + Math.sin(b.wobble) * b.wobbleAmp);
-          if (Math.sqrt(dx * dx + dy * dy) >= b.radius + 8) continue;
+          const bdx = d.x - b.x;
+          const bdy = d.y - (b.y + Math.sin(b.wobble) * b.wobbleAmp);
+          if (Math.sqrt(bdx * bdx + bdy * bdy) >= b.radius + 8) continue;
 
           hitThisFrame = true;
           const dmg = d.type === "sniper" ? b.hp : 1;
@@ -488,7 +498,6 @@ export default function DartPopBlitzCanvas({
             break;
           }
         }
-        // Suppress spurious miss: dart was killed by a balloon hit, not going off-screen
         if (dartKilled) missThisFrame = false;
       }
 
@@ -507,8 +516,6 @@ export default function DartPopBlitzCanvas({
         p.life -= 0.03;
         p.size *= 0.97;
       }
-      // FIX (perf): filter dead particles in-place with splice rather than
-      // allocating a new array each frame.
       for (let i = s.particles.length - 1; i >= 0; i--) {
         if (s.particles[i].life <= 0) s.particles.splice(i, 1);
       }
@@ -525,8 +532,6 @@ export default function DartPopBlitzCanvas({
         s.comboMultiplier = s.combo <= 1 ? 1 : Math.min(s.combo, 8);
 
         if (s.comboMultiplier > 1) {
-          // FIX (bug): use poppedThisFrame indices to find the actual just-popped
-          // balloon, not all dead balloons (which includes every pop since game start).
           const lastIdx = poppedThisFrame[poppedThisFrame.length - 1];
           const lastBalloon = s.balloons[lastIdx];
           const fx = lastBalloon ? lastBalloon.x : GAME_WIDTH / 2;
@@ -541,7 +546,7 @@ export default function DartPopBlitzCanvas({
       s.totalPopped += poppedAdd;
       s.streak = newStreak;
 
-      // Notify parent (infrequent — only when values actually change)
+      // Notify parent
       if (multipliedScore > 0) onScoreChange(s.score);
       if (poppedAdd > 0) onTotalPoppedChange(s.totalPopped);
       if (newStreak !== s.streak) onStreakChange(s.streak);
@@ -555,8 +560,6 @@ export default function DartPopBlitzCanvas({
       }
 
       // ── Win / lose ──
-      // FIX (bug): use s.dartsRemaining (already decremented synchronously in
-      // shoot()) rather than the prop value which may be one render behind.
       const allPopped = s.balloons.every(b => !b.alive);
       const noDartsFlying = s.darts.length === 0;
 
@@ -576,7 +579,6 @@ export default function DartPopBlitzCanvas({
     }
 
     function render(ctx, bg, s) {
-      // FIX (perf): blit the pre-rendered static background in one drawImage call
       ctx.drawImage(bg, 0, 0);
 
       if (s.obstacles?.length > 0) drawObstacles(ctx, s.obstacles, Date.now());
@@ -593,7 +595,7 @@ export default function DartPopBlitzCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // Launcher
+      // Launcher base
       ctx.fillStyle = "#475569";
       ctx.beginPath();
       ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 14, 0, Math.PI * 2);
@@ -602,6 +604,60 @@ export default function DartPopBlitzCanvas({
       ctx.beginPath();
       ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 8, 0, Math.PI * 2);
       ctx.fill();
+
+      // Power meter bar (left of launcher)
+      const pm = powerRef.current;
+      const barX = LAUNCHER_POS.x - 50;
+      const barY = LAUNCHER_POS.y - 55;
+      const barW = 14;
+      const barH = 65;
+
+      // Bar background
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 4);
+      ctx.fill();
+
+      // Bar border
+      ctx.strokeStyle = pm.active ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.3)";
+      ctx.lineWidth = pm.active ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 4);
+      ctx.stroke();
+
+      // Fill (bottom to top, green→yellow→red)
+      const pwr = pm.active ? pm.power : 0;
+      const pct = (pwr - POWER_MIN) / (POWER_MAX - POWER_MIN);
+      const fillH = pct * (barH - 4);
+      if (fillH > 0) {
+        const r = Math.round(34 + pct * 221);
+        const g = Math.round(197 - pct * 170);
+        ctx.fillStyle = `rgb(${r},${g},50)`;
+        ctx.beginPath();
+        ctx.roundRect(barX + 2, barY + barH - 2 - fillH, barW - 4, fillH, 2);
+        ctx.fill();
+      }
+
+      // Power label
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = pm.active ? "#fbbf24" : "rgba(255,255,255,0.5)";
+      ctx.fillText("PWR", barX + barW / 2, barY - 5);
+
+      // Power percentage when active
+      if (pm.active) {
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(`${Math.round(pct * 100)}%`, barX + barW / 2, barY + barH + 14);
+      }
+
+      // "Hold & Release" hint text when not holding and darts remain
+      if (!pm.active && s.dartsRemaining > 0 && s.darts.length === 0) {
+        ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillText("Hold to aim · Release to fire", GAME_WIDTH / 2, LAUNCHER_POS.y + 22);
+      }
 
       // Combo floats
       for (const f of s.comboFloats) {
@@ -620,15 +676,15 @@ export default function DartPopBlitzCanvas({
 
       // Combo bar
       if (s.comboMultiplier > 1) {
-        const barWidth = Math.min(s.combo / 8, 1) * (GAME_WIDTH - 40);
+        const comboBarWidth = Math.min(s.combo / 8, 1) * (GAME_WIDTH - 40);
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.fillRect(20, 10, GAME_WIDTH - 40, 8);
-        const comboGrad = ctx.createLinearGradient(20, 10, 20 + barWidth, 18);
+        const comboGrad = ctx.createLinearGradient(20, 10, 20 + comboBarWidth, 18);
         comboGrad.addColorStop(0, "#f59e0b");
         comboGrad.addColorStop(1, "#ef4444");
         ctx.fillStyle = comboGrad;
-        ctx.fillRect(20, 10, barWidth, 8);
+        ctx.fillRect(20, 10, comboBarWidth, 8);
         ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "right";
         ctx.fillStyle = "#fbbf24";
@@ -636,16 +692,14 @@ export default function DartPopBlitzCanvas({
         ctx.restore();
       }
 
-      // Aim line
-      if (aimRef.current && s.gameState === "playing") {
+      // Aim line (only while holding)
+      if (aimRef.current && s.gameState === "playing" && pm.active) {
         drawAimLine(ctx, LAUNCHER_POS, aimRef.current);
       }
     }
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  // FIX: preset is the only dep that should restart the loop — callbacks and
-  // sounds are stable refs that don't need to restart the animation frame chain.
   }, [preset, onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, sounds, setPowerupInventory]);
 
   return (
@@ -655,9 +709,10 @@ export default function DartPopBlitzCanvas({
       height={GAME_HEIGHT}
       className="w-full max-w-[400px] rounded-2xl border-2 border-primary/30 shadow-xl touch-none"
       style={{ aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}` }}
+      onMouseDown={handlePointerDown}
       onMouseMove={handlePointerMove}
       onMouseUp={handlePointerUp}
-      onTouchStart={handlePointerMove}
+      onTouchStart={handlePointerDown}
       onTouchMove={handlePointerMove}
       onTouchEnd={handlePointerUp}
     />
