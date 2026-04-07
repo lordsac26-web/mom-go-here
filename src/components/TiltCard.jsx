@@ -34,7 +34,7 @@ export default function TiltCard({ to, emoji, label, description, gradient, glar
     <Link to={to} className="block">
       <div
         ref={tiltRef}
-        className={`relative overflow-hidden rounded-3xl ${gradient} p-5 shadow-2xl border border-white/10`}
+        className={`relative overflow-hidden rounded-2xl sm:rounded-3xl ${gradient} p-4 sm:p-5 shadow-2xl border border-white/10`}
         style={{ transformStyle: "preserve-3d" }}
       >
         {/* Background decorative circles — parallax layer (deep) */}
@@ -57,19 +57,19 @@ export default function TiltCard({ to, emoji, label, description, gradient, glar
 
         {/* Icon — parallax layer (mid) */}
         <div
-          className="relative z-10 flex items-center gap-4"
+          className="relative z-10 flex items-center gap-3 sm:gap-4"
           style={{ transform: "translateZ(40px)" }}
         >
           <div
-            className={`flex items-center justify-center w-16 h-16 rounded-2xl ${iconBg || "bg-white/20"} shadow-lg backdrop-blur-sm`}
+            className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl ${iconBg || "bg-white/20"} shadow-lg backdrop-blur-sm`}
             style={{ transform: "translateZ(20px)" }}
           >
-            <span className="text-4xl">{emoji}</span>
+            <span className="text-2xl sm:text-3xl lg:text-4xl">{emoji}</span>
           </div>
           <div style={{ transform: "translateZ(30px)" }}>
-            <h3 className="text-2xl font-black text-white drop-shadow-lg">{label}</h3>
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white drop-shadow-lg">{label}</h3>
             {description && (
-              <p className="text-sm text-white/75 font-semibold mt-0.5 leading-tight">{description}</p>
+              <p className="text-xs sm:text-sm text-white/75 font-semibold mt-0.5 leading-tight">{description}</p>
             )}
           </div>
         </div>

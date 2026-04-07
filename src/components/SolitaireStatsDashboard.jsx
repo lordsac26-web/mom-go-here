@@ -12,11 +12,11 @@ function formatTime(seconds) {
 
 function StatBox({ icon: Icon, label, value, sub, color }) {
   return (
-    <div className="bg-secondary rounded-xl p-3 flex flex-col items-center gap-1">
-      <Icon size={20} className={color} />
-      <span className="text-xl font-black text-foreground">{value}</span>
-      <span className="text-xs font-bold text-muted-foreground text-center leading-tight">{label}</span>
-      {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
+    <div className="bg-secondary rounded-xl p-2.5 sm:p-3 flex flex-col items-center gap-0.5 sm:gap-1">
+      <Icon size={18} className={color} />
+      <span className="text-base sm:text-xl font-black text-foreground">{value}</span>
+      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground text-center leading-tight">{label}</span>
+      {sub && <span className="text-[9px] sm:text-[10px] text-muted-foreground">{sub}</span>}
     </div>
   );
 }

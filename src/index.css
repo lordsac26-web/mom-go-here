@@ -43,7 +43,7 @@
 
   body {
     @apply bg-background text-foreground font-nunito;
-    font-size: 20px;
+    font-size: clamp(16px, 2.5vw, 20px);
     overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
     padding-top: env(safe-area-inset-top);

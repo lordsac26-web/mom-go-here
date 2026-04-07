@@ -107,17 +107,17 @@ export default function Home() {
   if (loading) return <WarmLoader message="Getting your day ready..." />;
 
   return (
-    <div ref={containerRef} className="min-h-screen px-4 py-6 pb-24">
+    <div ref={containerRef} className="min-h-screen px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
       <PullToRefreshIndicator pullDistance={pullDistance} refreshing={refreshing} />
       {/* Daily Login Bonus */}
       <DailyLoginBonus userEmail={user?.email} />
 
       {/* Greeting */}
-      <div className="text-center mb-4">
-        <h1 className="text-4xl font-black text-primary mb-1">
+      <div className="text-center mb-3 sm:mb-4">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-primary mb-1">
           {greeting()}, {profile?.display_name || user?.full_name?.split(" ")[0] || "Friend"}! 👋
         </h1>
-        <p className="text-muted-foreground text-lg">Tap a card to explore!</p>
+        <p className="text-muted-foreground text-base sm:text-lg">Tap a card to explore!</p>
       </div>
 
       {/* Player Level */}
@@ -125,8 +125,8 @@ export default function Home() {
 
       {/* Quote of the Day */}
       {quote && (
-        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-4 shadow">
-          <p className="text-base text-foreground italic text-center leading-snug">
+        <div className="bg-card border border-border rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 mb-3 sm:mb-4 shadow">
+          <p className="text-sm sm:text-base text-foreground italic text-center leading-snug">
             💛 "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
           </p>
         </div>
@@ -184,7 +184,7 @@ export default function Home() {
       </div>
 
       {/* 3D Tilt Navigation Cards */}
-      <div className="grid grid-cols-1 gap-4 max-w-lg mx-auto mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto mb-6">
         {NAV_CARDS.map((card) => (
           <TiltCard
             key={card.path}

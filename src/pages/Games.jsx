@@ -58,19 +58,19 @@ export default function Games() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 pb-24">
+    <div className="min-h-screen px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
       <div className="flex items-center justify-between mb-2 px-2">
         <div />
-        <h1 className="text-4xl font-black text-primary text-center">🎮 Choose a Game</h1>
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-primary text-center">🎮 Choose a Game</h1>
         <button
           onClick={() => setShowManager(true)}
-          className="bg-secondary text-foreground p-3 rounded-xl"
+          className="bg-secondary text-foreground p-2.5 sm:p-3 rounded-xl"
           aria-label="Manage games"
         >
-          <Settings size={24} />
+          <Settings size={22} />
         </button>
       </div>
-      <p className="text-center text-muted-foreground text-xl mb-4">Tap any game to start playing!</p>
+      <p className="text-center text-muted-foreground text-base sm:text-lg lg:text-xl mb-4">Tap any game to start playing!</p>
 
       <Link
         to="/rankings"
@@ -88,18 +88,17 @@ export default function Games() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-5 max-w-lg mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 max-w-3xl mx-auto">
         {visibleGames.map((game) => (
           <MagneticCard key={game.path} strength={0.35} rotationStrength={0.18} hoverScale={1.03}>
-            {/* FIX (bug): added w-full so the link fills the magnetic card wrapper edge-to-edge */}
             <Link
               to={game.path}
-              className={`bg-gradient-to-r ${game.color} rounded-2xl p-6 shadow-xl flex items-center gap-5 w-full`}
+              className={`bg-gradient-to-r ${game.color} rounded-2xl p-4 sm:p-5 shadow-xl flex items-center gap-4 sm:gap-5 w-full`}
             >
-              <span className="text-6xl">{game.emoji}</span>
+              <span className="text-4xl sm:text-5xl lg:text-6xl">{game.emoji}</span>
               <div>
-                <div className="text-2xl font-black text-white">{game.name}</div>
-                <div className="text-white/80 text-lg font-semibold mt-1">{game.desc}</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-black text-white">{game.name}</div>
+                <div className="text-white/80 text-sm sm:text-base lg:text-lg font-semibold mt-0.5 sm:mt-1">{game.desc}</div>
               </div>
             </Link>
           </MagneticCard>
