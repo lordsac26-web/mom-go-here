@@ -5,6 +5,7 @@ import GameBackButton from "../../components/GameBackButton";
 import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import SolitaireCard from "../../components/solitaire/SolitaireCard";
 import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
 import { base44 } from "@/api/base44Client";
@@ -134,7 +135,8 @@ export default function Solitaire() {
   useGameTimer();
   const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
-  const { fireworks } = useConfetti();
+  const { uiClickSound, matchSound, winSound } = useGameAudio();
+  const { fireworks, emojiRain } = useConfetti();
   const gameStartRef = useRef(Date.now());
   const statsRecordedRef = useRef(false);
   const [game, setGame] = useState(initGame());
@@ -187,6 +189,7 @@ export default function Solitaire() {
 
   function drawCard() {
     tapVibrate();
+    uiClickSound();
     setDrawKey(k => k + 1);
     setGame(prev => {
       const g = cloneGame(prev);
@@ -217,13 +220,10 @@ export default function Solitaire() {
 
       if (canPlaceOnTableau(movingCard, targetCard)) {
         successVibrate();
+        matchSound();
         setGame(prev => {
           const next = applyTableauMove(prev, selected, colIdx);
-          // FIX (bug): check win AFTER computing next state, outside any updater,
-          // by reading the result synchronously. setWon is called in a separate
-          // setState to avoid side effects inside a state updater (React Strict Mode
-          // can call updaters twice, which would call setWon twice).
-          if (checkWin(next)) setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0);
+          if (checkWin(next)) setTimeout(() => { setWon(true); winVibrate(); winSound(); fireworks(); emojiRain(["♠", "♥", "♦", "♣"]); recordStats(true); }, 0);
           return next;
         });
         setSelected(null);
@@ -273,6 +273,7 @@ export default function Solitaire() {
 
     if (canPlaceOnFoundation(movingCard, game.foundations[fIdx])) {
       successVibrate();
+      matchSound();
       setGame(prev => {
         const g = cloneGame(prev);
         let card;
@@ -284,8 +285,7 @@ export default function Solitaire() {
           if (srcCol.length) srcCol[srcCol.length - 1].faceUp = true;
         }
         g.foundations[fIdx].push(card);
-        // FIX (bug): win check moved outside the updater via setTimeout(0)
-        if (checkWin(g)) { winVibrate(); setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0); }
+        if (checkWin(g)) { setTimeout(() => { setWon(true); winVibrate(); winSound(); fireworks(); emojiRain(["♠", "♥", "♦", "♣"]); recordStats(true); }, 0); }
         return g;
       });
       setSelected(null);
@@ -293,6 +293,8 @@ export default function Solitaire() {
   }
 
   function resetGame() {
+    tapVibrate();
+    uiClickSound();
     setGame(initGame());
     setSelected(null);
     setWon(false);

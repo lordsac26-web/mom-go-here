@@ -4,6 +4,8 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
+import useConfetti from "../../hooks/useConfetti";
 
 // FIX (bug): Puzzles 4, 8, 9 and 10 had invalid solutions (duplicate numbers
 // in rows, columns, or boxes). All four have been corrected/replaced using a
@@ -145,6 +147,8 @@ const PUZZLES = [
 export default function Sudoku() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { uiClickSound, matchSound, winSound } = useGameAudio();
+  const { fireworks, emojiRain } = useConfetti();
 
   // FIX (bug): use a separate index state so "New Puzzle" can pick a different
   // puzzle instead of always resetting to the same one. The original code used
@@ -166,7 +170,7 @@ export default function Sudoku() {
   function isFixed(r, c) { return puzzle.puzzle[r][c] !== 0; }
 
   function handleSelect(r, c) {
-    if (!isFixed(r, c)) { tapVibrate(); setSelected([r, c]); }
+    if (!isFixed(r, c)) { tapVibrate(); uiClickSound(); setSelected([r, c]); }
   }
 
   function handleNumber(n) {
@@ -183,14 +187,15 @@ export default function Sudoku() {
     }));
     setErrorList(errs);
     const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
-    if (complete) { winVibrate(); setWon(true); }
-    else if (n !== 0 && puzzle.solution[r][c] === n) successVibrate();
-    else if (n !== 0) tapVibrate();
+    if (complete) { winVibrate(); winSound(); fireworks(); emojiRain(["🔢", "🎉", "⭐"]); setWon(true); }
+    else if (n !== 0 && puzzle.solution[r][c] === n) { successVibrate(); matchSound(); }
+    else if (n !== 0) { tapVibrate(); uiClickSound(); }
   }
 
   // FIX (bug): reset now picks a new random puzzle instead of replaying the same one.
   // The "New Puzzle" label on the win screen now accurately reflects what happens.
   function reset() {
+    uiClickSound(); tapVibrate();
     const nextIdx = Math.floor(Math.random() * PUZZLES.length);
     const nextPuzzle = PUZZLES[nextIdx];
     setPuzzleIdx(nextIdx);

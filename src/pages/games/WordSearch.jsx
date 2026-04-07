@@ -3,10 +3,10 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
-import useGameSounds from "../../hooks/useGameSounds";
 import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import SparkleEffect from "../../components/SparkleEffect";
-import { Volume2, VolumeX, Palette } from "lucide-react";
+import { Palette } from "lucide-react";
 import { WS_THEMES, DEFAULT_THEME } from "../../components/wordsearch/themes";
 import ThemePanel from "../../components/wordsearch/ThemePanel";
 import useGridReveal, { PATTERN_LIST } from "../../hooks/useGridReveal";
@@ -74,8 +74,8 @@ function generateGrid(size, words) {
 
 export default function WordSearch() {
   useGameTimer();
-  const { soundOn, setSoundOn, playTap, playSuccess, playWin } = useGameSounds();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
+  const { uiClickSound, matchSound, winSound } = useGameAudio();
   const [started, setStarted] = useState(false);
   const [size] = useState(10);
   const [gridData, setGridData] = useState(null);
@@ -151,12 +151,11 @@ export default function WordSearch() {
   function markFound(word, wCells, isWinning) {
     const cellKeys = wCells.map(([cr, cc]) => cellKey(cr, cc));
     setFoundWords(prev => [...prev, word]);
-    // FIX (perf): update the Set by spreading the previous one and adding new keys
     setFoundCellsSet(prev => new Set([...prev, ...cellKeys]));
     setSelected([]);
     setJustFoundCells(cellKeys);
     setJustFoundWord(word);
-    if (isWinning) { playWin(); winVibrate(); } else { playSuccess(); successVibrate(); }
+    if (isWinning) { winSound(); winVibrate(); } else { matchSound(); successVibrate(); }
     clearTimeout(glowTimerRef.current);
     glowTimerRef.current = setTimeout(() => {
       setJustFoundCells([]);
@@ -179,7 +178,7 @@ export default function WordSearch() {
   }
 
   function handleCellTap(r, c) {
-    playTap();
+    uiClickSound();
     tapVibrate();
     const key = cellKey(r, c);
 
@@ -251,7 +250,7 @@ export default function WordSearch() {
           </button>
         ))}
       </div>
-      <button onClick={startGame} className="text-white text-2xl font-black px-10 py-6 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
+      <button onClick={() => { tapVibrate(); uiClickSound(); startGame(); }} className="text-white text-2xl font-black px-10 py-6 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
         🔤 Start Game
       </button>
       <GameBackButton className="mt-4" />
@@ -295,12 +294,7 @@ export default function WordSearch() {
             title="Change theme">
             <Palette size={20} />
           </button>
-          <button onClick={() => setSoundOn(!soundOn)}
-            className="px-3 py-2 rounded-xl font-bold"
-            style={{ background: theme.cell, color: theme.cellText }}
-            title={soundOn ? "Mute sounds" : "Enable sounds"}>
-            {soundOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
-          </button>
+
           <button onClick={() => setLineMode(!lineMode)}
             className="px-3 py-2 rounded-xl font-bold"
             style={{ background: lineMode ? theme.selected : theme.cell, color: lineMode ? theme.selectedText : theme.cellText }}

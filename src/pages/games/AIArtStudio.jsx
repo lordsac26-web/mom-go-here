@@ -3,6 +3,8 @@ import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
 import GameBackButton from "../../components/GameBackButton";
 import { base44 } from "@/api/base44Client";
+import useHaptics from "../../hooks/useHaptics";
+import { useGameAudio } from "../../hooks/useGameAudio";
 import { Download, Share2, Mail, Facebook, Twitter } from "lucide-react";
 import { toast } from "sonner";
 import GameInstructions from "../../components/GameInstructions";
@@ -28,6 +30,8 @@ function sanitizePrompt(str) {
 
 export default function AIArtStudio() {
   useGameTimer();
+  const { tapVibrate, successVibrate } = useHaptics();
+  const { uiClickSound, matchSound } = useGameAudio();
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState(STYLES[0].value);
   const [imageUrl, setImageUrl] = useState(null);
@@ -36,8 +40,9 @@ export default function AIArtStudio() {
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
+    tapVibrate();
+    uiClickSound();
 
-    // FIX (security): sanitize and cap length before sending to AI
     const safePrompt = sanitizePrompt(prompt.trim()).slice(0, MAX_PROMPT_LENGTH);
     const fullPrompt = `${safePrompt}. Style: ${selectedStyle}`;
 
@@ -45,6 +50,8 @@ export default function AIArtStudio() {
     // FIX (bug): use try/finally so generating is always cleared, even on API error
     try {
       const result = await base44.integrations.Core.GenerateImage({ prompt: fullPrompt });
+      successVibrate();
+      matchSound();
       setImageUrl(result.url);
       setHistory(prev =>
         [
@@ -147,7 +154,7 @@ export default function AIArtStudio() {
             {STYLES.map(s => (
               <button
                 key={s.value}
-                onClick={() => setSelectedStyle(s.value)}
+                onClick={() => { tapVibrate(); uiClickSound(); setSelectedStyle(s.value); }}
                 className={`px-4 py-3 rounded-xl text-lg font-bold border-2 transition-all ${
                   selectedStyle === s.value
                     ? "bg-primary text-primary-foreground border-primary"
