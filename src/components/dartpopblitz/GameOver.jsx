@@ -1,9 +1,11 @@
-export default function GameOver({ won, score, totalPopped, totalBalloons, dartsUsed, onPlayAgain, onMenu }) {
+export default function GameOver({ won, score, totalPopped, totalBalloons, dartsUsed, endless, onPlayAgain, onMenu }) {
+  const isEndless = !!endless;
+
   return (
     <div className="flex flex-col items-center gap-4 py-6 px-4 max-w-md mx-auto text-center">
-      <span className="text-7xl">{won ? "🎉" : "😔"}</span>
+      <span className="text-7xl">{isEndless ? "🏆" : won ? "🎉" : "😔"}</span>
       <h2 className="text-3xl font-black text-primary">
-        {won ? "You Popped Them All!" : "Out of Darts!"}
+        {isEndless ? "Great Run!" : won ? "You Popped Them All!" : "Out of Darts!"}
       </h2>
 
       <div className="bg-card border-2 border-border rounded-2xl p-5 w-full space-y-3">
@@ -13,17 +15,21 @@ export default function GameOver({ won, score, totalPopped, totalBalloons, darts
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground font-bold">Balloons Popped</span>
-          <span className="text-foreground font-black">{totalPopped} / {totalBalloons}</span>
+          <span className="text-foreground font-black">
+            {totalPopped}{!isEndless && ` / ${totalBalloons}`}
+          </span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground font-bold">Darts Used</span>
-          <span className="text-foreground font-black">{dartsUsed}</span>
-        </div>
-        {won && (
+        {!isEndless && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground font-bold">Darts Used</span>
+            <span className="text-foreground font-black">{dartsUsed}</span>
+          </div>
+        )}
+        {!isEndless && won && dartsUsed > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground font-bold">Accuracy</span>
             <span className="text-green-400 font-black">
-              {dartsUsed > 0 ? Math.round((totalPopped / dartsUsed) * 100) : 0}%
+              {Math.round((totalPopped / dartsUsed) * 100)}%
             </span>
           </div>
         )}

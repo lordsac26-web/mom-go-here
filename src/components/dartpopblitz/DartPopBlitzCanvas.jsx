@@ -1,10 +1,11 @@
 import { useRef, useEffect, useCallback } from "react";
 import {
   BALLOON_TYPES, POWERUPS, DART_SPEED, GRAVITY,
-  SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP
+  SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP,
+  ENDLESS_SPAWN_INTERVAL, ENDLESS_MAX_BALLOONS
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
-import { generateBalloons, recalcCollapseTargets } from "./levelGenerator";
+import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
 
 // ── Offscreen static background ──
 let staticBg = null;
@@ -139,7 +140,7 @@ const COMBO_WINDOW = 30;
 const POWER_MIN = 0.3;
 const POWER_MAX = 1.0;
 const POWER_SPEED = 0.025;
-const MAGNETIC_SPEED = 1.5; // px per frame balloons slide toward targetX
+const MAGNETIC_SPEED = 1.5;
 
 export default function DartPopBlitzCanvas({
   preset, gameState,
@@ -173,7 +174,8 @@ export default function DartPopBlitzCanvas({
   // ── Shooting ──
   const shoot = useCallback((targetX, targetY, powerMultiplier = 1) => {
     const s = stateRef.current;
-    if (s.gameState !== "playing" || s.dartsRemaining <= 0) return;
+    if (s.gameState !== "playing") return;
+    if (!s.endless && s.dartsRemaining <= 0) return;
 
     const dx = targetX - LAUNCHER_POS.x;
     const dy = targetY - LAUNCHER_POS.y;
@@ -202,8 +204,10 @@ export default function DartPopBlitzCanvas({
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "normal", color: "#94a3b8", finColor: "#ef4444", pierce: 0, alive: true });
     }
 
-    s.dartsRemaining--;
-    onDartsRemainingChange(s.dartsRemaining);
+    if (!s.endless) {
+      s.dartsRemaining--;
+      onDartsRemainingChange(s.dartsRemaining);
+    }
     if (pw) { s.activePowerup = null; setActivePowerup(null); }
   }, [sounds, setActivePowerup, onDartsRemainingChange]);
 
@@ -252,7 +256,6 @@ export default function DartPopBlitzCanvas({
   // ── Initialization (only on new game, not on callback changes) ──
   useEffect(() => {
     if (!preset) return;
-    // Use a unique id per startGame call to avoid re-init on same preset
     const id = preset._initId;
     if (id !== undefined && id === initIdRef.current) return;
     initIdRef.current = id;
@@ -263,7 +266,7 @@ export default function DartPopBlitzCanvas({
       obstacles: generateObstacles(preset.obstacles || []),
       dartsRemaining: preset.darts, score: 0, streak: 0, totalPopped: 0,
       combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
-      ended: false,
+      ended: false, endless: !!preset.endless, endlessSpawnTimer: 0,
     });
   }, [preset]);
 
@@ -294,6 +297,21 @@ export default function DartPopBlitzCanvas({
         pm.power += POWER_SPEED * pm.direction;
         if (pm.power >= POWER_MAX) { pm.power = POWER_MAX; pm.direction = -1; }
         if (pm.power <= POWER_MIN) { pm.power = POWER_MIN; pm.direction = 1; }
+      }
+
+      // Endless mode: spawn new balloons periodically
+      if (s.endless) {
+        s.endlessSpawnTimer++;
+        if (s.endlessSpawnTimer >= ENDLESS_SPAWN_INTERVAL) {
+          s.endlessSpawnTimer = 0;
+          const aliveCount = s.balloons.filter(b => b.alive).length;
+          if (aliveCount < ENDLESS_MAX_BALLOONS) {
+            const count = 1 + Math.floor(Math.random() * 3); // 1-3 at a time
+            for (let si = 0; si < count && aliveCount + si < ENDLESS_MAX_BALLOONS; si++) {
+              s.balloons.push(spawnRandomBalloon());
+            }
+          }
+        }
       }
 
       // Balloon wobble + magnetic slide
@@ -453,12 +471,14 @@ export default function DartPopBlitzCanvas({
         cb.setPowerupInventory(prev => ({ ...prev, [reward]: (prev[reward] || 0) + 1 }));
       }
 
-      // Win / lose
-      const allPopped = s.balloons.every(b => !b.alive);
-      const noDartsFlying = s.darts.length === 0;
-      if (!s.ended && (allPopped || (s.dartsRemaining <= 0 && noDartsFlying))) {
-        s.ended = true;
-        cb.onGameEnd({ won: allPopped, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0 });
+      // Win / lose — endless mode never ends automatically
+      if (!s.ended && !s.endless) {
+        const allPopped = s.balloons.every(b => !b.alive);
+        const noDartsFlying = s.darts.length === 0;
+        if (allPopped || (s.dartsRemaining <= 0 && noDartsFlying)) {
+          s.ended = true;
+          cb.onGameEnd({ won: allPopped, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0, endless: false });
+        }
       }
 
       render(ctx, bg, s);

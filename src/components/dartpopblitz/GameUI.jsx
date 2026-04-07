@@ -3,15 +3,13 @@ import { POWERUPS } from "./gameConfig";
 export default function GameUI({
   score, dartsRemaining, totalPopped, totalBalloons, streak,
   activePowerup, setActivePowerup, powerupInventory, setPowerupInventory,
-  comboMultiplier,
+  endless,
 }) {
   function equipPowerup(key) {
     if (activePowerup === key) {
-      // Un-equip
       setActivePowerup(null);
       setPowerupInventory(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
     } else {
-      // If already have one equipped, put it back
       if (activePowerup) {
         setPowerupInventory(prev => ({ ...prev, [activePowerup]: (prev[activePowerup] || 0) + 1 }));
       }
@@ -27,11 +25,9 @@ export default function GameUI({
       {/* Score bar */}
       <div className="flex items-center justify-between bg-card/80 rounded-xl px-3 py-2 text-sm font-bold">
         <span className="text-primary text-lg">🏆 {score.toLocaleString()}</span>
-        {comboMultiplier > 1 && (
-          <span className="text-yellow-400 font-black animate-pulse">🔥 {comboMultiplier}x</span>
-        )}
-        <span className="text-foreground">🎈 {totalPopped}/{totalBalloons}</span>
-        <span className="text-foreground">🎯 {dartsRemaining}</span>
+        <span className="text-foreground">🎈 {totalPopped}{!endless && `/${totalBalloons}`}</span>
+        {!endless && <span className="text-foreground">🎯 {dartsRemaining}</span>}
+        {endless && <span className="text-purple-400 font-black">♾️ Endless</span>}
       </div>
 
       {/* Streak */}
@@ -55,7 +51,7 @@ export default function GameUI({
               disabled={count <= 0 && !isActive}
               className={`relative flex flex-col items-center px-3 py-2 rounded-xl border-2 transition-all text-sm font-bold ${
                 isActive
-                  ? "border-primary bg-primary/20 scale-105"
+                  ? "border-primary bg-primary/20 scale-105 shadow-lg shadow-primary/20"
                   : count > 0
                   ? "border-border bg-card hover:border-primary/50"
                   : "border-border/30 bg-card/30 opacity-40"

@@ -14,20 +14,18 @@ import GameOver from "../../components/dartpopblitz/GameOver";
 import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
 
 const INSTRUCTIONS = [
-  "Choose a dart count: 10 (quick), 50 (standard), or 100 (marathon).",
-  "Press & hold on the screen to aim — a power meter will oscillate up and down.",
-  "Release to fire! The dart launches at whatever power level the meter is at.",
-  "Higher power = faster dart. Time your release for maximum impact!",
-  "Pop all the balloons before you run out of darts!",
-  "Hit 4 balloons in a row to earn a random power-up.",
+  "Choose Beginner, Advanced, or Endless mode.",
+  "Press & hold to aim — a power meter oscillates up & down.",
+  "Release to fire! Higher power = faster dart.",
+  "Pop all the balloons (or keep going in Endless)!",
+  "Hit 4 in a row to earn a random power-up.",
   "Tap a power-up to equip it before your next shot.",
   "🔱 Multi-Shot fires 3 darts at once.",
-  "💥 MIRV Grenade explodes into cluster darts mid-flight.",
-  "🎯 Sniper Dart pierces through balloons AND obstacles!",
-  "💣 Bomb balloons explode and pop nearby balloons!",
-  "🛡️ Tough balloons need multiple hits to pop.",
-  "🧲 When a balloon pops, its row-neighbors slide together — plan your shots!",
-  "⚡ Watch out for moving platforms and spinning blades — they destroy your darts!",
+  "💥 MIRV Bomb explodes into cluster darts mid-flight.",
+  "🎯 Sniper pierces through 5 balloons AND obstacles!",
+  "💣 Bomb balloons chain-explode nearby balloons!",
+  "🛡️ Tough balloons need 3 hits to pop.",
+  "♾️ Endless mode: balloons keep spawning — tap Stop to end your run!",
 ];
 
 // FIX (structure): extracted score-save logic into a standalone async function
@@ -79,6 +77,7 @@ export default function DartPopBlitz() {
   const [totalBalloons, setTotalBalloons] = useState(0);
   const [activePowerup, setActivePowerup] = useState(null);
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
+  const [isEndless, setIsEndless] = useState(false);
 
   // FIX (bug): savedRef guards against double-saves. It is reset inside
   // startGame via a ref so it doesn't depend on render timing.
@@ -87,7 +86,6 @@ export default function DartPopBlitz() {
   const initCounterRef = useRef(0);
 
   const startGame = useCallback((p) => {
-    // Tag the preset with a unique id so the canvas can detect a true new game
     initCounterRef.current++;
     setPreset({ ...p, _initId: initCounterRef.current });
     const b = generateBalloons(p);
@@ -98,17 +96,12 @@ export default function DartPopBlitz() {
     setTotalPopped(0);
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
+    setIsEndless(!!p.endless);
     setGameState("playing");
     savedRef.current = false;
   }, []);
 
-  // FIX (bug + structure): replaced useEffect([gameState]) with a direct
-  // callback passed to DartPopBlitzCanvas. This eliminates the stale-closure
-  // problem entirely: the canvas calls onGameEnd(result) with the final values
-  // at the exact moment the game ends, so score/totalPopped/preset are always
-  // current. No dependency array to maintain.
   const handleGameEnd = useCallback(async (result) => {
-    // result = { won: bool, score: number, totalPopped: number, dartsUsed: number }
     if (savedRef.current) return;
     savedRef.current = true;
 
@@ -118,8 +111,6 @@ export default function DartPopBlitz() {
       haptics.winVibrate();
       fireConfetti();
       sounds.playWin();
-      // FIX (bug): reportWin and reportLoss now both receive the game name
-      // so loss records are as complete as win records.
       reportWin("Dart Pop Blitz");
     } else {
       haptics.lossVibrate();
@@ -136,11 +127,12 @@ export default function DartPopBlitz() {
     });
 
     setGameState(won ? "won" : "lost");
-  }, [
-    // FIX (bug): all values read inside the callback are listed as deps so
-    // the callback always closes over current values, not stale ones.
-    haptics, fireConfetti, sounds, reportWin, reportLoss, user, preset,
-  ]);
+  }, [haptics, fireConfetti, sounds, reportWin, reportLoss, user, preset]);
+
+  // Endless mode: player manually stops the run
+  const handleEndlessStop = useCallback(() => {
+    handleGameEnd({ won: false, score, totalPopped, dartsUsed: 0, endless: true });
+  }, [handleGameEnd, score, totalPopped]);
 
   if (gameState === "menu") {
     return (
@@ -166,7 +158,8 @@ export default function DartPopBlitz() {
           score={score}
           totalPopped={totalPopped}
           totalBalloons={totalBalloons}
-          dartsUsed={preset ? preset.darts - dartsRemaining : 0}
+          dartsUsed={preset ? (preset.endless ? 0 : preset.darts - dartsRemaining) : 0}
+          endless={isEndless}
           onPlayAgain={() => startGame(preset)}
           onMenu={() => setGameState("menu")}
         />
@@ -191,7 +184,17 @@ export default function DartPopBlitz() {
         setActivePowerup={setActivePowerup}
         powerupInventory={powerupInventory}
         setPowerupInventory={setPowerupInventory}
+        endless={isEndless}
       />
+
+      {isEndless && (
+        <button
+          onClick={handleEndlessStop}
+          className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-2 rounded-xl text-lg transition-all"
+        >
+          🛑 Stop Run
+        </button>
+      )}
 
       {/* FIX (structure): DartPopBlitzCanvas now owns balloons/darts/particles/obstacles
           internally. The parent only receives summary state (score, streak, totalPopped,
