@@ -44,6 +44,7 @@ export default function Onboarding() {
   const [favoriteGames, setFavoriteGames] = useState(ALL_GAMES.map(g => g.path));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [chatbotName, setChatbotName] = useState("");
 
   function toggleGame(path) {
     setFavoriteGames(prev =>
@@ -66,6 +67,7 @@ export default function Onboarding() {
         birthday,
         religion,
         favorite_games: favoriteGames,
+        chatbot_name: chatbotName.trim() || "Rosie",
       };
       if (profiles[0]) {
         await base44.entities.UserProfile.update(profiles[0].id, data);
@@ -85,7 +87,7 @@ export default function Onboarding() {
       <div className="w-full max-w-md">
         {/* Progress dots */}
         <div className="flex justify-center gap-3 mb-8">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3, 4].map(s => (
             <div key={s} className={`w-4 h-4 rounded-full transition-all ${s === step ? "bg-primary scale-125" : s < step ? "bg-primary/50" : "bg-border"}`} />
           ))}
         </div>
@@ -165,8 +167,37 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Step 3: Favorite Games */}
+        {/* Step 3: Name Your AI Assistant */}
         {step === 3 && (
+          <div className="text-center">
+            <div className="text-7xl mb-4">🌸</div>
+            <h1 className="text-4xl font-black text-primary mb-2">Name Your Helper</h1>
+            <p className="text-xl text-muted-foreground mb-6">Give your AI assistant a name!</p>
+
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-xl font-black text-foreground mb-2">Assistant's Name</label>
+                <input
+                  type="text"
+                  value={chatbotName}
+                  onChange={e => setChatbotName(e.target.value.slice(0, MAX_NAME_LENGTH))}
+                  placeholder="Rosie"
+                  maxLength={MAX_NAME_LENGTH}
+                  className="w-full bg-card border-2 border-border rounded-2xl px-5 py-4 text-2xl font-bold text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <p className="text-muted-foreground text-base">Leave blank and we'll call her <span className="font-bold text-primary">Rosie</span> 🌸</p>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button onClick={() => setStep(2)} className="flex-1 bg-secondary text-foreground text-xl font-black py-4 rounded-2xl">← Back</button>
+              <button onClick={() => setStep(4)} className="flex-1 bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl shadow-xl">Next →</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Favorite Games */}
+        {step === 4 && (
           <div className="text-center">
             <div className="text-7xl mb-4">🎮</div>
             <h1 className="text-4xl font-black text-primary mb-2">Your Games</h1>
@@ -198,7 +229,7 @@ export default function Onboarding() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 bg-secondary text-foreground text-xl font-black py-4 rounded-2xl">← Back</button>
+              <button onClick={() => setStep(3)} className="flex-1 bg-secondary text-foreground text-xl font-black py-4 rounded-2xl">← Back</button>
               <button
                 onClick={finish}
                 disabled={saving || favoriteGames.length === 0}

@@ -74,6 +74,7 @@ export default function Settings() {
   const [saveError, setSaveError] = useState(null);
   const [location, setLocation] = useState(null);
   const [cardBackDesign, setCardBackDesign] = useState("classic_blue");
+  const [chatbotName, setChatbotName] = useState("Rosie");
 
   // FIX (bug): useCallback + AbortController prevents stale closure and race conditions
   // (same pattern fixed in Memories.jsx — loadProfile was defined outside the effect
@@ -94,6 +95,7 @@ export default function Settings() {
         setBirthday(profiles[0].birthday || "");
         setReligion(profiles[0].religion || "None");
         setCardBackDesign(profiles[0].card_back_design || "classic_blue");
+        setChatbotName(profiles[0].chatbot_name || "Rosie");
       }
     } catch (err) {
       if (signal?.aborted) return;
@@ -126,6 +128,7 @@ export default function Settings() {
         birthday,
         religion,
         card_back_design: cardBackDesign,
+        chatbot_name: chatbotName.trim() || "Rosie",
         ...(location && {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -186,6 +189,18 @@ export default function Settings() {
                 maxLength={MAX_NAME_LENGTH}
                 className="w-full bg-secondary border-2 border-border rounded-2xl px-5 py-4 text-xl font-bold text-foreground focus:outline-none focus:border-primary"
               />
+            </div>
+            <div>
+              <label className="block text-lg font-black text-foreground mb-2">🌸 AI Assistant Name</label>
+              <input
+                type="text"
+                value={chatbotName}
+                onChange={e => setChatbotName(e.target.value.slice(0, MAX_NAME_LENGTH))}
+                placeholder="Rosie"
+                maxLength={MAX_NAME_LENGTH}
+                className="w-full bg-secondary border-2 border-border rounded-2xl px-5 py-4 text-xl font-bold text-foreground focus:outline-none focus:border-primary"
+              />
+              <p className="text-sm text-muted-foreground mt-1 ml-1">Your AI helper's name (default: Rosie)</p>
             </div>
             <div>
               <label className="block text-lg font-black text-foreground mb-2">🎂 Birthday</label>

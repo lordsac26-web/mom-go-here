@@ -57,9 +57,27 @@
     "card_back_design": {
       "type": "string",
       "description": "Solitaire card back design key"
+    },
+    "chatbot_name": {
+      "type": "string",
+      "description": "Custom name for the AI assistant (default: Rosie)"
     }
   },
   "required": [
     "user_email"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
 }

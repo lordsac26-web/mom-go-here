@@ -83,10 +83,22 @@ export default function AIChatBot() {
   const [sending, setSending] = useState(false);
   const [waitingForReply, setWaitingForReply] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [chatbotName, setChatbotName] = useState("Rosie");
   const scrollRef = useRef(null);
   const conversationRef = useRef(null);
 
   const chatBubbleEnabled = useUIStore((s) => s.chatBubbleEnabled);
+
+  // Load chatbot name from profile
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (user?.email) {
+        base44.entities.UserProfile.filter({ user_email: user.email }).then(profiles => {
+          if (profiles[0]?.chatbot_name) setChatbotName(profiles[0].chatbot_name);
+        });
+      }
+    });
+  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -237,7 +249,7 @@ export default function AIChatBot() {
                     <span className="text-2xl">🌸</span>
                   </motion.div>
                   <div>
-                    <p className="text-lg font-black leading-tight">Mom's Helper</p>
+                    <p className="text-lg font-black leading-tight">{chatbotName}</p>
                     <div className="flex items-center gap-1.5">
                       <motion.div
                         className="w-2 h-2 rounded-full bg-green-300"
