@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, MessageCircle } from "lucide-react";
+import { X, MessageCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/stores/uiStore";
 import ChatBubbleMessage from "./chat/ChatBubbleMessage";
@@ -150,6 +150,16 @@ export default function AIChatBot() {
     handleSend(text);
   }
 
+  async function handleClearChat() {
+    if (conversation?.id) {
+      await base44.agents.updateConversation(conversation.id, { metadata: { name: "Chat (cleared)" } });
+    }
+    setMessages([]);
+    setConversation(null);
+    conversationRef.current = null;
+    initConversation();
+  }
+
   const visibleMessages = messages.filter(
     (m) => (m.role === "user" || m.role === "assistant") && m.content
   );
@@ -238,15 +248,28 @@ export default function AIChatBot() {
                     </div>
                   </div>
                 </div>
-                <motion.button
-                  onClick={() => setOpen(false)}
-                  className="p-2 rounded-xl hover:bg-white/20 transition-colors"
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.85 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                >
-                  <X size={22} />
-                </motion.button>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    onClick={handleClearChat}
+                    className="flex flex-col items-center gap-0.5 p-2 rounded-xl hover:bg-white/20 transition-colors"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    aria-label="Clear chat"
+                  >
+                    <Trash2 size={18} />
+                    <span className="text-[10px] font-bold leading-none">Clear</span>
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setOpen(false)}
+                    className="p-2 rounded-xl hover:bg-white/20 transition-colors"
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  >
+                    <X size={22} />
+                  </motion.button>
+                </div>
               </motion.div>
 
               {/* Messages Area */}
