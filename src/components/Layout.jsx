@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -22,10 +23,33 @@ const NAV_ITEMS = [
 
 
 
+// Tabs whose scroll position we preserve
+const SCROLL_TABS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
+
 export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
   const { tapVibrate } = useHaptics();
+  const mainRef = useRef(null);
+  const scrollMap = useRef({});
+
+  // Save scroll position when leaving a main tab
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    return () => {
+      if (mainEl && SCROLL_TABS.includes(location.pathname)) {
+        scrollMap.current[location.pathname] = mainEl.scrollTop;
+      }
+    };
+  }, [location.pathname]);
+
+  // Restore scroll position when arriving at a main tab
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (mainEl && SCROLL_TABS.includes(location.pathname)) {
+      mainEl.scrollTop = scrollMap.current[location.pathname] || 0;
+    }
+  }, [location.pathname]);
   const achievementBadge = useAchievementToastStore((s) => s.badge);
 
   return (
@@ -36,7 +60,7 @@ export default function Layout() {
       <PersistentAudioStream />
 
       {/* Top Nav — clean header with logo + music player */}
-      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
+      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg nav-no-select">
         <div className="flex items-center justify-between px-4 py-2.5 sm:py-3 max-w-4xl mx-auto w-full">
           <Link to="/" className="flex items-center gap-2">
             <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg" loading="eager" width="36" height="36" />
@@ -49,8 +73,8 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Page Content */}
-      <main className="flex-1 overflow-auto bg-transparent">
+      {/* Page Content — preserve scroll per tab */}
+      <main ref={mainRef} className="flex-1 overflow-auto bg-transparent">
         <div className="max-w-4xl mx-auto w-full">
           <Outlet />
         </div>
@@ -66,7 +90,7 @@ export default function Layout() {
       <AIChatBot />
 
       {/* Bottom Nav Bar */}
-      <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
+      <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg pb-[env(safe-area-inset-bottom)] nav-no-select">
         <div className="flex justify-around items-center py-1.5 sm:py-2 max-w-4xl mx-auto">
           {NAV_ITEMS.map((item) => (
             <Link

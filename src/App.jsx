@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -33,6 +34,7 @@ import DartPopBlitz from './pages/games/DartPopBlitz';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const loc = useLocation();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -56,35 +58,37 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/games" element={<Games />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/daily" element={<Daily />} />
-        <Route path="/games/memory" element={<MemoryGame />} />
-        <Route path="/games/tictactoe" element={<TicTacToe />} />
-        <Route path="/games/yahtzee" element={<Yahtzee />} />
-        <Route path="/games/wordsearch" element={<WordSearch />} />
-        <Route path="/games/sudoku" element={<Sudoku />} />
-        <Route path="/games/checkers" element={<Checkers />} />
-        <Route path="/games/mahjong" element={<Mahjong />} />
-        <Route path="/games/solitaire" element={<Solitaire />} />
-        <Route path="/games/artstudio" element={<AIArtStudio />} />
-        <Route path="/progress" element={<Progress />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/memories" element={<Memories />} />
-        <Route path="/games/buzzword" element={<BuzzWord />} />
-        <Route path="/games/slots" element={<SlotMachine />} />
-        <Route path="/contacts" element={<Contacts />} />
-        <Route path="/rankings" element={<Rankings />} />
-        <Route path="/scripture" element={<Scripture />} />
-        <Route path="/daily-challenge" element={<DailyChallenge />} />
-        <Route path="/achievements" element={<Achievements />} />
-        <Route path="/games/dartpop" element={<DartPopBlitz />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-    </Routes>
+    <AnimatePresence mode="popLayout">
+      <Routes location={loc} key={loc.pathname}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Home /></motion.div>} />
+          <Route path="/games" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Games /></motion.div>} />
+          <Route path="/settings" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Settings /></motion.div>} />
+          <Route path="/daily" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Daily /></motion.div>} />
+          <Route path="/games/memory" element={<MemoryGame />} />
+          <Route path="/games/tictactoe" element={<TicTacToe />} />
+          <Route path="/games/yahtzee" element={<Yahtzee />} />
+          <Route path="/games/wordsearch" element={<WordSearch />} />
+          <Route path="/games/sudoku" element={<Sudoku />} />
+          <Route path="/games/checkers" element={<Checkers />} />
+          <Route path="/games/mahjong" element={<Mahjong />} />
+          <Route path="/games/solitaire" element={<Solitaire />} />
+          <Route path="/games/artstudio" element={<AIArtStudio />} />
+          <Route path="/progress" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Progress /></motion.div>} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/memories" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Memories /></motion.div>} />
+          <Route path="/games/buzzword" element={<BuzzWord />} />
+          <Route path="/games/slots" element={<SlotMachine />} />
+          <Route path="/contacts" element={<Contacts />} />
+          <Route path="/rankings" element={<Rankings />} />
+          <Route path="/scripture" element={<Scripture />} />
+          <Route path="/daily-challenge" element={<DailyChallenge />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="/games/dartpop" element={<DartPopBlitz />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
+      </Routes>
+    </AnimatePresence>
   );
 };
 
