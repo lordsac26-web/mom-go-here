@@ -1,0 +1,46 @@
+{
+  "name": "HallOfFame",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Player email"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Player display name"
+    },
+    "total_score": {
+      "type": "number",
+      "description": "Aggregate best score across all games"
+    },
+    "games_played": {
+      "type": "number",
+      "description": "Number of distinct games played"
+    },
+    "best_game": {
+      "type": "string",
+      "description": "Game with the highest single score"
+    },
+    "best_game_score": {
+      "type": "number",
+      "description": "Highest single-game score"
+    },
+    "game_breakdown": {
+      "type": "object",
+      "description": "Map of game_name -> best score for that game"
+    },
+    "rank": {
+      "type": "number",
+      "description": "Current global rank (1-based)"
+    },
+    "last_updated": {
+      "type": "string",
+      "description": "ISO timestamp of last refresh"
+    }
+  },
+  "required": [
+    "user_email",
+    "total_score"
+  ]
+}
