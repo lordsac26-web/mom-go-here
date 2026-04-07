@@ -15,6 +15,7 @@ import ResumeGameWidget from "../components/ResumeGameWidget";
 import DailyChallengeWidget from "../components/DailyChallengeWidget";
 import DailyLoginBonus from "../components/DailyLoginBonus";
 import HallOfFameWidget from "../components/HallOfFameWidget";
+import LevelProgressBar from "../components/LevelProgressBar";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -117,6 +118,9 @@ export default function Home() {
         </h1>
         <p className="text-muted-foreground text-lg">Tap a card to explore!</p>
       </div>
+
+      {/* Player Level */}
+      <LevelProgressBar userEmail={user?.email} />
 
       {/* Quote of the Day */}
       {quote && (

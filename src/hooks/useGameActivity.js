@@ -1,24 +1,22 @@
 import { useCallback } from "react";
 import { useGameActivityStore } from "@/stores/gameActivityStore";
+import { usePlayerXP } from "./usePlayerXP";
 
-/**
- * Hook for games to report wins/losses to the activity monitor.
- * Usage:
- *   const { reportWin, reportLoss } = useGameActivity();
- *   // When player wins:  reportWin("Solitaire")
- *   // When player loses: reportLoss()
- */
 export function useGameActivity() {
   const recordWin = useGameActivityStore((s) => s.recordWin);
   const recordLoss = useGameActivityStore((s) => s.recordLoss);
 
+  const { awardXP } = usePlayerXP();
+
   const reportWin = useCallback((gameName) => {
     recordWin(gameName || "Game");
-  }, [recordWin]);
+    awardXP("win");
+  }, [recordWin, awardXP]);
 
   const reportLoss = useCallback(() => {
     recordLoss();
-  }, [recordLoss]);
+    awardXP("loss");
+  }, [recordLoss, awardXP]);
 
   return { reportWin, reportLoss };
 }

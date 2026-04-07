@@ -1,0 +1,36 @@
+{
+  "name": "PlayerXP",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "total_xp": {
+      "type": "number",
+      "description": "Lifetime XP earned"
+    },
+    "level": {
+      "type": "number",
+      "description": "Current player level"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "created_by": {
+        "$ne": null
+      }
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
