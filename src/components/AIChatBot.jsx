@@ -218,7 +218,7 @@ export default function AIChatBot() {
           <motion.button
             key="fab"
             onClick={handleOpen}
-            className="fixed z-50 right-4 bottom-24 bg-gradient-to-br from-primary via-amber-500 to-orange-500 text-primary-foreground w-16 h-16 rounded-full shadow-2xl flex items-center justify-center"
+            className="fixed z-50 right-3 bottom-[5.5rem] bg-gradient-to-br from-primary via-amber-500 to-orange-500 text-primary-foreground w-12 h-12 rounded-full shadow-2xl flex items-center justify-center opacity-70 hover:opacity-100"
             variants={bubbleVariants}
             initial="hidden"
             animate="visible"
@@ -227,7 +227,7 @@ export default function AIChatBot() {
             whileTap="tap"
             aria-label="Chat with AI"
           >
-            <MessageCircle size={30} />
+            <MessageCircle size={24} />
             {/* Notification badge */}
             {unreadCount > 0 && (
               <motion.div
