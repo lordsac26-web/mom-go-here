@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
-import { X, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 const BOX_COUNT = 9;
 
@@ -30,30 +30,72 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
   const [revealed, setRevealed] = useState({});
   const [picks, setPicks] = useState(0);
   const [totalMultiplier, setTotalMultiplier] = useState(0);
-  const [finished, setFinished] = useState(false);
+  const [phase, setPhase] = useState("picking"); // picking | spinning | done
+  const [displayedTotal, setDisplayedTotal] = useState(0);
   const containerRef = useRef(null);
   const resultRef = useRef(null);
+  const collectBtnRef = useRef(null);
 
   const maxPicks = scatterCount >= 5 ? 3 : scatterCount >= 4 ? 2 : 1;
 
   // Entrance animation
   useEffect(() => {
     if (!containerRef.current) return;
-    const boxes = containerRef.current.querySelectorAll(".bonus-box");
+    const boxEls = containerRef.current.querySelectorAll(".bonus-box");
     gsap.fromTo(containerRef.current, { scale: 0.8, opacity: 0 }, {
       scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)",
     });
-    gsap.fromTo(boxes, { scale: 0, rotation: -15 }, {
+    gsap.fromTo(boxEls, { scale: 0, rotation: -15 }, {
       scale: 1, rotation: 0, duration: 0.4, stagger: 0.05, ease: "back.out(2)", delay: 0.3,
     });
   }, []);
 
+  // When phase becomes "spinning", animate the total counting up, then show collect
+  const spinUpTotal = useCallback((finalMult) => {
+    setPhase("spinning");
+    const totalBonusValue = Math.round(baseWin * finalMult);
+
+    // Count-up animation
+    const duration = 2000; // 2 seconds
+    const startTime = Date.now();
+    const startVal = 0;
+
+    function tick() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(startVal + (totalBonusValue - startVal) * eased);
+      setDisplayedTotal(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        setDisplayedTotal(totalBonusValue);
+        // Show collect button after spin-up finishes
+        setTimeout(() => {
+          setPhase("done");
+          // Animate the collect button in
+          if (collectBtnRef.current) {
+            gsap.fromTo(collectBtnRef.current, 
+              { scale: 0.5, opacity: 0, y: 20 }, 
+              { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: "back.out(2)" }
+            );
+          }
+        }, 300);
+      }
+    }
+    requestAnimationFrame(tick);
+  }, [baseWin]);
+
   function handlePick(idx) {
-    if (revealed[idx] || finished) return;
+    if (revealed[idx] || phase !== "picking") return;
     const box = boxes[idx];
 
-    setRevealed(prev => ({ ...prev, [idx]: true }));
-    setTotalMultiplier(prev => prev + box.value);
+    const newRevealed = { ...revealed, [idx]: true };
+    setRevealed(newRevealed);
+    const newMult = totalMultiplier + box.value;
+    setTotalMultiplier(newMult);
     const newPicks = picks + 1;
     setPicks(newPicks);
 
@@ -63,7 +105,6 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
       gsap.to(el, {
         rotateY: 180, duration: 0.5, ease: "power2.inOut",
         onComplete: () => {
-          // Glow effect
           gsap.to(el, {
             boxShadow: `0 0 30px rgba(234,179,8,0.6)`,
             duration: 0.3, yoyo: true, repeat: 2, ease: "sine.inOut",
@@ -72,27 +113,38 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
       });
     }
 
+    // Last pick — reveal remaining boxes then spin up total
     if (newPicks >= maxPicks) {
       setTimeout(() => {
-        setFinished(true);
-        // Reveal all remaining
+        // Reveal all remaining with stagger
         const allRevealed = {};
         for (let i = 0; i < BOX_COUNT; i++) allRevealed[i] = true;
         setRevealed(allRevealed);
 
-        // Animate result
-        if (resultRef.current) {
-          gsap.fromTo(resultRef.current, { scale: 0, opacity: 0 }, {
-            scale: 1, opacity: 1, duration: 0.6, ease: "elastic.out(1, 0.4)", delay: 0.5,
+        // Animate remaining boxes
+        const unrevealedEls = containerRef.current?.querySelectorAll(".bonus-box");
+        if (unrevealedEls) {
+          unrevealedEls.forEach((el, i) => {
+            if (!newRevealed[i]) {
+              gsap.to(el, { rotateY: 180, duration: 0.4, delay: i * 0.05, ease: "power2.inOut" });
+            }
           });
         }
+
+        // After a beat, show the result panel and start the spin-up
+        setTimeout(() => {
+          if (resultRef.current) {
+            gsap.fromTo(resultRef.current, { scale: 0.8, opacity: 0 }, {
+              scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)",
+            });
+          }
+          spinUpTotal(newMult);
+        }, 600);
       }, 800);
     }
   }
 
   const finalMultiplier = totalMultiplier || 1;
-  // Bonus win = multiplied total. The base win was already credited during the normal spin,
-  // so we pass only the EXTRA winnings back to the parent: (multiplied - base)
   const totalBonusValue = Math.round(baseWin * finalMultiplier);
   const extraWinnings = totalBonusValue - baseWin;
 
@@ -118,7 +170,9 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
           <div className="text-4xl mb-1">🎁</div>
           <h2 className="text-2xl font-black text-yellow-400">BONUS ROUND!</h2>
           <p className="text-sm text-gray-300 mt-1">
-            Pick {maxPicks} box{maxPicks > 1 ? "es" : ""} to reveal your multiplier!
+            {phase === "picking" 
+              ? `Pick ${maxPicks} box${maxPicks > 1 ? "es" : ""} to reveal your multiplier!`
+              : "🎰 Calculating your winnings..."}
           </p>
           <div className="flex items-center justify-center gap-4 mt-2 text-xs font-bold">
             <span className="text-cyan-400">Base Win: {baseWin.toLocaleString()}</span>
@@ -135,7 +189,7 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
                 key={idx}
                 data-box={idx}
                 onClick={() => handlePick(idx)}
-                disabled={isRevealed || finished}
+                disabled={isRevealed || phase !== "picking"}
                 className="bonus-box aspect-square rounded-2xl border-2 font-black text-lg transition-all relative overflow-hidden"
                 style={{
                   perspective: "600px",
@@ -162,35 +216,53 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
           })}
         </div>
 
-        {/* Multiplier bar */}
-        {totalMultiplier > 0 && !finished && (
+        {/* Multiplier bar — while still picking */}
+        {totalMultiplier > 0 && phase === "picking" && (
           <div className="text-center bg-gray-800 rounded-2xl py-3 px-4 border-2 border-yellow-600 mb-3">
             <div className="text-xs text-gray-400 uppercase tracking-wider">Current Multiplier</div>
             <div className="text-3xl font-black text-yellow-400">{totalMultiplier}x</div>
           </div>
         )}
 
-        {/* Final Result */}
-        {finished && (
+        {/* Spin-up Result — appears after last pick */}
+        {(phase === "spinning" || phase === "done") && (
           <div ref={resultRef} style={{ opacity: 0 }}>
-            <div className="text-center bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl py-4 px-4 border-2 border-yellow-300 mb-3">
+            <div className="text-center bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl py-5 px-4 border-2 border-yellow-300 mb-4">
               <div className="text-sm font-bold text-yellow-900 uppercase">Total Multiplier</div>
               <div className="text-4xl font-black text-gray-900">{finalMultiplier}x</div>
               <div className="text-xs font-bold text-yellow-900/80 mt-1">
-                {baseWin.toLocaleString()} × {finalMultiplier} = {totalBonusValue.toLocaleString()}
+                {baseWin.toLocaleString()} × {finalMultiplier}
               </div>
-              <div className="text-lg font-black text-gray-900 mt-1">
-                🎉 Bonus: +{extraWinnings.toLocaleString()}
+              {/* Spinning total display */}
+              <div className="mt-3 bg-gray-900/30 rounded-xl py-3 px-4">
+                <div className="text-xs text-yellow-900/70 font-bold uppercase">Total Bonus</div>
+                <div className="text-4xl font-black text-gray-900 tabular-nums">
+                  {displayedTotal.toLocaleString()}
+                </div>
               </div>
-              <div className="text-[10px] text-yellow-900/60 mt-0.5">
-                (Base win of {baseWin.toLocaleString()} already credited)
-              </div>
+              {phase === "done" && (
+                <div className="mt-2 text-sm font-black text-gray-900">
+                  🎉 Extra: +{extraWinnings.toLocaleString()}
+                  <div className="text-[10px] text-yellow-900/60 mt-0.5">
+                    (Base win of {baseWin.toLocaleString()} already credited)
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Collect button — only visible after spin-up completes */}
             <button
+              ref={collectBtnRef}
               onClick={() => onComplete(extraWinnings)}
-              className="w-full bg-green-600 text-white text-xl font-black py-4 rounded-2xl border-2 border-green-400 active:scale-95 transition-transform"
+              disabled={phase !== "done"}
+              className={`w-full text-xl font-black py-5 rounded-2xl border-2 transition-transform active:scale-95 ${
+                phase === "done" 
+                  ? "bg-green-600 text-white border-green-400" 
+                  : "bg-gray-700 text-gray-500 border-gray-600 pointer-events-none"
+              }`}
+              style={{ opacity: phase === "done" ? undefined : 0 }}
             >
-              💰 Collect +{extraWinnings.toLocaleString()}
+              💰 Collect +{extraWinnings.toLocaleString()} & Return to Game
             </button>
           </div>
         )}
