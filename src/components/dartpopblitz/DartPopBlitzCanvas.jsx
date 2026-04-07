@@ -162,17 +162,23 @@ export default function DartPopBlitzCanvas({
   gameState, setGameState,
   totalPopped, setTotalPopped,
   obstacles, setObstacles,
+  combo, setCombo,
+  comboMultiplier, setComboMultiplier,
   sounds,
 }) {
   const canvasRef = useRef(null);
   const aimRef = useRef(null); // {x,y} of current aim position
   const launcherPos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
   const animFrameRef = useRef(null);
-  const gameDataRef = useRef({ balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles });
+  const comboTimerRef = useRef(0);   // frames remaining in combo window
+  const comboCountRef = useRef(0);   // pops in current combo window
+  const comboFloatsRef = useRef([]); // floating combo text popups
+  const COMBO_WINDOW = 30; // frames (~0.5s at 60fps) to chain pops
+  const gameDataRef = useRef({ balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles, combo, comboMultiplier });
 
   // Keep ref in sync
   useEffect(() => {
-    gameDataRef.current = { balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles };
+    gameDataRef.current = { balloons, darts, particles, dartsRemaining, score, streak, activePowerup, gameState, totalPopped, obstacles, combo, comboMultiplier };
   });
 
   // ── Shooting ──
@@ -270,6 +276,22 @@ export default function DartPopBlitzCanvas({
       const updatedObstacles = updateObstacles(gd.obstacles || []);
       setObstacles(updatedObstacles);
 
+      // Combo timer tick
+      if (comboTimerRef.current > 0) {
+        comboTimerRef.current--;
+        if (comboTimerRef.current <= 0) {
+          // Combo expired — reset
+          comboCountRef.current = 0;
+          setCombo(0);
+          setComboMultiplier(1);
+        }
+      }
+
+      // Update combo floats
+      comboFloatsRef.current = comboFloatsRef.current
+        .map(f => ({ ...f, y: f.y - 1.2, life: f.life - 0.025, scale: f.scale + 0.005 }))
+        .filter(f => f.life > 0);
+
       // Update darts
       let updatedDarts = [...gd.darts];
       let updatedParticles = [...gd.particles];
@@ -278,6 +300,7 @@ export default function DartPopBlitzCanvas({
       let hitThisFrame = false;
       let missThisFrame = false;
       let newStreak = gd.streak;
+      let popsThisFrame = 0;
 
       updatedDarts = updatedDarts.map(d => {
         if (!d.alive) return d;
@@ -336,7 +359,8 @@ export default function DartPopBlitzCanvas({
             const newHp = b.hp - dmg;
             if (newHp <= 0) {
               updatedBalloons[i] = { ...b, alive: false };
-              scoreAdd += b.points;
+              popsThisFrame++;
+              scoreAdd += b.points;  // multiplier applied below
               poppedAdd++;
               sounds.playPop();
               spawnParticles(updatedParticles, b.x, b.y, b.color, 10);
@@ -351,6 +375,7 @@ export default function DartPopBlitzCanvas({
                   const edy = ob.y - b.y;
                   if (Math.sqrt(edx * edx + edy * edy) < explR) {
                     scoreAdd += ob.points;
+                    popsThisFrame++;
                     poppedAdd++;
                     spawnParticles(updatedParticles, ob.x, ob.y, ob.color, 6);
                     return { ...ob, alive: false };
@@ -393,11 +418,37 @@ export default function DartPopBlitzCanvas({
       // Clean dead darts
       updatedDarts = updatedDarts.filter(d => d.alive);
 
+      // Combo multiplier logic
+      if (popsThisFrame > 0) {
+        // Extend combo window and increase count
+        comboTimerRef.current = COMBO_WINDOW;
+        comboCountRef.current += popsThisFrame;
+        const newCombo = comboCountRef.current;
+        // Multiplier: 1x for 1 pop, 2x for 2, 3x for 3-4, 4x for 5+, etc.
+        const newMultiplier = newCombo <= 1 ? 1 : Math.min(newCombo, 8);
+        setCombo(newCombo);
+        setComboMultiplier(newMultiplier);
+
+        // Spawn floating combo text if multiplier > 1
+        if (newMultiplier > 1) {
+          // Find center of pops this frame for placement
+          const popBalloons = updatedBalloons.filter(b => !b.alive);
+          const lastPop = popBalloons.length > 0 ? popBalloons[popBalloons.length - 1] : null;
+          const fx = lastPop ? lastPop.x : GAME_WIDTH / 2;
+          const fy = lastPop ? lastPop.y : GAME_HEIGHT / 3;
+          comboFloatsRef.current.push({ x: fx, y: fy, text: `${newMultiplier}x COMBO!`, life: 1, scale: 1 });
+        }
+      }
+
+      // Apply multiplier to score
+      const currentMultiplier = popsThisFrame > 0 ? (comboCountRef.current <= 1 ? 1 : Math.min(comboCountRef.current, 8)) : 1;
+      const multipliedScore = scoreAdd * currentMultiplier;
+
       // Apply state
       setBalloons(updatedBalloons);
       setDarts(updatedDarts);
       setParticles(updatedParticles);
-      if (scoreAdd > 0) setScore(prev => prev + scoreAdd);
+      if (multipliedScore > 0) setScore(prev => prev + multipliedScore);
       if (poppedAdd > 0) setTotalPopped(prev => prev + poppedAdd);
       if (newStreak !== gd.streak) setStreak(newStreak);
 
@@ -485,6 +536,41 @@ export default function DartPopBlitzCanvas({
       ctx.beginPath();
       ctx.arc(launcherPos.x, launcherPos.y, 8, 0, Math.PI * 2);
       ctx.fill();
+
+      // Combo floating text
+      comboFloatsRef.current.forEach(f => {
+        ctx.save();
+        ctx.globalAlpha = Math.min(f.life * 2, 1);
+        ctx.font = `bold ${Math.round(18 * f.scale)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // Outline
+        ctx.strokeStyle = "rgba(0,0,0,0.6)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(f.text, f.x, f.y);
+        // Fill with gradient color based on multiplier number
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillText(f.text, f.x, f.y);
+        ctx.restore();
+      });
+
+      // Combo bar (top of game area)
+      if (gd.comboMultiplier > 1) {
+        const barWidth = Math.min((gd.combo / 8), 1) * (GAME_WIDTH - 40);
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.fillRect(20, 10, GAME_WIDTH - 40, 8);
+        const comboGrad = ctx.createLinearGradient(20, 10, 20 + barWidth, 18);
+        comboGrad.addColorStop(0, "#f59e0b");
+        comboGrad.addColorStop(1, "#ef4444");
+        ctx.fillStyle = comboGrad;
+        ctx.fillRect(20, 10, barWidth, 8);
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillText(`${gd.comboMultiplier}x`, GAME_WIDTH - 22, 20);
+        ctx.restore();
+      }
 
       // Aim line
       if (aimRef.current && gd.gameState === "playing") {

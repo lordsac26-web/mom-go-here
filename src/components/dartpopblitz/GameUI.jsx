@@ -3,6 +3,7 @@ import { POWERUPS } from "./gameConfig";
 export default function GameUI({
   score, dartsRemaining, totalPopped, totalBalloons, streak,
   activePowerup, setActivePowerup, powerupInventory, setPowerupInventory,
+  comboMultiplier,
 }) {
   function equipPowerup(key) {
     if (activePowerup === key) {
@@ -26,6 +27,9 @@ export default function GameUI({
       {/* Score bar */}
       <div className="flex items-center justify-between bg-card/80 rounded-xl px-3 py-2 text-sm font-bold">
         <span className="text-primary text-lg">🏆 {score.toLocaleString()}</span>
+        {comboMultiplier > 1 && (
+          <span className="text-yellow-400 font-black animate-pulse">🔥 {comboMultiplier}x</span>
+        )}
         <span className="text-foreground">🎈 {totalPopped}/{totalBalloons}</span>
         <span className="text-foreground">🎯 {dartsRemaining}</span>
       </div>

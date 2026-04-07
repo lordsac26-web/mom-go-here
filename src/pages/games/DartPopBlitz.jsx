@@ -51,6 +51,8 @@ export default function DartPopBlitz() {
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
   const [totalBalloons, setTotalBalloons] = useState(0);
   const [obstacles, setObstacles] = useState([]);
+  const [combo, setCombo] = useState(0);
+  const [comboMultiplier, setComboMultiplier] = useState(1);
   const savedRef = useRef(false);
 
   const startGame = useCallback((p) => {
@@ -67,6 +69,8 @@ export default function DartPopBlitz() {
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
     setObstacles(generateObstacles(p.obstacles || []));
+    setCombo(0);
+    setComboMultiplier(1);
     setGameState("playing");
     savedRef.current = false;
   }, []);
@@ -158,6 +162,7 @@ export default function DartPopBlitz() {
         setActivePowerup={setActivePowerup}
         powerupInventory={powerupInventory}
         setPowerupInventory={setPowerupInventory}
+        comboMultiplier={comboMultiplier}
       />
 
       <DartPopBlitzCanvas
@@ -172,6 +177,8 @@ export default function DartPopBlitz() {
         gameState={gameState} setGameState={setGameState}
         totalPopped={totalPopped} setTotalPopped={setTotalPopped}
         obstacles={obstacles} setObstacles={setObstacles}
+        combo={combo} setCombo={setCombo}
+        comboMultiplier={comboMultiplier} setComboMultiplier={setComboMultiplier}
         sounds={sounds}
       />
     </div>
