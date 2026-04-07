@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,7 +41,7 @@ export default function Layout() {
       <header className="bg-card border-b border-border sticky top-0 z-50 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-9 h-9 rounded-lg" />
+            <img src="https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png" alt="Mom, Go Here" className="w-9 h-9 rounded-lg" loading="eager" width="36" height="36" />
             <span className="text-2xl font-black text-primary">Mom, Go Here</span>
           </Link>
           <div className="flex items-center gap-1.5">

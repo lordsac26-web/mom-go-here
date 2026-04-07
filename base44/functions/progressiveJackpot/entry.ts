@@ -39,7 +39,8 @@ Deno.serve(async (req) => {
 
   if (action === "spin") {
     const { betAmount } = body;
-    if (!betAmount || betAmount <= 0) {
+    // Security: validate betAmount is a finite positive number, cap at max
+    if (typeof betAmount !== "number" || !Number.isFinite(betAmount) || betAmount <= 0 || betAmount > 500000) {
       return Response.json({ error: "Invalid bet" }, { status: 400 });
     }
 

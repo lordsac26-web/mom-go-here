@@ -192,14 +192,14 @@ export default function SlotMachine() {
                 setShowWin(false);
                 setWinningLines([]);
                 setSpinning(false);
-                if (autoSpinRef.current) setTimeout(() => doSpin(), 800);
+                if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
               }, 2500);
             }
           } else {
             setLastWin(0);
             setSpinning(false);
             recordLoss();
-            if (autoSpinRef.current) setTimeout(() => doSpin(), 500);
+            if (autoSpinRef.current) setTimeout(() => handleSpin(), 500);
           }
         }, 200);
       }
@@ -208,51 +208,7 @@ export default function SlotMachine() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // FIX (bug): intentionally empty — reads bet/paylines via refs, not stale closure
 
-  // FIX (bug): wrap doSpin in useCallback so auto-spin continuations use a stable reference
-  const doSpin = useCallback(() => {
-    setSpinning(prev => {
-      if (prev) return prev; // already spinning — no-op
-      return prev;
-    });
-    // Read latest spinning state via functional update pattern
-    setBalance(prevBalance => {
-      const currentBet = betRef.current;
-      if (prevBalance < currentBet) {
-        tapVibrate();
-        return prevBalance; // not enough balance, bail out
-      }
-      return prevBalance; // actual deduction happens below after guard passes
-    });
-
-    // Use a ref-guarded approach: check spinning synchronously via ref
-    if (spinningRef.current) return;
-
-    const currentBet = betRef.current;
-    setBalance(prev => {
-      if (prev < currentBet) return prev;
-      return prev; // placeholder — real deduction below
-    });
-
-    // Perform the full spin initiation
-    uiClickSound();
-    tapVibrate();
-    diceshakeSound();
-
-    setBalance(prev => prev - currentBet);
-    setWins([]);
-    setTotalWin(0);
-    setShowWin(false);
-    setWinningLines([]);
-    setReelsStopped(0);
-
-    const newGrid = generateGrid();
-    nextGridRef.current = newGrid;
-    setGrid(newGrid);
-    setSpinning(true);
-    spinningRef.current = true;
-  }, [tapVibrate, uiClickSound, diceshakeSound]);
-
-  // FIX (bug): track spinning in a ref so doSpin's guard works synchronously
+  // Track spinning in a ref so guards work synchronously
   const spinningRef = useRef(false);
   useEffect(() => { spinningRef.current = spinning; }, [spinning]);
 
