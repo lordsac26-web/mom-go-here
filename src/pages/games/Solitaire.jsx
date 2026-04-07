@@ -11,6 +11,7 @@ import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import useConfetti from "../../hooks/useConfetti";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -137,6 +138,7 @@ export default function Solitaire() {
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { uiClickSound, matchSound, winSound } = useGameAudio();
   const { fireworks, emojiRain } = useConfetti();
+  const { reportWin, reportLoss } = useGameActivity();
   const gameStartRef = useRef(Date.now());
   const statsRecordedRef = useRef(false);
   const [game, setGame] = useState(initGame());
@@ -158,6 +160,7 @@ export default function Solitaire() {
   async function recordStats(didWin) {
     if (!user?.email || statsRecordedRef.current) return;
     statsRecordedRef.current = true;
+    if (didWin) reportWin("Solitaire"); else reportLoss();
     const elapsed = Math.round((Date.now() - gameStartRef.current) / 1000);
     const rows = await base44.entities.SolitaireStats.filter({ user_email: user.email });
     const s = rows[0];

@@ -10,6 +10,7 @@ import { Palette } from "lucide-react";
 import { WS_THEMES, DEFAULT_THEME } from "../../components/wordsearch/themes";
 import ThemePanel from "../../components/wordsearch/ThemePanel";
 import useGridReveal, { PATTERN_LIST } from "../../hooks/useGridReveal";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 const WORD_LISTS = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
@@ -76,6 +77,7 @@ export default function WordSearch() {
   useGameTimer();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { uiClickSound, matchSound, winSound } = useGameAudio();
+  const { reportWin } = useGameActivity();
   const [started, setStarted] = useState(false);
   const [size] = useState(10);
   const [gridData, setGridData] = useState(null);
@@ -155,7 +157,7 @@ export default function WordSearch() {
     setSelected([]);
     setJustFoundCells(cellKeys);
     setJustFoundWord(word);
-    if (isWinning) { winSound(); winVibrate(); } else { matchSound(); successVibrate(); }
+    if (isWinning) { winSound(); winVibrate(); reportWin("Word Search"); } else { matchSound(); successVibrate(); }
     clearTimeout(glowTimerRef.current);
     glowTimerRef.current = setTimeout(() => {
       setJustFoundCells([]);

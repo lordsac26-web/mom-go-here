@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { X, MessageCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/stores/uiStore";
+import { useGameActivityStore } from "@/stores/gameActivityStore";
 import ChatBubbleMessage from "./chat/ChatBubbleMessage";
 import TypingIndicator from "./chat/TypingIndicator";
 import ChatEmptyState from "./chat/ChatEmptyState";
@@ -88,6 +89,8 @@ export default function AIChatBot() {
   const conversationRef = useRef(null);
 
   const chatBubbleEnabled = useUIStore((s) => s.chatBubbleEnabled);
+  const unreadCount = useGameActivityStore((s) => s.unreadCount);
+  const consumeMessages = useGameActivityStore((s) => s.consumeMessages);
 
   // Load chatbot name from profile
   useEffect(() => {
@@ -128,6 +131,19 @@ export default function AIChatBot() {
     setConversation(convo);
     conversationRef.current = convo;
     setLoading(false);
+
+    // Inject any pending game activity messages after init
+    setTimeout(() => {
+      const pending = consumeMessages();
+      if (pending.length > 0 && conversationRef.current) {
+        pending.forEach(async (msg) => {
+          await base44.agents.addMessage(conversationRef.current, {
+            role: "user",
+            content: `[System notification — respond warmly] ${msg.text}`,
+          });
+        });
+      }
+    }, 500);
   }
 
   useEffect(() => {
@@ -146,7 +162,23 @@ export default function AIChatBot() {
 
   function handleOpen() {
     setOpen(true);
-    if (!conversation) initConversation();
+    if (!conversation) {
+      initConversation();
+    } else {
+      // Inject any pending game activity messages
+      injectPendingMessages();
+    }
+  }
+
+  async function injectPendingMessages() {
+    const pending = consumeMessages();
+    if (pending.length === 0 || !conversationRef.current) return;
+    for (const msg of pending) {
+      await base44.agents.addMessage(conversationRef.current, {
+        role: "user",
+        content: `[System notification — respond warmly] ${msg.text}`,
+      });
+    }
   }
 
   const handleSend = useCallback(async (text) => {
@@ -196,6 +228,17 @@ export default function AIChatBot() {
             aria-label="Chat with AI"
           >
             <MessageCircle size={30} />
+            {/* Notification badge */}
+            {unreadCount > 0 && (
+              <motion.div
+                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-background shadow-lg"
+                initial={{ scale: 0 }}
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </motion.div>
+            )}
             {/* Pulse ring */}
             <motion.div
               className="absolute inset-0 rounded-full border-2 border-primary"

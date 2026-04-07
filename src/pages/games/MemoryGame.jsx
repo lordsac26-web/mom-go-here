@@ -10,6 +10,7 @@ import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
 import GridRevealWrapper from "../../components/GridRevealWrapper";
 import MemoryBackgroundPicker, { MEMORY_BACKGROUNDS } from "../../components/MemoryBackgroundPicker";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 const EMOJI_SETS = ["🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎", "🐬", "🎵", "🌻", "🦚", "🍓", "🐱", "🦊", "🌴", "🐘", "🎨", "💎", "🦅", "🍇", "🌊", "🐢", "🦜", "🍄", "🌮", "🐙", "🎸", "🦩", "🏔️", "🌿", "🦋", "🐠", "🍰", "🦄", "🌹"];
 
@@ -82,6 +83,7 @@ export default function MemoryGame() {
   const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
   const { cardFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, shower, fireworks, emojiRain } = useConfetti();
+  const { reportWin } = useGameActivity();
 
   const initializeGame = useGameStore((state) => state.initializeGame);
   const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
@@ -197,6 +199,7 @@ export default function MemoryGame() {
               winSound();
               fireworks();
               emojiRain(["🧠", "🎉", "⭐"]);
+              reportWin("Memory Match");
               // FIX (bug): setWon inside the updater risks batching issues — use a separate call
               setTimeout(() => {
                 if (mountedRef.current) setWon(true);

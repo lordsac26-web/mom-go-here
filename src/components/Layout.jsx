@@ -4,6 +4,7 @@ import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-reac
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
+import GameActivityMonitor from "./GameActivityMonitor";
 import PersistentAudioStream from "./PersistentAudioStream";
 import useHaptics from "../hooks/useHaptics";
 
@@ -65,6 +66,9 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Game Activity Monitor (invisible) */}
+      <GameActivityMonitor />
 
       {/* AI Chat Bot */}
       <AIChatBot />

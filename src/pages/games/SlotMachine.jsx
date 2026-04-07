@@ -26,6 +26,7 @@ import {
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
   buildReelStrip, checkWins,
 } from "../../components/slots/slotConfig";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 function getRandomSymbols(count) {
   const result = [];
@@ -60,6 +61,7 @@ export default function SlotMachine() {
   const { tapVibrate, matchVibrate, winVibrate, scoreHit, scoreMilestone } = useHaptics();
   const { matchSound, winSound, uiClickSound, diceshakeSound, diceCollideSound } = useGameAudio();
   const { spark, burst, sideCannons, fireworks, emojiRain } = useConfetti();
+  const { reportWin: reportActivityWin, reportLoss: reportActivityLoss } = useGameActivity();
 
   const [balance, setBalance] = useState(loadBalance);
   const [bet, setBet] = useState(BET_LEVELS[1]);
@@ -171,6 +173,8 @@ export default function SlotMachine() {
             const hasScatter = result.wins.some(w => w.type === "scatter");
             recordWin(result.totalWin, lineWinCount, hasScatter);
 
+            reportActivityWin("Lucky Slots");
+
             if (result.totalWin >= 25000) {
               winVibrate(); winSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
             } else if (result.totalWin >= 5000) {
@@ -199,6 +203,7 @@ export default function SlotMachine() {
             setLastWin(0);
             setSpinning(false);
             recordLoss();
+            reportActivityLoss();
             if (autoSpinRef.current) setTimeout(() => handleSpin(), 500);
           }
         }, 200);

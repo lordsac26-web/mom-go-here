@@ -6,6 +6,7 @@ import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import useConfetti from "../../hooks/useConfetti";
+import { useGameActivity } from "../../hooks/useGameActivity";
 import SVGBoard from "../../components/tictactoe/SVGBoard";
 import SVGMark from "../../components/tictactoe/SVGMark";
 import SVGWinLine from "../../components/tictactoe/SVGWinLine";
@@ -53,6 +54,7 @@ export default function TicTacToe() {
   const { tapVibrate, winVibrate } = useHaptics();
   const { uiClickSound, winSound } = useGameAudio();
   const { fireworks, emojiRain } = useConfetti();
+  const { reportWin, reportLoss } = useGameActivity();
   const [board, setBoard] = useState(Array(9).fill(null));
   const [xIsNext, setXIsNext] = useState(true);
   const [gameOver, setGameOver] = useState(false);
@@ -85,6 +87,7 @@ export default function TicTacToe() {
       setStatus("🎉 You Win!");
       setGameOver(true);
       winVibrate(); winSound(); fireworks(); emojiRain(["❌", "🏆", "⭐"]);
+      reportWin("Tic Tac Toe");
       return;
     }
     if (newBoard.every(Boolean)) {
@@ -120,6 +123,7 @@ export default function TicTacToe() {
         if (r2) {
           setStatus("🤖 Computer Wins!");
           setGameOver(true);
+          reportLoss();
         } else if (b2.every(Boolean)) {
           setStatus("🤝 It's a Draw!");
           setGameOver(true);

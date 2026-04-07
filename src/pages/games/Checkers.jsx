@@ -12,12 +12,14 @@ import ScoreBar from "../../components/checkers/ScoreBar";
 import {
   initBoard, getAllMoves, applyMove, computerMove, countPieces,
 } from "../../components/checkers/CheckersEngine";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 export default function Checkers() {
   useGameTimer();
   const { tapVibrate, moveMade, pieceJumped, winVibrate, lossVibrate } = useHaptics();
   const { checkerFlipSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, shower, fireworks, emojiRain } = useConfetti();
+  const { reportWin, reportLoss } = useGameActivity();
 
   const [board, setBoard] = useState(initBoard);
   const [selected, setSelected] = useState(null);
@@ -129,10 +131,12 @@ export default function Checkers() {
         winVibrate(); winSound(); fireworks(); emojiRain(["👑", "🏆", "⭐"]);
         setMessage("🎉 You win! All enemy pieces captured!");
         setPlayerScore("player-1", moveCountRef.current);
+        reportWin("Checkers");
       } else {
         lossVibrate();
         setMessage("😔 Computer wins! Better luck next time.");
         setPlayerScore("computer", moveCountRef.current);
+        reportLoss();
       }
       setGameOver(true);
       return;
@@ -151,6 +155,7 @@ export default function Checkers() {
           setMessage("🎉 You win!");
           setGameOver(true);
           setPlayerScore("player-1", moveCountRef.current);
+          reportWin("Checkers");
           thinkingRef.current = false;
           return;
         }
@@ -173,6 +178,7 @@ export default function Checkers() {
           setMessage("😔 Computer wins!");
           setGameOver(true);
           setPlayerScore("computer", moveCountRef.current);
+          reportLoss();
           thinkingRef.current = false;
           return;
         }

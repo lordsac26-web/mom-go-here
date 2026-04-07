@@ -8,6 +8,7 @@ import { useGameAudio } from "../../hooks/useGameAudio";
 import Dice2DRoller from "../../components/Dice2DRoller";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
+import { useGameActivity } from "../../hooks/useGameActivity";
 
 const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -64,6 +65,7 @@ export default function Yahtzee() {
   const { tapVibrate, scoreHit, scoreMilestone, bonusPoints, winVibrate } = useHaptics();
   const { diceshakeSound, diceCollideSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, sideCannons, fireworks, emojiRain } = useConfetti();
+  const { reportWin } = useGameActivity();
   const rollerRef = useRef(null);
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
@@ -170,6 +172,7 @@ export default function Yahtzee() {
           winSound();
           fireworks();
           emojiRain(["🎲", "🎉", "⭐"]);
+          reportWin("Yahtzee");
           setPlayerScore("player-1", newTotal);
         }
       }, 0);
