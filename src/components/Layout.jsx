@@ -10,6 +10,8 @@ import useHaptics from "../hooks/useHaptics";
 
 import MiniMusicPlayer from "./MiniMusicPlayer";
 import HeaderSoundControls from "./HeaderSoundControls";
+import AchievementUnlockToast from "./AchievementUnlockToast";
+import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -30,6 +32,7 @@ export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
   const { tapVibrate } = useHaptics();
+  const achievementBadge = useAchievementToastStore((s) => s.badge);
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
@@ -69,6 +72,9 @@ export default function Layout() {
 
       {/* Game Activity Monitor (invisible) */}
       <GameActivityMonitor />
+
+      {/* Achievement Toast */}
+      <AchievementUnlockToast achievement={achievementBadge} />
 
       {/* AI Chat Bot */}
       <AIChatBot />

@@ -16,6 +16,7 @@ import DailyChallengeWidget from "../components/DailyChallengeWidget";
 import DailyLoginBonus from "../components/DailyLoginBonus";
 import HallOfFameWidget from "../components/HallOfFameWidget";
 import LevelProgressBar from "../components/LevelProgressBar";
+import AchievementsWidget from "../components/AchievementsWidget";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -158,6 +159,9 @@ export default function Home() {
 
       {/* Daily Brain Challenge */}
       <DailyChallengeWidget userEmail={user?.email} refreshKey={refreshKey} />
+
+      {/* Achievements */}
+      <AchievementsWidget userEmail={user?.email} />
 
       {/* Engagement Streaks */}
       <HomeStreakWidget userEmail={user?.email} refreshKey={refreshKey} />

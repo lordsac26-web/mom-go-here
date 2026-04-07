@@ -28,6 +28,7 @@ import Contacts from './pages/Contacts';
 import Rankings from './pages/Rankings';
 import Scripture from './pages/Scripture';
 import DailyChallenge from './pages/DailyChallenge';
+import Achievements from './pages/Achievements';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/rankings" element={<Rankings />} />
         <Route path="/scripture" element={<Scripture />} />
         <Route path="/daily-challenge" element={<DailyChallenge />} />
+        <Route path="/achievements" element={<Achievements />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>
