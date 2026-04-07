@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
@@ -197,7 +198,7 @@ export default function Mahjong() {
             </button>
           ))}
         </div>
-        <Link to="/games" className="mt-8 text-primary text-xl font-bold">← Back to Games</Link>
+        <GameBackButton className="mt-8" />
       </div>
     );
   }
@@ -214,7 +215,7 @@ export default function Mahjong() {
           🔄 Play Again
         </button>
         <button onClick={backToMenu} className="text-primary text-xl font-bold mb-2">Choose Layout</button>
-        <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+        <GameBackButton />
       </div>
     );
   }
@@ -232,7 +233,7 @@ export default function Mahjong() {
     <div className="min-h-screen px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-3">
-        <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-center">
           <div className="text-xl font-black text-primary">🀄 Mahjong</div>
           <div className="text-sm text-muted-foreground">

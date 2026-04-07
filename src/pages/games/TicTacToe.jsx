@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
@@ -145,7 +146,7 @@ export default function TicTacToe() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
       <div className="flex items-center justify-between w-full px-4 mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameBackButton />
         <GameInstructions
           title="Tic Tac Toe"
           emoji="❌"

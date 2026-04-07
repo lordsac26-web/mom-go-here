@@ -3,26 +3,32 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Zap, Check } from "lucide-react";
 import { getDailyGame, getTodayStr } from "../utils/dailyGame";
+import WidgetErrorState from "./WidgetErrorState";
 
 
 
-export default function DailyChallengeWidget({ userEmail }) {
+export default function DailyChallengeWidget({ userEmail, refreshKey }) {
   const [record, setRecord] = useState(null);
   const [totalZen, setTotalZen] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const todayStr = getTodayStr();
   const dailyGame = getDailyGame(todayStr);
 
-  useEffect(() => {
+  function fetchData() {
     if (!userEmail) return;
+    setError(false);
     base44.entities.ZenPoints.filter({ user_email: userEmail }, "-date", 30).then(records => {
       setRecord(records.find(r => r.date === todayStr) || null);
       setTotalZen(records.reduce((s, r) => s + (r.points_earned || 0), 0));
       setLoading(false);
-    });
-  }, [userEmail]);
+    }).catch(() => { setError(true); setLoading(false); });
+  }
 
+  useEffect(() => { fetchData(); }, [userEmail, refreshKey]);
+
+  if (error) return <WidgetErrorState message="Couldn't load challenge" emoji="🧠" onRetry={fetchData} />;
   if (loading) return null;
 
   const completed = record?.completed;

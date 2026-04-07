@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameBackButton from "../../components/GameBackButton";
 import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
@@ -315,7 +316,7 @@ export default function Solitaire() {
         className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
         🔄 New Game
       </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton />
     </div>
   );
 
@@ -325,7 +326,7 @@ export default function Solitaire() {
   return (
     <div className="min-h-screen bg-green-900 px-1 py-3 pb-24">
       <div className="flex items-center justify-between px-2 mb-3">
-        <Link to="/games" className="text-yellow-300 text-xl font-bold">← Back</Link>
+        <GameBackButton className="text-yellow-300" />
         <div className="text-2xl font-black text-yellow-300">♠ Solitaire</div>
         <div className="flex gap-2">
           <GameInstructions

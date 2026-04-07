@@ -2,19 +2,25 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Flame, ChevronRight } from "lucide-react";
+import WidgetErrorState from "./WidgetErrorState";
 
-export default function HomeStreakWidget({ userEmail }) {
+export default function HomeStreakWidget({ userEmail, refreshKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  function fetchData() {
     if (!userEmail) return;
+    setError(false);
     base44.entities.EngagementStreak.filter({ user_email: userEmail }).then(rows => {
       setData(rows[0] || null);
       setLoading(false);
-    });
-  }, [userEmail]);
+    }).catch(() => { setError(true); setLoading(false); });
+  }
 
+  useEffect(() => { fetchData(); }, [userEmail, refreshKey]);
+
+  if (error) return <WidgetErrorState message="Couldn't load streaks" emoji="🔥" onRetry={fetchData} />;
   if (loading || !data) return null;
 
   const dailyStreak = data.daily_current_streak || 0;

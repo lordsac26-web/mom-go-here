@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
@@ -211,7 +212,7 @@ export default function Checkers() {
         <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
           🔄 Play Again
         </button>
-        <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+        <GameBackButton />
       </div>
     );
   }
@@ -220,7 +221,7 @@ export default function Checkers() {
     <div className="min-h-screen px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-3">
-        <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-xl font-black text-primary">♟️ Checkers</div>
         <div className="flex gap-2">
           <GameInstructions

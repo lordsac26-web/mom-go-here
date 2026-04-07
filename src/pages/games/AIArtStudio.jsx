@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameBackButton from "../../components/GameBackButton";
 import { base44 } from "@/api/base44Client";
 import { Download, Share2, Mail, Facebook, Twitter } from "lucide-react";
 import { toast } from "sonner";
@@ -107,7 +108,7 @@ export default function AIArtStudio() {
   return (
     <div className="min-h-screen px-4 py-4 pb-24">
       <div className="flex items-center justify-between mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-2xl font-black text-primary">🎨 AI Art Studio</div>
         <GameInstructions
           title="AI Art Studio"

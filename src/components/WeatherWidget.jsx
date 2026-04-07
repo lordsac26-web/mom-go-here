@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { getCachedWeather, setCachedWeather } from "../utils/weatherCache";
+import WidgetErrorState from "./WidgetErrorState";
 
 const WMO_ICONS = {
   0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
@@ -44,9 +46,10 @@ function getDayLabel(dateStr, index) {
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short" });
 }
 
-export default function WeatherWidget({ latitude, longitude, city }) {
+export default function WeatherWidget({ latitude, longitude, city, refreshKey }) {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!latitude || !longitude) {
@@ -54,14 +57,27 @@ export default function WeatherWidget({ latitude, longitude, city }) {
       return;
     }
     fetchWeather();
-  }, [latitude, longitude]);
+  }, [latitude, longitude, refreshKey]);
 
   async function fetchWeather() {
+    setError(false);
+    // Check cache first
+    const cached = getCachedWeather(latitude, longitude);
+    if (cached && !refreshKey) {
+      setWeather(cached);
+      setLoading(false);
+      return;
+    }
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&forecast_days=3&timezone=auto`;
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
+      setCachedWeather(latitude, longitude, data);
       setWeather(data);
+    } else {
+      // Use cache as fallback
+      if (cached) { setWeather(cached); }
+      else { setError(true); }
     }
     setLoading(false);
   }
@@ -83,6 +99,7 @@ export default function WeatherWidget({ latitude, longitude, city }) {
     );
   }
 
+  if (error && !weather) return <WidgetErrorState message="Couldn't load weather" emoji="🌤️" onRetry={fetchWeather} />;
   if (!weather) return null;
 
   const current = weather.current;

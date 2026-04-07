@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import GameBackButton from "../../components/GameBackButton";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
@@ -229,7 +230,7 @@ export default function WordWhomp() {
         >
           🔄 New Puzzle
         </button>
-        <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+        <GameBackButton />
       </div>
     );
   }
@@ -238,7 +239,7 @@ export default function WordWhomp() {
     <div className="min-h-screen px-3 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <Link to="/games" className="text-primary text-lg font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-center">
           <BeeFlightTitle text="🐝 Buzz Word!" size="text-xl" />
           <div className="text-muted-foreground text-sm">

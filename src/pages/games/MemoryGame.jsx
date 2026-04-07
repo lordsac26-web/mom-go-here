@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import GameBackButton from "../../components/GameBackButton";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameInstructions from "../../components/GameInstructions";
 import FlipCard from "../../components/FlipCard";
@@ -250,7 +251,7 @@ export default function MemoryGame() {
           </button>
         ))}
       </div>
-      <Link to="/games" className="mt-8 text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton className="mt-8" />
     </div>
   );
 
@@ -266,7 +267,7 @@ export default function MemoryGame() {
       >
         🔄 Play Again
       </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton />
     </div>
   );
 
@@ -274,7 +275,7 @@ export default function MemoryGame() {
   return (
     <div className="min-h-screen px-2 py-4 pb-24">
       <div className="flex items-center justify-between px-2 mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-center">
           <div className="text-2xl font-black text-primary">🧠 Memory</div>
           <div className="text-muted-foreground">Moves: {moves} | Pairs: {matched}/{SIZES[sizeIdx].pairs}</div>

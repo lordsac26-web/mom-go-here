@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import usePullToRefresh from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import WarmLoader from "../components/WarmLoader";
 import HistoryFact from "../components/HistoryFact";
 import TiltCard from "../components/TiltCard";
@@ -56,6 +58,8 @@ export default function Home() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     loadData();
   }, [user]);
@@ -65,7 +69,6 @@ export default function Home() {
     const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
     const prof = profiles[0] || null;
 
-    // Redirect to onboarding if first time
     if (!prof?.display_name) {
       navigate("/onboarding");
       return;
@@ -83,6 +86,13 @@ export default function Home() {
     setLoading(false);
   }
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshKey(k => k + 1);
+    await loadData();
+  }, [user]);
+
+  const { containerRef, pullDistance, refreshing } = usePullToRefresh(handleRefresh);
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return "Good Morning";
@@ -95,7 +105,8 @@ export default function Home() {
   if (loading) return <WarmLoader message="Getting your day ready..." />;
 
   return (
-    <div className="min-h-screen px-4 py-6 pb-24">
+    <div ref={containerRef} className="min-h-screen px-4 py-6 pb-24">
+      <PullToRefreshIndicator pullDistance={pullDistance} refreshing={refreshing} />
       {/* Daily Login Bonus */}
       <DailyLoginBonus userEmail={user?.email} />
 
@@ -139,16 +150,16 @@ export default function Home() {
       )}
 
       {/* Weather */}
-      <WeatherWidget latitude={profile?.latitude} longitude={profile?.longitude} city={profile?.city} />
+      <WeatherWidget latitude={profile?.latitude} longitude={profile?.longitude} city={profile?.city} refreshKey={refreshKey} />
 
       {/* Daily Brain Challenge */}
-      <DailyChallengeWidget userEmail={user?.email} />
+      <DailyChallengeWidget userEmail={user?.email} refreshKey={refreshKey} />
 
       {/* Engagement Streaks */}
-      <HomeStreakWidget userEmail={user?.email} />
+      <HomeStreakWidget userEmail={user?.email} refreshKey={refreshKey} />
 
       {/* Resume Saved Games */}
-      <ResumeGameWidget userEmail={user?.email} />
+      <ResumeGameWidget userEmail={user?.email} refreshKey={refreshKey} />
 
       {/* Solitaire Stats */}
       <SolitaireStatsDashboard userEmail={user?.email} />

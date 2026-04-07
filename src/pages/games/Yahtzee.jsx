@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
@@ -204,14 +205,14 @@ export default function Yahtzee() {
       >
         🔄 Play Again
       </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton />
     </div>
   );
 
   return (
     <div className="min-h-screen px-4 py-4 pb-24">
       <div className="flex items-center justify-between mb-4">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-center">
           <div className="text-2xl font-black text-primary">🎲 Yahtzee</div>
           <div className="text-muted-foreground">Turn {turn}/{totalTurns} | Score: {totalScore}</div>

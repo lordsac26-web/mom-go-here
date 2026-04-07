@@ -1,8 +1,10 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import PersistentAudioStream from "./PersistentAudioStream";
+import useHaptics from "../hooks/useHaptics";
 
 import MiniMusicPlayer from "./MiniMusicPlayer";
 import HeaderSoundControls from "./HeaderSoundControls";
@@ -16,9 +18,16 @@ const NAV_ITEMS = [
   { to: "/settings", label: "⚙️ Settings", icon: Settings },
 ];
 
+const pageVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
 export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
+  const { tapVibrate } = useHaptics();
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
@@ -43,7 +52,17 @@ export default function Layout() {
 
       {/* Page Content */}
       <main className="flex-1 overflow-auto bg-transparent">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* AI Chat Bot */}
@@ -56,6 +75,7 @@ export default function Layout() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={() => tapVibrate()}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-colors ${
                 location.pathname === item.to
                   ? "text-primary"

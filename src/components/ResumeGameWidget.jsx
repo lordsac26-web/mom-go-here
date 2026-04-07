@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Trash2, Clock, ChevronRight } from "lucide-react";
 import moment from "moment";
+import WidgetErrorState from "./WidgetErrorState";
 
 // Map game_name → route path
 const GAME_ROUTES = {
@@ -39,24 +40,27 @@ function formatTime(seconds) {
   return `${m}m`;
 }
 
-export default function ResumeGameWidget({ userEmail }) {
+export default function ResumeGameWidget({ userEmail, refreshKey }) {
   const [saves, setSaves] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  function fetchData() {
     if (!userEmail) return;
+    setError(false);
     base44.entities.SavedGame.filter({ user_email: userEmail }, "-updated_date", 5)
-      .then((data) => {
-        setSaves(data);
-        setLoading(false);
-      });
-  }, [userEmail]);
+      .then((data) => { setSaves(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }
+
+  useEffect(() => { fetchData(); }, [userEmail, refreshKey]);
 
   async function handleDelete(id) {
     await base44.entities.SavedGame.delete(id);
     setSaves((prev) => prev.filter((s) => s.id !== id));
   }
 
+  if (error) return <WidgetErrorState message="Couldn't load saved games" emoji="🎮" onRetry={fetchData} />;
   if (loading) return null;
   if (saves.length === 0) return null;
 

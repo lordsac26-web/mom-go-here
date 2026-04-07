@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { Link } from "react-router-dom";
+import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useGameSounds from "../../hooks/useGameSounds";
 import useHaptics from "../../hooks/useHaptics";
@@ -253,7 +254,7 @@ export default function WordSearch() {
       <button onClick={startGame} className="text-white text-2xl font-black px-10 py-6 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
         🔤 Start Game
       </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton className="mt-4" />
     </div>
   );
 
@@ -264,7 +265,7 @@ export default function WordSearch() {
       <button onClick={startGame} className="text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
         🔄 New Puzzle
       </button>
-      <Link to="/games" className="text-primary text-xl font-bold">← Back to Games</Link>
+      <GameBackButton />
     </div>
   );
 
@@ -272,7 +273,7 @@ export default function WordSearch() {
     <div className="min-h-screen px-2 py-4 pb-24 select-none" style={{ background: theme.bg }}>
       <ThemePanel open={themePanelOpen} onClose={() => setThemePanelOpen(false)} currentTheme={themeKey} onSelectTheme={setThemeKey} />
       <div className="flex items-center justify-between px-2 mb-3">
-        <Link to="/games" className="text-primary text-xl font-bold">← Back</Link>
+        <GameBackButton />
         <div className="text-2xl font-black" style={{ color: theme.selected }}>🔤 Word Search</div>
         <div className="flex gap-2">
           <GameInstructions

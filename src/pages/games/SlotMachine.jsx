@@ -18,7 +18,6 @@ import AchievementToast from "../../components/slots/AchievementToast";
 import useSlotAchievements from "../../hooks/useSlotAchievements";
 import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/SlotAudioSettings";
 import BonusRound from "../../components/slots/BonusRound";
-import DailyRewardToast, { checkDailyReward } from "../../components/slots/DailyRewardToast";
 import JackpotTicker from "../../components/slots/JackpotTicker";
 import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
 import { base44 } from "@/api/base44Client";
@@ -81,17 +80,12 @@ export default function SlotMachine() {
   const [showStats, setShowStats] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [bonusRound, setBonusRound] = useState(null); // { baseWin, scatterCount }
-  const [dailyReward, setDailyReward] = useState(null);
   const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
   const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
   const [jackpotAmount, setJackpotAmount] = useState(0);
   const [jackpotWin, setJackpotWin] = useState(null); // { winAmount }
-
-  // Daily reward check on mount
-  useEffect(() => {
-    const reward = checkDailyReward();
-    if (reward) setDailyReward(reward);
-  }, []);
+  const spinCountRef = useRef(0);
+  const pendingJackpotRef = useRef(0);
 
   // Fetch jackpot on mount + subscribe for real-time updates
   useEffect(() => {
@@ -295,14 +289,20 @@ export default function SlotMachine() {
 
       recordSpin(currentBet);
 
-      // Contribute to progressive jackpot (fire-and-forget)
-      base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: currentBet })
-        .then(res => {
-          if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
-          if (res.data?.jackpotWin) {
-            setJackpotWin({ winAmount: res.data.winAmount });
-          }
-        });
+      // Throttle jackpot contributions: batch every 10 spins
+      spinCountRef.current += 1;
+      pendingJackpotRef.current += currentBet;
+      if (spinCountRef.current % 10 === 0) {
+        const batchAmount = pendingJackpotRef.current;
+        pendingJackpotRef.current = 0;
+        base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: batchAmount })
+          .then(res => {
+            if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
+            if (res.data?.jackpotWin) {
+              setJackpotWin({ winAmount: res.data.winAmount });
+            }
+          });
+      }
 
       return prev - currentBet;
     });
@@ -439,18 +439,6 @@ export default function SlotMachine() {
       {/* Controls — pass handleSpin instead of doSpin */}
       {/* Achievement Toast */}
       <AchievementToast badge={newBadge} />
-
-      {/* Daily Reward Toast */}
-      {dailyReward && (
-        <DailyRewardToast
-          reward={dailyReward.reward}
-          streak={dailyReward.streak}
-          onDismiss={() => {
-            setBalance(prev => prev + dailyReward.reward);
-            setDailyReward(null);
-          }}
-        />
-      )}
 
       {/* Jackpot Win Overlay */}
       {jackpotWin && (
