@@ -62,11 +62,7 @@ export default function Home() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return;
     const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
     const prof = profiles[0] || null;
@@ -86,12 +82,16 @@ export default function Home() {
     }
     setQuote(MOTIVATIONAL_QUOTES[idx]);
     setLoading(false);
-  }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshKey(k => k + 1);
     await loadData();
-  }, [user]);
+  }, [loadData]);
 
   const { containerRef, pullDistance, refreshing } = usePullToRefresh(handleRefresh);
 

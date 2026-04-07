@@ -6,7 +6,7 @@ const GAME_PATHS = [
   "/games/memory", "/games/tictactoe", "/games/yahtzee",
   "/games/wordsearch", "/games/sudoku", "/games/checkers",
   "/games/mahjong", "/games/solitaire", "/games/artstudio",
-  "/games/buzzword", "/games/slots",
+  "/games/buzzword", "/games/slots", "/games/dartpop",
 ];
 
 /**

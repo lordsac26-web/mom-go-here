@@ -149,5 +149,7 @@ export default function useConfetti() {
     fireworks,
     sideCannons,
     emojiRain,
+    // Alias used by several game pages
+    fireConfetti: shower,
   };
 }

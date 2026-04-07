@@ -7,16 +7,23 @@ let _ctx = null;
 let _compressor = null;
 
 export function getAudioCtx() {
-  if (!_ctx || _ctx.state === "closed") {
-    _ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Master compressor to prevent clipping
-    _compressor = _ctx.createDynamicsCompressor();
-    _compressor.threshold.value = -12;
-    _compressor.knee.value = 10;
-    _compressor.ratio.value = 8;
-    _compressor.connect(_ctx.destination);
+  try {
+    if (!_ctx || _ctx.state === "closed") {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      _ctx = new AC();
+      // Master compressor to prevent clipping
+      _compressor = _ctx.createDynamicsCompressor();
+      _compressor.threshold.value = -12;
+      _compressor.knee.value = 10;
+      _compressor.ratio.value = 8;
+      _compressor.connect(_ctx.destination);
+    }
+    if (_ctx.state === "suspended") _ctx.resume();
+  } catch (e) {
+    console.warn("AudioContext init failed:", e);
+    return null;
   }
-  if (_ctx.state === "suspended") _ctx.resume();
   return _ctx;
 }
 
@@ -37,7 +44,9 @@ export function noiseBuffer(ctx, duration) {
 /** Play a layered tone with harmonics */
 export function playRichTone(opts) {
   const ctx = getAudioCtx();
+  if (!ctx) return;
   const dest = getMaster();
+  if (!dest) return;
   const t = ctx.currentTime + (opts.delay || 0);
   const dur = opts.duration || 0.15;
   const vol = opts.volume || 0.15;
@@ -75,7 +84,9 @@ export function playRichTone(opts) {
 /** Play filtered noise burst */
 export function playNoiseBurst(opts) {
   const ctx = getAudioCtx();
+  if (!ctx) return;
   const dest = getMaster();
+  if (!dest) return;
   const t = ctx.currentTime + (opts.delay || 0);
   const dur = opts.duration || 0.1;
   const vol = opts.volume || 0.2;
