@@ -1,7 +1,5 @@
-import { memo } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import AIChatBot from "./AIChatBot";
 import GameActivityMonitor from "./GameActivityMonitor";
@@ -22,11 +20,7 @@ const NAV_ITEMS = [
   { to: "/settings", label: "⚙️ Settings", icon: Settings },
 ];
 
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.2 } },
-  exit: { opacity: 0, transition: { duration: 0.15 } },
-};
+
 
 export default function Layout() {
   const location = useLocation();
@@ -58,17 +52,7 @@ export default function Layout() {
       {/* Page Content */}
       <main className="flex-1 overflow-auto bg-transparent">
         <div className="max-w-4xl mx-auto w-full">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <Outlet />
         </div>
       </main>
 
