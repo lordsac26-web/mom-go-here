@@ -18,6 +18,7 @@ import AchievementToast from "../../components/slots/AchievementToast";
 import useSlotAchievements from "../../hooks/useSlotAchievements";
 import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/SlotAudioSettings";
 import BonusRound from "../../components/slots/BonusRound";
+import GameInstructions from "../../components/GameInstructions";
 import JackpotTicker from "../../components/slots/JackpotTicker";
 import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
 import { base44 } from "@/api/base44Client";
@@ -299,6 +300,20 @@ export default function SlotMachine() {
         <Link to="/games" className="text-yellow-400 text-lg font-bold">← Back</Link>
         <NeonSign text="LUCKY SLOTS" spinning={spinning} />
         <div className="flex items-center gap-1.5">
+          <GameInstructions
+            title="Lucky Slots"
+            emoji="🎰"
+            steps={[
+              "Set your bet amount using the bet buttons at the bottom.",
+              "Adjust the number of active paylines (more lines = more chances to win!).",
+              "Tap SPIN to spin the reels! The cost is your bet × paylines.",
+              "Match 3+ symbols across a payline to win! Check the Pay Table for symbol values.",
+              "🌟 Scatter symbols pay anywhere — 3+ scatters trigger a BONUS ROUND!",
+              "Use Auto-Spin to keep spinning automatically.",
+              "Tap a reel to nudge it one position — a free mini re-spin!",
+              "Your balance tops up automatically when it gets low. Have fun!",
+            ]}
+          />
           <button
             onClick={() => setShowAudioSettings(true)}
             className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold flex items-center border border-gray-600 text-sm"

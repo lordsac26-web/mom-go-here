@@ -273,31 +273,32 @@ export default function Yahtzee() {
         {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm">Tap dice above to hold them 👆</p>}
       </div>
 
-      {/* Scorecard */}
-      <div className="bg-card border-2 border-border rounded-2xl overflow-hidden">
-        <div className="bg-primary px-4 py-3 text-primary-foreground font-black text-xl text-center">📊 Scorecard</div>
-        {CATEGORIES.map(cat => {
-          const scored = scores[cat.key] !== undefined;
-          // FIX (perf): use memoized previews instead of calling calcScore on every render
-          const preview = !scored && rollsLeft < 3 ? (scorePreviews[cat.key] ?? null) : null;
-          return (
-            <button key={cat.key} onClick={() => scoreCategory(cat.key)} disabled={scored || rollsLeft === 3}
-              className={`w-full flex items-center justify-between px-4 py-4 border-b border-border text-left transition-all ${
-                scored ? "opacity-60" : rollsLeft < 3 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-              }`}>
-              <div>
-                <div className="text-xl font-bold text-foreground">{cat.label}</div>
-                <div className="text-muted-foreground text-base">{cat.desc}</div>
-              </div>
-              <div className={`text-2xl font-black min-w-[3rem] text-right ${scored ? "text-primary" : "text-green-400"}`}>
-                {scored ? scores[cat.key] : preview !== null ? preview : "—"}
-              </div>
-            </button>
-          );
-        })}
-        <div className="flex justify-between px-4 py-4 bg-primary/10">
-          <span className="text-xl font-black text-foreground">Total</span>
-          <span className="text-2xl font-black text-primary">{totalScore}</span>
+      {/* Scorecard — scrollable frame */}
+      <div className="bg-card border-2 border-border rounded-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+        <div className="bg-primary px-4 py-3 text-primary-foreground font-black text-xl text-center shrink-0">📊 Scorecard</div>
+        <div className="overflow-y-auto flex-1 overscroll-contain">
+          {CATEGORIES.map(cat => {
+            const scored = scores[cat.key] !== undefined;
+            const preview = !scored && rollsLeft < 3 ? (scorePreviews[cat.key] ?? null) : null;
+            return (
+              <button key={cat.key} onClick={() => scoreCategory(cat.key)} disabled={scored || rollsLeft === 3}
+                className={`w-full flex items-center justify-between px-4 py-3 border-b border-border text-left transition-all ${
+                  scored ? "opacity-60" : rollsLeft < 3 ? "hover:bg-muted cursor-pointer" : "cursor-default"
+                }`}>
+                <div>
+                  <div className="text-lg font-bold text-foreground">{cat.label}</div>
+                  <div className="text-muted-foreground text-sm">{cat.desc}</div>
+                </div>
+                <div className={`text-xl font-black min-w-[3rem] text-right ${scored ? "text-primary" : "text-green-400"}`}>
+                  {scored ? scores[cat.key] : preview !== null ? preview : "—"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-between px-4 py-3 bg-primary/10 shrink-0 border-t border-border">
+          <span className="text-lg font-black text-foreground">Total</span>
+          <span className="text-xl font-black text-primary">{totalScore}</span>
         </div>
       </div>
     </div>
