@@ -1,4 +1,5 @@
 import { DART_PRESETS } from "./gameConfig";
+import DartPopLeaderboard from "./DartPopLeaderboard";
 
 export default function ModeSelect({ onSelect }) {
   return (
@@ -41,6 +42,8 @@ export default function ModeSelect({ onSelect }) {
           Pop 4 in a row for a power-up! 🧲 Balloons slide together when neighbors pop!
         </p>
       </div>
+
+      <DartPopLeaderboard />
     </div>
   );
 }
