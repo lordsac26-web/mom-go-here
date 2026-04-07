@@ -1,4 +1,4 @@
-import { DART_PRESETS } from "./gameConfig";
+import { DART_PRESETS } from "./gameConfig.js";
 
 export default function ModeSelect({ onSelect }) {
   return (
@@ -23,7 +23,7 @@ export default function ModeSelect({ onSelect }) {
                 <span className="text-primary font-black text-lg">🎯 ×{preset.darts}</span>
               </div>
               <p className="text-muted-foreground text-sm font-semibold">
-                {totalBalloons} balloons • {preset.balloons.tough} tough • {preset.balloons.bomb} bombs
+                {totalBalloons} balloons • {preset.balloons.tough} tough • {preset.balloons.bomb} bombs • {preset.balloons.gold} gold
                 {preset.obstacles && preset.obstacles.length > 0 && (
                   <span className="text-red-400"> • ⚡ {preset.obstacles.length} obstacle{preset.obstacles.length > 1 ? "s" : ""}</span>
                 )}
@@ -38,10 +38,7 @@ export default function ModeSelect({ onSelect }) {
           🔱 <strong>Multi-Shot</strong> • 💥 <strong>MIRV Grenade</strong> • 🎯 <strong>Sniper Dart</strong>
         </p>
         <p className="text-xs text-muted-foreground text-center">
-          Pop 4 balloons in a row to earn a random power-up!
-        </p>
-        <p className="text-xs text-red-400/80 text-center">
-          ⚡ Obstacles block your darts — only Sniper can pierce through them!
+          Pop 4 in a row for a power-up! 🧲 Balloons slide together when neighbors pop!
         </p>
       </div>
     </div>

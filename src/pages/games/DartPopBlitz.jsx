@@ -7,12 +7,11 @@ import useConfetti from "../../hooks/useConfetti";
 import useDartSounds from "../../components/dartpopblitz/useDartSounds";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
-import DartPopBlitzCanvas from "../../components/dartpopblitz/DartPopBlitzCanvas";
+import DartPopBlitzCanvas from "../../components/dartpopblitz/DartPopBlitzCanvas.jsx";
 import GameUI from "../../components/dartpopblitz/GameUI";
 import ModeSelect from "../../components/dartpopblitz/ModeSelect";
 import GameOver from "../../components/dartpopblitz/GameOver";
-import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
-import { generateObstacles } from "../../components/dartpopblitz/obstacleGenerator";
+import { generateBalloons } from "../../components/dartpopblitz/levelGenerator.js";
 
 const INSTRUCTIONS = [
   "Choose a dart count: 10 (quick), 50 (standard), or 100 (marathon).",
@@ -27,7 +26,8 @@ const INSTRUCTIONS = [
   "🎯 Sniper Dart pierces through balloons AND obstacles!",
   "💣 Bomb balloons explode and pop nearby balloons!",
   "🛡️ Tough balloons need multiple hits to pop.",
-  "⚡ Watch out for moving platforms, spinning blades, and pendulums — they destroy your darts!",
+  "🧲 When a balloon pops, its row-neighbors slide together — plan your shots!",
+  "⚡ Watch out for moving platforms and spinning blades — they destroy your darts!",
 ];
 
 // FIX (structure): extracted score-save logic into a standalone async function

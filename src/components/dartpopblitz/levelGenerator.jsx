@@ -1,11 +1,10 @@
 import { BALLOON_TYPES, GAME_WIDTH, GAME_HEIGHT } from "./gameConfig";
 
 /**
- * Generate an array of balloon objects laid out in a grid-like pattern
- * with some randomness so it feels organic.
+ * Generate balloons in a tight Space Invaders-style grid.
+ * Each balloon gets row/col indices + a targetX for magnetic collapse.
  */
 export function generateBalloons(preset) {
-  const balloons = [];
   const counts = preset.balloons;
   const types = [];
 
@@ -20,20 +19,25 @@ export function generateBalloons(preset) {
   }
 
   const total = types.length;
-  const cols = Math.ceil(Math.sqrt(total * (GAME_WIDTH / GAME_HEIGHT)));
+  // Aim for ~10-12 columns for that Space Invaders density
+  const cols = Math.min(12, Math.max(8, Math.ceil(Math.sqrt(total * 1.8))));
   const rows = Math.ceil(total / cols);
-  const padX = 40;
-  const padTop = 40;
-  const padBot = 180;
+
+  const padX = 20;
+  const padTop = 30;
+  const usableH = GAME_HEIGHT * 0.55; // top 55% for balloons
   const cellW = (GAME_WIDTH - padX * 2) / cols;
-  const cellH = (GAME_HEIGHT - padTop - padBot) / rows;
+  const cellH = Math.min(usableH / rows, 38);
+
+  const balloons = [];
 
   types.forEach((type, idx) => {
     const col = idx % cols;
     const row = Math.floor(idx / cols);
     const def = BALLOON_TYPES[type];
-    const jitterX = (Math.random() - 0.5) * cellW * 0.4;
-    const jitterY = (Math.random() - 0.5) * cellH * 0.3;
+
+    const x = padX + col * cellW + cellW / 2;
+    const y = padTop + row * cellH + cellH / 2;
 
     balloons.push({
       id: idx,
@@ -41,15 +45,50 @@ export function generateBalloons(preset) {
       ...def,
       hp: def.hp,
       maxHp: def.hp,
-      x: padX + col * cellW + cellW / 2 + jitterX,
-      y: padTop + row * cellH + cellH / 2 + jitterY,
+      x,
+      y,
+      targetX: x, // for magnetic collapse
+      row,
+      col,
       alive: true,
       wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.02 + Math.random() * 0.02,
-      wobbleAmp: 2 + Math.random() * 3,
-      scaleAnim: 0, // for pop animation
+      wobbleSpeed: 0.015 + Math.random() * 0.01,
+      wobbleAmp: 1.5 + Math.random() * 1.5,
+      scaleAnim: 0,
     });
   });
 
   return balloons;
+}
+
+/**
+ * Recalculate targetX for all alive balloons in each row
+ * so they slide together (magnetically collapse) when one is popped.
+ */
+export function recalcCollapseTargets(balloons) {
+  // Group alive balloons by row
+  const rowMap = {};
+  for (const b of balloons) {
+    if (!b.alive) continue;
+    if (!rowMap[b.row]) rowMap[b.row] = [];
+    rowMap[b.row].push(b);
+  }
+
+  const padX = 20;
+  const usableW = GAME_WIDTH - padX * 2;
+
+  for (const rowBalloons of Object.values(rowMap)) {
+    // Sort by current x so spacing is even
+    rowBalloons.sort((a, b) => a.col - b.col);
+    const count = rowBalloons.length;
+    if (count === 0) continue;
+
+    const spacing = Math.min(usableW / count, 38);
+    const totalW = (count - 1) * spacing;
+    const startX = GAME_WIDTH / 2 - totalW / 2;
+
+    rowBalloons.forEach((b, i) => {
+      b.targetX = startX + i * spacing;
+    });
+  }
 }
