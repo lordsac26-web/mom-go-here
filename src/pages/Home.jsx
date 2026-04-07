@@ -17,7 +17,6 @@ import DailyLoginBonus from "../components/DailyLoginBonus";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
-  { path: "/daily", label: "Daily", emoji: "⭐", desc: "Today's inspiration", gradient: "bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-700", glare: "#fbbf24", iconBg: "bg-yellow-400/30" },
   { path: "/memories", label: "Memories", emoji: "📔", desc: "Your photo journal", gradient: "bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-700", glare: "#3b82f6", iconBg: "bg-blue-400/30" },
   { path: "/progress", label: "Progress", emoji: "📊", desc: "Track your activity", gradient: "bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700", glare: "#22c55e", iconBg: "bg-green-400/30" },
   { path: "/contacts", label: "Contacts", emoji: "👥", desc: "People & personal events", gradient: "bg-gradient-to-br from-rose-500 via-pink-600 to-fuchsia-700", glare: "#f43f5e", iconBg: "bg-rose-400/30" },
