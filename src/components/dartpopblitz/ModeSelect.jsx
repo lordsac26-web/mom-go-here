@@ -1,4 +1,4 @@
-import { DART_PRESETS } from "./gameConfig.js";
+import { DART_PRESETS } from "./gameConfig";
 
 export default function ModeSelect({ onSelect }) {
   return (

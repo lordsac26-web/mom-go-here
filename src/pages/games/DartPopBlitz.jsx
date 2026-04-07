@@ -11,7 +11,7 @@ import DartPopBlitzCanvas from "../../components/dartpopblitz/DartPopBlitzCanvas
 import GameUI from "../../components/dartpopblitz/GameUI";
 import ModeSelect from "../../components/dartpopblitz/ModeSelect";
 import GameOver from "../../components/dartpopblitz/GameOver";
-import { generateBalloons } from "../../components/dartpopblitz/levelGenerator.js";
+import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
 
 const INSTRUCTIONS = [
   "Choose a dart count: 10 (quick), 50 (standard), or 100 (marathon).",

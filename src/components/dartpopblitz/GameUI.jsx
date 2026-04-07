@@ -1,4 +1,4 @@
-import { POWERUPS } from "./gameConfig.js";
+import { POWERUPS } from "./gameConfig";
 
 export default function GameUI({
   score, dartsRemaining, totalPopped, totalBalloons, streak,
