@@ -6,7 +6,7 @@ import WarmLoader from "../components/WarmLoader";
 import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
 import SettingsGameManager from "@/components/SettingsGameManager";
-import MusicPlayerFull from "@/components/MusicPlayerFull";
+
 import CardBackPicker from "@/components/solitaire/CardBackPicker";
 
 const RELIGIONS = [
@@ -202,8 +202,7 @@ export default function Settings() {
         {/* Audio Settings */}
         <AudioSettings />
 
-        {/* Full Music Player */}
-        <MusicPlayerFull />
+
 
         {/* Game Selection */}
         <SettingsGameManager />
