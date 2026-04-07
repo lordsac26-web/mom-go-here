@@ -1,0 +1,44 @@
+{
+  "name": "DartPopBlitzScore",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number"
+    },
+    "dart_limit": {
+      "type": "number"
+    },
+    "balloons_popped": {
+      "type": "number"
+    },
+    "level_completed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "user_email",
+    "score",
+    "dart_limit",
+    "balloons_popped",
+    "level_completed"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "created_by": {
+        "$ne": null
+      }
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

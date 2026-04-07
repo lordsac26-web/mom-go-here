@@ -29,6 +29,7 @@ import Rankings from './pages/Rankings';
 import Scripture from './pages/Scripture';
 import DailyChallenge from './pages/DailyChallenge';
 import Achievements from './pages/Achievements';
+import DartPopBlitz from './pages/games/DartPopBlitz';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -80,6 +81,7 @@ const AuthenticatedApp = () => {
         <Route path="/scripture" element={<Scripture />} />
         <Route path="/daily-challenge" element={<DailyChallenge />} />
         <Route path="/achievements" element={<Achievements />} />
+        <Route path="/games/dartpop" element={<DartPopBlitz />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

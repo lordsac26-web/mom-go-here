@@ -13,6 +13,7 @@ const ALL_GAMES = [
   { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
   { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Make words from jumbled letters!" },
   { name: "Lucky Slots", emoji: "🎰", path: "/games/slots", color: "from-yellow-600 to-red-700", desc: "Spin the reels & win big!" },
+  { name: "Dart Pop Blitz", emoji: "🎯", path: "/games/dartpop", color: "from-sky-500 to-emerald-700", desc: "Pop balloons with darts & power-ups!" },
 ];
 
 export { ALL_GAMES };
