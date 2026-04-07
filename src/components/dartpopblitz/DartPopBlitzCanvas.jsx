@@ -151,11 +151,14 @@ export default function DartPopBlitzCanvas({
   const canvasRef = useRef(null);
   const aimRef = useRef(null);
   const animFrameRef = useRef(null);
+  const initIdRef = useRef(null);
 
   const powerRef = useRef({
     active: false, power: POWER_MIN, direction: 1,
     aimX: GAME_WIDTH / 2, aimY: GAME_HEIGHT / 2,
   });
+
+  const callbacksRef = useRef(null);
 
   const stateRef = useRef({
     balloons: [], darts: [], particles: [], obstacles: [],
@@ -246,26 +249,38 @@ export default function DartPopBlitzCanvas({
     aimRef.current = null;
   }, [getCanvasPos, shoot]);
 
-  // ── Game Loop ──
+  // ── Initialization (only on new game, not on callback changes) ──
   useEffect(() => {
-    if (preset) {
-      const b = generateBalloons(preset);
-      Object.assign(stateRef.current, {
-        balloons: b, darts: [], particles: [],
-        obstacles: generateObstacles(preset.obstacles || []),
-        dartsRemaining: preset.darts, score: 0, streak: 0, totalPopped: 0,
-        combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
-        ended: false,
-      });
-    }
+    if (!preset) return;
+    // Use a unique id per startGame call to avoid re-init on same preset
+    const id = preset._initId;
+    if (id !== undefined && id === initIdRef.current) return;
+    initIdRef.current = id;
 
+    const b = generateBalloons(preset);
+    Object.assign(stateRef.current, {
+      balloons: b, darts: [], particles: [],
+      obstacles: generateObstacles(preset.obstacles || []),
+      dartsRemaining: preset.darts, score: 0, streak: 0, totalPopped: 0,
+      combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
+      ended: false,
+    });
+  }, [preset]);
+
+  // ── Game Loop (stable — no deps that change mid-game) ──
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const bg = getStaticBg();
 
+    // Close over refs so callbacks changing don't restart the loop
+    const refs = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, sounds, setPowerupInventory };
+    callbacksRef.current = refs;
+
     function loop() {
       const s = stateRef.current;
+      const cb = callbacksRef.current;
 
       if (s.gameState !== "playing") {
         render(ctx, bg, s);
@@ -285,7 +300,6 @@ export default function DartPopBlitzCanvas({
       for (const b of s.balloons) {
         if (!b.alive) continue;
         b.wobble += b.wobbleSpeed;
-        // Slide x toward targetX
         const diff = b.targetX - b.x;
         if (Math.abs(diff) > 0.5) {
           b.x += Math.sign(diff) * Math.min(Math.abs(diff), MAGNETIC_SPEED);
@@ -323,7 +337,7 @@ export default function DartPopBlitzCanvas({
         // MIRV
         if (d.type === "mirv" && !d.mirvTriggered && d.y < GAME_HEIGHT * 0.5) {
           d.mirvTriggered = true; d.alive = false;
-          sounds.playExplosion();
+          cb.sounds.playExplosion();
           spawnParticles(s.particles, d.x, d.y, "#f97316", 12);
           const mx = d.x, my = d.y;
           setTimeout(() => {
@@ -348,7 +362,7 @@ export default function DartPopBlitzCanvas({
           if (obstHit.hit) {
             d.alive = false;
             spawnParticles(s.particles, d.x, d.y, "#94a3b8", 6);
-            sounds.playPop();
+            cb.sounds.playPop();
             continue;
           }
         }
@@ -370,11 +384,11 @@ export default function DartPopBlitzCanvas({
             popsThisFrame++; scoreAdd += b.points; poppedAdd++;
             poppedThisFrame.push(bi);
             needsCollapse = true;
-            sounds.playPop();
+            cb.sounds.playPop();
             spawnParticles(s.particles, b.x, b.y, b.color, 8);
 
             if (b.type === "bomb") {
-              sounds.playExplosion();
+              cb.sounds.playExplosion();
               spawnParticles(s.particles, b.x, b.y, "#f97316", 14);
               const explR = BALLOON_TYPES.bomb.explodeRadius;
               for (let obi = 0; obi < s.balloons.length; obi++) {
@@ -389,7 +403,7 @@ export default function DartPopBlitzCanvas({
               }
             }
           } else {
-            sounds.playPop();
+            cb.sounds.playPop();
           }
 
           if (d.pierce > 0) { d.pierce--; } else { d.alive = false; dartKilled = true; break; }
@@ -397,7 +411,7 @@ export default function DartPopBlitzCanvas({
         if (dartKilled) missThisFrame = false;
       }
 
-      // Magnetic collapse — recalculate targets when balloons pop
+      // Magnetic collapse
       if (needsCollapse) {
         recalcCollapseTargets(s.balloons);
       }
@@ -428,15 +442,15 @@ export default function DartPopBlitzCanvas({
       s.totalPopped += poppedAdd;
       s.streak = newStreak;
 
-      if (multipliedScore > 0) onScoreChange(s.score);
-      if (poppedAdd > 0) onTotalPoppedChange(s.totalPopped);
-      if (newStreak !== s.streak) onStreakChange(s.streak);
+      if (multipliedScore > 0) cb.onScoreChange(s.score);
+      if (poppedAdd > 0) cb.onTotalPoppedChange(s.totalPopped);
+      if (newStreak !== s.streak) cb.onStreakChange(s.streak);
 
       if (newStreak > 0 && newStreak % STREAK_FOR_POWERUP === 0 && newStreak !== s.streak) {
-        sounds.playStreakChime();
+        cb.sounds.playStreakChime();
         const keys = Object.keys(POWERUPS);
         const reward = keys[Math.floor(Math.random() * keys.length)];
-        setPowerupInventory(prev => ({ ...prev, [reward]: (prev[reward] || 0) + 1 }));
+        cb.setPowerupInventory(prev => ({ ...prev, [reward]: (prev[reward] || 0) + 1 }));
       }
 
       // Win / lose
@@ -444,7 +458,7 @@ export default function DartPopBlitzCanvas({
       const noDartsFlying = s.darts.length === 0;
       if (!s.ended && (allPopped || (s.dartsRemaining <= 0 && noDartsFlying))) {
         s.ended = true;
-        onGameEnd({ won: allPopped, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0 });
+        cb.onGameEnd({ won: allPopped, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0 });
       }
 
       render(ctx, bg, s);
@@ -462,41 +476,62 @@ export default function DartPopBlitzCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // Launcher
+      // Launcher — larger for mobile
       ctx.fillStyle = "#475569";
-      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
       ctx.fillStyle = "#f97316";
-      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 12, 0, Math.PI * 2); ctx.fill();
+      // Launcher crosshair
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(LAUNCHER_POS.x - 6, LAUNCHER_POS.y); ctx.lineTo(LAUNCHER_POS.x + 6, LAUNCHER_POS.y);
+      ctx.moveTo(LAUNCHER_POS.x, LAUNCHER_POS.y - 6); ctx.lineTo(LAUNCHER_POS.x, LAUNCHER_POS.y + 6);
+      ctx.stroke();
 
-      // Power meter
+      // Power meter — much larger for mobile visibility
       const pm = powerRef.current;
-      const barX = LAUNCHER_POS.x - 50, barY = LAUNCHER_POS.y - 55;
-      const barW = 14, barH = 65;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(barX, barY, barW, barH);
-      ctx.strokeStyle = pm.active ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.3)";
-      ctx.lineWidth = pm.active ? 2 : 1;
-      ctx.strokeRect(barX, barY, barW, barH);
+      const barW = 22, barH = 90;
+      const barX = LAUNCHER_POS.x - 65, barY = LAUNCHER_POS.y - barH - 10;
+      // Background
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 6);
+      ctx.fill();
+      // Border
+      ctx.strokeStyle = pm.active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)";
+      ctx.lineWidth = pm.active ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 6);
+      ctx.stroke();
+      // Fill
       const pwr = pm.active ? pm.power : 0;
       const pct = Math.max(0, (pwr - POWER_MIN) / (POWER_MAX - POWER_MIN));
-      const fillH = pct * (barH - 4);
+      const fillH = pct * (barH - 6);
       if (fillH > 0) {
         const r = Math.round(34 + pct * 221), g = Math.round(197 - pct * 170);
         ctx.fillStyle = `rgb(${r},${g},50)`;
-        ctx.fillRect(barX + 2, barY + barH - 2 - fillH, barW - 4, fillH);
+        ctx.beginPath();
+        ctx.roundRect(barX + 3, barY + barH - 3 - fillH, barW - 6, fillH, 4);
+        ctx.fill();
       }
-      ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
+      // Label
+      ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
       ctx.fillStyle = pm.active ? "#fbbf24" : "rgba(255,255,255,0.5)";
-      ctx.fillText("PWR", barX + barW / 2, barY - 5);
+      ctx.fillText("PWR", barX + barW / 2, barY - 6);
+      // Percentage when active
       if (pm.active) {
-        ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "#fff";
-        ctx.fillText(`${Math.round(pct * 100)}%`, barX + barW / 2, barY + barH + 14);
+        ctx.font = "bold 16px sans-serif"; ctx.fillStyle = "#fff";
+        ctx.fillText(`${Math.round(pct * 100)}%`, barX + barW / 2, barY + barH + 18);
       }
 
       if (!pm.active && s.dartsRemaining > 0 && s.darts.length === 0 && s.gameState === "playing") {
-        ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
-        ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.fillText("Hold to aim · Release to fire", GAME_WIDTH / 2, LAUNCHER_POS.y + 20);
+        ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillText("Hold to aim · Release to fire", GAME_WIDTH / 2, LAUNCHER_POS.y + 24);
       }
 
       // Combo floats
@@ -532,7 +567,7 @@ export default function DartPopBlitzCanvas({
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [preset, onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, sounds, setPowerupInventory]);
+  }, [preset]); // Only restart loop when preset changes (new game)
 
   return (
     <canvas

@@ -84,8 +84,12 @@ export default function DartPopBlitz() {
   // startGame via a ref so it doesn't depend on render timing.
   const savedRef = useRef(false);
 
+  const initCounterRef = useRef(0);
+
   const startGame = useCallback((p) => {
-    setPreset(p);
+    // Tag the preset with a unique id so the canvas can detect a true new game
+    initCounterRef.current++;
+    setPreset({ ...p, _initId: initCounterRef.current });
     const b = generateBalloons(p);
     setTotalBalloons(b.length);
     setDartsRemaining(p.darts);
@@ -95,11 +99,8 @@ export default function DartPopBlitz() {
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
     setGameState("playing");
-    // FIX (bug): reset the save guard here, synchronously, before the new
-    // game begins — not inside a useEffect which fires asynchronously after
-    // the render and can race with the end-of-game effect.
     savedRef.current = false;
-  }, []); // deps are intentionally empty — only uses stable setters and argument p
+  }, []);
 
   // FIX (bug + structure): replaced useEffect([gameState]) with a direct
   // callback passed to DartPopBlitzCanvas. This eliminates the stale-closure
