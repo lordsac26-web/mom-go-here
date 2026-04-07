@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useGameActivity } from "../../hooks/useGameActivity";
@@ -28,6 +28,33 @@ const INSTRUCTIONS = [
   "⚡ Watch out for moving platforms, spinning blades, and pendulums — they destroy your darts!",
 ];
 
+// FIX (structure): extracted score-save logic into a standalone async function
+// so it isn't embedded inside a useEffect or useCallback. This makes it easy
+// to call directly, test independently, and add real error handling.
+// FIX (bug): errors are now logged instead of silently swallowed.
+async function saveGameScore({ userEmail, score, dartLimit, balloonsPopped, won }) {
+  if (!userEmail) return;
+  const base = { user_email: userEmail, score, level_completed: won };
+  try {
+    await base44.entities.DartPopBlitzScore.create({
+      ...base,
+      dart_limit: dartLimit,
+      balloons_popped: balloonsPopped,
+    });
+  } catch (err) {
+    console.error("Failed to save DartPopBlitzScore:", err);
+  }
+  try {
+    await base44.entities.GameScore.create({
+      ...base,
+      game_name: "Dart Pop Blitz",
+      completed: won,
+    });
+  } catch (err) {
+    console.error("Failed to save GameScore:", err);
+  }
+}
+
 export default function DartPopBlitz() {
   const { user } = useAuth();
   const { reportWin, reportLoss } = useGameActivity();
@@ -35,83 +62,82 @@ export default function DartPopBlitz() {
   const { fireConfetti } = useConfetti();
   const sounds = useDartSounds();
 
-  // Game phases: menu, playing, won, lost
+  // Game phases: menu | playing | won | lost
   const [gameState, setGameState] = useState("menu");
   const [preset, setPreset] = useState(null);
 
-  // Core game state
-  const [balloons, setBalloons] = useState([]);
-  const [darts, setDarts] = useState([]);
-  const [particles, setParticles] = useState([]);
-  const [dartsRemaining, setDartsRemaining] = useState(0);
+  // FIX (structure): only state that truly belongs in the parent lives here.
+  // balloons, darts, particles, and obstacles all live inside DartPopBlitzCanvas
+  // so that rapid game-loop updates (every dart fired, every particle tick) don't
+  // re-render the page shell, GameUI header, or GameInstructions on every frame.
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [totalPopped, setTotalPopped] = useState(0);
+  const [dartsRemaining, setDartsRemaining] = useState(0);
+  const [totalBalloons, setTotalBalloons] = useState(0);
   const [activePowerup, setActivePowerup] = useState(null);
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
-  const [totalBalloons, setTotalBalloons] = useState(0);
-  const [obstacles, setObstacles] = useState([]);
-  const [combo, setCombo] = useState(0);
-  const [comboMultiplier, setComboMultiplier] = useState(1);
+
+  // FIX (bug): savedRef guards against double-saves. It is reset inside
+  // startGame via a ref so it doesn't depend on render timing.
   const savedRef = useRef(false);
 
   const startGame = useCallback((p) => {
     setPreset(p);
     const b = generateBalloons(p);
-    setBalloons(b);
     setTotalBalloons(b.length);
-    setDarts([]);
-    setParticles([]);
     setDartsRemaining(p.darts);
     setScore(0);
     setStreak(0);
     setTotalPopped(0);
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
-    setObstacles(generateObstacles(p.obstacles || []));
-    setCombo(0);
-    setComboMultiplier(1);
     setGameState("playing");
+    // FIX (bug): reset the save guard here, synchronously, before the new
+    // game begins — not inside a useEffect which fires asynchronously after
+    // the render and can race with the end-of-game effect.
     savedRef.current = false;
-  }, []);
+  }, []); // deps are intentionally empty — only uses stable setters and argument p
 
-  // Handle game over
-  useEffect(() => {
-    if ((gameState === "won" || gameState === "lost") && !savedRef.current) {
-      savedRef.current = true;
-      const won = gameState === "won";
+  // FIX (bug + structure): replaced useEffect([gameState]) with a direct
+  // callback passed to DartPopBlitzCanvas. This eliminates the stale-closure
+  // problem entirely: the canvas calls onGameEnd(result) with the final values
+  // at the exact moment the game ends, so score/totalPopped/preset are always
+  // current. No dependency array to maintain.
+  const handleGameEnd = useCallback(async (result) => {
+    // result = { won: bool, score: number, totalPopped: number, dartsUsed: number }
+    if (savedRef.current) return;
+    savedRef.current = true;
 
-      if (won) {
-        haptics.winVibrate();
-        fireConfetti();
-        sounds.playWin();
-        reportWin("Dart Pop Blitz");
-      } else {
-        haptics.lossVibrate();
-        sounds.playMiss();
-        reportLoss();
-      }
+    const { won, score: finalScore, totalPopped: finalPopped } = result;
 
-      // Save score
-      if (user?.email) {
-        base44.entities.DartPopBlitzScore.create({
-          user_email: user.email,
-          score,
-          dart_limit: preset?.darts || 0,
-          balloons_popped: totalPopped,
-          level_completed: won,
-        }).catch(() => {});
-
-        // Also save to GameScore for leaderboard
-        base44.entities.GameScore.create({
-          user_email: user.email,
-          game_name: "Dart Pop Blitz",
-          score,
-          completed: won,
-        }).catch(() => {});
-      }
+    if (won) {
+      haptics.winVibrate();
+      fireConfetti();
+      sounds.playWin();
+      // FIX (bug): reportWin and reportLoss now both receive the game name
+      // so loss records are as complete as win records.
+      reportWin("Dart Pop Blitz");
+    } else {
+      haptics.lossVibrate();
+      sounds.playMiss();
+      reportLoss("Dart Pop Blitz");
     }
-  }, [gameState]);
+
+    await saveGameScore({
+      userEmail: user?.email,
+      score: finalScore,
+      dartLimit: preset?.darts ?? 0,
+      balloonsPopped: finalPopped,
+      won,
+    });
+
+    setGameState(won ? "won" : "lost");
+  }, [
+    // FIX (bug): all values read inside the callback are listed as deps so
+    // the callback always closes over current values, not stale ones.
+    haptics, fireConfetti, sounds, reportWin, reportLoss, user, preset,
+  ]);
 
   if (gameState === "menu") {
     return (
@@ -162,23 +188,28 @@ export default function DartPopBlitz() {
         setActivePowerup={setActivePowerup}
         powerupInventory={powerupInventory}
         setPowerupInventory={setPowerupInventory}
-        comboMultiplier={comboMultiplier}
       />
 
+      {/* FIX (structure): DartPopBlitzCanvas now owns balloons/darts/particles/obstacles
+          internally. The parent only receives summary state (score, streak, totalPopped,
+          dartsRemaining) via the callbacks below, which fire infrequently — not on every
+          animation frame. This prevents the page shell from re-rendering every tick.
+
+          FIX (bug): onGameEnd replaces the old setGameState("won"/"lost") call from inside
+          the canvas. The canvas calls it with the final result object so scores are captured
+          at the correct moment with no stale-closure risk. */}
       <DartPopBlitzCanvas
-        balloons={balloons} setBalloons={setBalloons}
-        darts={darts} setDarts={setDarts}
-        particles={particles} setParticles={setParticles}
-        dartsRemaining={dartsRemaining} setDartsRemaining={setDartsRemaining}
-        score={score} setScore={setScore}
-        streak={streak} setStreak={setStreak}
-        activePowerup={activePowerup} setActivePowerup={setActivePowerup}
-        powerupInventory={powerupInventory} setPowerupInventory={setPowerupInventory}
-        gameState={gameState} setGameState={setGameState}
-        totalPopped={totalPopped} setTotalPopped={setTotalPopped}
-        obstacles={obstacles} setObstacles={setObstacles}
-        combo={combo} setCombo={setCombo}
-        comboMultiplier={comboMultiplier} setComboMultiplier={setComboMultiplier}
+        preset={preset}
+        gameState={gameState}
+        activePowerup={activePowerup}
+        setActivePowerup={setActivePowerup}
+        powerupInventory={powerupInventory}
+        setPowerupInventory={setPowerupInventory}
+        onScoreChange={setScore}
+        onStreakChange={setStreak}
+        onTotalPoppedChange={setTotalPopped}
+        onDartsRemainingChange={setDartsRemaining}
+        onGameEnd={handleGameEnd}
         sounds={sounds}
       />
     </div>
