@@ -1,76 +1,41 @@
-import { useRef, useState, useCallback } from "react";
-
-// Generate simple sounds using Web Audio API — no external files needed
-function createAudioContext() {
-  return new (window.AudioContext || window.webkitAudioContext)();
-}
+import { useState, useCallback } from "react";
+import { playRichTone, playNoiseBurst, playMelody } from "@/lib/SoundEngine";
 
 export default function useGameSounds() {
   const [soundOn, setSoundOn] = useState(true);
-  const ctxRef = useRef(null);
-
-  function getCtx() {
-    if (!ctxRef.current || ctxRef.current.state === "closed") {
-      ctxRef.current = createAudioContext();
-    }
-    if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume();
-    }
-    return ctxRef.current;
-  }
 
   const playTap = useCallback(() => {
     if (!soundOn) return;
-    const ctx = getCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.06);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.08);
+    // Crisp click with subtle overtone
+    playRichTone({ frequency: 900, freqEnd: 650, duration: 0.07, volume: 0.12, type: "sine", harmonic: 3 });
+    playNoiseBurst({ duration: 0.03, volume: 0.06, filterType: "highpass", filterFreq: 4000, filterQ: 1 });
   }, [soundOn]);
 
   const playSuccess = useCallback(() => {
     if (!soundOn) return;
-    const ctx = getCtx();
-    const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      const t = ctx.currentTime + i * 0.09;
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.18, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      osc.start(t);
-      osc.stop(t + 0.25);
+    // Bright ascending arpeggio
+    playMelody([523, 659, 784, 1047], {
+      spacing: 0.08,
+      noteDuration: 0.2,
+      volume: 0.15,
+      type: "sine",
+      harmonic: 3,
     });
+    playNoiseBurst({ duration: 0.2, volume: 0.03, filterType: "highpass", filterFreq: 5000, filterQ: 0.3, delay: 0.05 });
   }, [soundOn]);
 
   const playWin = useCallback(() => {
     if (!soundOn) return;
-    const ctx = getCtx();
-    const notes = [523, 587, 659, 698, 784, 880, 988, 1047];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "triangle";
-      const t = ctx.currentTime + i * 0.1;
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.2, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.start(t);
-      osc.stop(t + 0.35);
+    // Full triumphant fanfare
+    playMelody([523, 587, 659, 698, 784, 880, 988, 1047], {
+      spacing: 0.09,
+      noteDuration: 0.35,
+      volume: 0.16,
+      type: "triangle",
+      harmonic: 2,
     });
+    playRichTone({ frequency: 262, duration: 0.8, volume: 0.08, type: "sine", harmonic: 2 });
+    playNoiseBurst({ duration: 0.5, volume: 0.03, filterType: "highpass", filterFreq: 5000, filterQ: 0.3, delay: 0.2 });
   }, [soundOn]);
 
   return { soundOn, setSoundOn, playTap, playSuccess, playWin };

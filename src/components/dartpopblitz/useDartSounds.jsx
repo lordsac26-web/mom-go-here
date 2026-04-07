@@ -1,191 +1,100 @@
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import { useAudioStore } from "@/stores/audioStore";
-
-function getCtx(ref) {
-  if (!ref.current || ref.current.state === "closed") {
-    ref.current = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (ref.current.state === "suspended") ref.current.resume();
-  return ref.current;
-}
+import { getAudioCtx, getMaster, playRichTone, playNoiseBurst, playMelody } from "@/lib/SoundEngine";
 
 export default function useDartSounds() {
-  const ctxRef = useRef(null);
   const muteAll = useAudioStore((s) => s.muteAll);
 
   const playShoot = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    // Whoosh + thunk
-    const noise = ctx.createBufferSource();
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
-    noise.buffer = buf;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass"; bp.frequency.value = 2000; bp.Q.value = 1;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.25, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    noise.connect(bp).connect(g).connect(ctx.destination);
-    noise.start(t); noise.stop(t + 0.15);
-    // Twang
-    const osc = ctx.createOscillator();
-    const og = ctx.createGain();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(300, t);
-    osc.frequency.exponentialRampToValueAtTime(100, t + 0.12);
-    og.gain.setValueAtTime(0.12, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    osc.connect(og).connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.12);
+    // Whoosh: filtered noise sweep
+    playNoiseBurst({ duration: 0.18, volume: 0.2, filterType: "bandpass", filterFreq: 2200, filterQ: 0.8 });
+    // Twang: pitch-dropping sawtooth + harmonic
+    playRichTone({ frequency: 350, freqEnd: 120, duration: 0.14, volume: 0.1, type: "sawtooth", harmonic: 2 });
+    // Subtle click transient
+    playRichTone({ frequency: 1200, freqEnd: 600, duration: 0.04, volume: 0.08, type: "square" });
   }, [muteAll]);
 
   const playPop = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    // Pop burst
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(600 + Math.random() * 400, t);
-    osc.frequency.exponentialRampToValueAtTime(100, t + 0.08);
-    g.gain.setValueAtTime(0.3, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    osc.connect(g).connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.12);
-    // Noise crack
-    const n = ctx.createBufferSource();
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
-    n.buffer = buf;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.2, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-    n.connect(ng).connect(ctx.destination);
-    n.start(t); n.stop(t + 0.06);
+    const pitch = 550 + Math.random() * 450;
+    // Bright pop: sine with overtone
+    playRichTone({ frequency: pitch, freqEnd: 120, duration: 0.1, volume: 0.25, type: "sine", harmonic: 2.5 });
+    // Snap: high-freq noise
+    playNoiseBurst({ duration: 0.05, volume: 0.2, filterType: "highpass", filterFreq: 3000, filterQ: 0.5 });
+    // Subtle resonance tail
+    playRichTone({ frequency: pitch * 0.5, duration: 0.15, volume: 0.06, type: "triangle", delay: 0.03 });
   }, [muteAll]);
 
   const playExplosion = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    // Big boom
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(150, t);
-    osc.frequency.exponentialRampToValueAtTime(30, t + 0.4);
-    g.gain.setValueAtTime(0.35, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-    osc.connect(g).connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.4);
-    // Noise rumble
-    const n = ctx.createBufferSource();
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
-    n.buffer = buf;
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 400;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.3, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    n.connect(lp).connect(ng).connect(ctx.destination);
-    n.start(t); n.stop(t + 0.3);
+    // Deep boom: low sawtooth sweep
+    playRichTone({ frequency: 180, freqEnd: 25, duration: 0.5, volume: 0.3, type: "sawtooth", harmonic: 1.5 });
+    // Rumble noise
+    playNoiseBurst({ duration: 0.4, volume: 0.3, filterType: "lowpass", filterFreq: 350, filterQ: 0.5 });
+    // High shrapnel
+    playNoiseBurst({ duration: 0.15, volume: 0.15, filterType: "highpass", filterFreq: 4000, filterQ: 1 });
+    // Impact thud
+    playRichTone({ frequency: 60, freqEnd: 20, duration: 0.25, volume: 0.2, type: "sine", delay: 0.02 });
   }, [muteAll]);
 
   const playSniper = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    // Crack
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "square";
-    osc.frequency.setValueAtTime(1200, t);
-    osc.frequency.exponentialRampToValueAtTime(200, t + 0.15);
-    g.gain.setValueAtTime(0.2, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    osc.connect(g).connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.2);
-    // Echo
-    const o2 = ctx.createOscillator();
-    const g2 = ctx.createGain();
-    o2.type = "sine";
-    o2.frequency.setValueAtTime(800, t + 0.05);
-    o2.frequency.exponentialRampToValueAtTime(400, t + 0.25);
-    g2.gain.setValueAtTime(0.1, t + 0.05);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    o2.connect(g2).connect(ctx.destination);
-    o2.start(t + 0.05); o2.stop(t + 0.3);
+    // Sharp crack: fast square sweep
+    playRichTone({ frequency: 1500, freqEnd: 200, duration: 0.12, volume: 0.18, type: "square" });
+    // Supersonic whizz
+    playNoiseBurst({ duration: 0.08, volume: 0.12, filterType: "bandpass", filterFreq: 5000, filterQ: 2 });
+    // Delayed echo
+    playRichTone({ frequency: 800, freqEnd: 350, duration: 0.25, volume: 0.08, type: "sine", delay: 0.06, harmonic: 3 });
+    // Sub-bass punch
+    playRichTone({ frequency: 100, freqEnd: 40, duration: 0.15, volume: 0.1, type: "sine", delay: 0.01 });
   }, [muteAll]);
 
   const playMultishot = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    [0, 0.04, 0.08].forEach((delay) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(400 + delay * 2000, t + delay);
-      osc.frequency.exponentialRampToValueAtTime(150, t + delay + 0.1);
-      g.gain.setValueAtTime(0.15, t + delay);
-      g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.1);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(t + delay); osc.stop(t + delay + 0.1);
+    // Triple whoosh cascade
+    [0, 0.04, 0.08].forEach((d, i) => {
+      playRichTone({ frequency: 380 + i * 80, freqEnd: 140, duration: 0.12, volume: 0.12, type: "sawtooth", delay: d, harmonic: 2 });
+      playNoiseBurst({ duration: 0.08, volume: 0.1, filterType: "bandpass", filterFreq: 2500 + i * 500, filterQ: 1, delay: d });
     });
   }, [muteAll]);
 
   const playStreakChime = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    [523, 659, 784, 1047].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t + i * 0.08);
-      g.gain.setValueAtTime(0.15, t + i * 0.08);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.2);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.2);
+    // Sparkly ascending arpeggio with harmonics
+    playMelody([523, 659, 784, 1047], {
+      spacing: 0.07,
+      noteDuration: 0.22,
+      volume: 0.14,
+      type: "sine",
+      harmonic: 3,
     });
+    // Shimmer noise accent
+    playNoiseBurst({ duration: 0.3, volume: 0.04, filterType: "highpass", filterFreq: 6000, filterQ: 0.3, delay: 0.05 });
   }, [muteAll]);
 
   const playMiss = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(300, t);
-    osc.frequency.exponentialRampToValueAtTime(100, t + 0.2);
-    g.gain.setValueAtTime(0.1, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    osc.connect(g).connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.2);
+    // Sad descending tone
+    playRichTone({ frequency: 350, freqEnd: 80, duration: 0.25, volume: 0.1, type: "sine", harmonic: 1.5 });
+    // Dull thud noise
+    playNoiseBurst({ duration: 0.12, volume: 0.08, filterType: "lowpass", filterFreq: 500, filterQ: 0.5 });
   }, [muteAll]);
 
   const playWin = useCallback(() => {
     if (muteAll) return;
-    const ctx = getCtx(ctxRef);
-    const t = ctx.currentTime;
-    [523, 587, 659, 698, 784, 880, 988, 1047].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq, t + i * 0.1);
-      g.gain.setValueAtTime(0.2, t + i * 0.1);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.35);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.35);
+    // Triumphant ascending scale with harmonics
+    playMelody([523, 587, 659, 698, 784, 880, 988, 1047], {
+      spacing: 0.09,
+      noteDuration: 0.35,
+      volume: 0.16,
+      type: "triangle",
+      harmonic: 2,
     });
+    // Shimmer overlay
+    playNoiseBurst({ duration: 0.6, volume: 0.04, filterType: "highpass", filterFreq: 5000, filterQ: 0.3, delay: 0.15 });
+    // Bass foundation
+    playRichTone({ frequency: 262, duration: 0.8, volume: 0.08, type: "sine", harmonic: 2 });
   }, [muteAll]);
 
   return { playShoot, playPop, playExplosion, playSniper, playMultishot, playStreakChime, playMiss, playWin };

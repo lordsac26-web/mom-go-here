@@ -1,203 +1,112 @@
-import { useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useAudioStore } from '@/stores/audioStore';
+import { getAudioCtx, getMaster, playRichTone, playNoiseBurst, playMelody } from '@/lib/SoundEngine';
 
 /**
- * Game audio system with procedural sound effects and music control.
- * Plays distinct sounds for game events (dice roll, tile placement, etc).
+ * Game audio system with rich procedural sound effects.
+ * Multi-layered synthesis with harmonics, filtered noise, and proper envelopes.
  */
 export function useGameAudio() {
-  const audioContextRef = useRef(null);
   const sfxVolume = useAudioStore((state) => state.sfxVolume);
-  const musicVolume = useAudioStore((state) => state.musicVolume);
   const muteAll = useAudioStore((state) => state.muteAll);
-  const muteMusic = useAudioStore((state) => state.muteMusic);
 
-  // Initialize audio context on first user interaction
-  const initAudioContext = () => {
-    if (!audioContextRef.current) {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
-        audioContextRef.current = audioContext;
-      } catch (e) {
-        console.warn('AudioContext not supported:', e);
-      }
-    }
-    return audioContextRef.current;
-  };
+  const vol = muteAll || sfxVolume === 0 ? 0 : sfxVolume / 2;
+  const ok = () => vol > 0;
 
-  // Play synth tone for sound effects
-  const playTone = (frequency, duration, type = 'sine', volume = 1) => {
-    if (muteAll || sfxVolume === 0) return;
-    
-    const ctx = initAudioContext();
-    if (!ctx) return;
+  const initAudioContext = () => getAudioCtx();
 
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.type = type;
-      osc.frequency.value = frequency;
-      gain.gain.value = volume * (sfxVolume / 2);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start(ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-      osc.stop(ctx.currentTime + duration);
-    } catch (e) {
-      console.warn('Tone playback failed:', e);
-    }
-  };
+  // Dice shake: rattling swoosh with percussive accents
+  const diceshakeSound = useCallback(() => {
+    if (!ok()) return;
+    // Swoosh: filtered noise sweep
+    playNoiseBurst({ duration: 0.3, volume: 0.2 * vol, filterType: "bandpass", filterFreq: 1800, filterQ: 0.6 });
+    // Rattle accents
+    [0, 0.07, 0.15, 0.22].forEach(d => {
+      playRichTone({
+        frequency: 400 + Math.random() * 200,
+        freqEnd: 200,
+        duration: 0.06,
+        volume: 0.08 * vol,
+        type: "square",
+        delay: d,
+      });
+    });
+    // Sub-body movement
+    playRichTone({ frequency: 200, freqEnd: 600, duration: 0.3, volume: 0.1 * vol, type: "sine" });
+  }, [vol]);
 
-  // Dice shake sound (woosh + impact)
-  const diceshakeSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    // Ascending frequency sweep (cup shaking)
-    const ctx = initAudioContext();
-    if (!ctx) return;
+  // Dice collision: satisfying wooden impact
+  const diceCollideSound = useCallback(() => {
+    if (!ok()) return;
+    // Sharp impact transient
+    playRichTone({ frequency: 900, freqEnd: 300, duration: 0.08, volume: 0.18 * vol, type: "square" });
+    // Noise impact
+    playNoiseBurst({ duration: 0.06, volume: 0.15 * vol, filterType: "bandpass", filterFreq: 3000, filterQ: 1.5 });
+    // Woody resonance
+    playRichTone({ frequency: 280, freqEnd: 140, duration: 0.2, volume: 0.12 * vol, type: "sine", delay: 0.02, harmonic: 2.3 });
+    // Table thud
+    playRichTone({ frequency: 80, freqEnd: 40, duration: 0.15, volume: 0.08 * vol, type: "sine", delay: 0.01 });
+  }, [vol]);
 
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.3);
-      
-      gain.gain.value = 0.3 * (sfxVolume / 2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start(ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-      console.warn('Shake sound failed:', e);
-    }
-  };
+  // Checker: plastic piece slide + placement
+  const checkerFlipSound = useCallback(() => {
+    if (!ok()) return;
+    // Slide friction
+    playNoiseBurst({ duration: 0.1, volume: 0.08 * vol, filterType: "bandpass", filterFreq: 2500, filterQ: 0.8 });
+    // Snap placement
+    playRichTone({ frequency: 650, freqEnd: 400, duration: 0.1, volume: 0.12 * vol, type: "triangle", harmonic: 2 });
+    // Thud
+    playRichTone({ frequency: 180, duration: 0.12, volume: 0.08 * vol, type: "sine", delay: 0.05 });
+  }, [vol]);
 
-  // Dice collision sound (impact + resonance)
-  const diceCollideSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    
-    const ctx = initAudioContext();
-    if (!ctx) return;
+  // Mahjong tile: ceramic click
+  const mahjongTileSound = useCallback(() => {
+    if (!ok()) return;
+    // High ceramic click
+    playRichTone({ frequency: 1200, freqEnd: 800, duration: 0.06, volume: 0.1 * vol, type: "sine", harmonic: 3 });
+    // Click noise
+    playNoiseBurst({ duration: 0.04, volume: 0.1 * vol, filterType: "highpass", filterFreq: 4000, filterQ: 2 });
+    // Stone resonance
+    playRichTone({ frequency: 300, freqEnd: 200, duration: 0.15, volume: 0.06 * vol, type: "sine", delay: 0.02 });
+  }, [vol]);
 
-    try {
-      // Impact transient
-      const impact = ctx.createOscillator();
-      const impactGain = ctx.createGain();
-      impact.type = 'square';
-      impact.frequency.value = 800;
-      impactGain.gain.value = 0.2 * (sfxVolume / 2);
-      impact.connect(impactGain);
-      impactGain.connect(ctx.destination);
-      impact.start(ctx.currentTime);
-      impactGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-      impact.stop(ctx.currentTime + 0.1);
+  // Memory card flip: paper/card whoosh
+  const cardFlipSound = useCallback(() => {
+    if (!ok()) return;
+    // Flip whoosh
+    playNoiseBurst({ duration: 0.08, volume: 0.1 * vol, filterType: "bandpass", filterFreq: 3500, filterQ: 1 });
+    // Card snap
+    playRichTone({ frequency: 600, freqEnd: 400, duration: 0.08, volume: 0.1 * vol, type: "sine", harmonic: 2.5 });
+  }, [vol]);
 
-      // Resonance tone
-      const resonance = ctx.createOscillator();
-      const resGain = ctx.createGain();
-      resonance.type = 'sine';
-      resonance.frequency.setValueAtTime(300, ctx.currentTime + 0.05);
-      resonance.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.25);
-      resGain.gain.value = 0.15 * (sfxVolume / 2);
-      resonance.connect(resGain);
-      resGain.connect(ctx.destination);
-      resonance.start(ctx.currentTime + 0.05);
-      resGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      resonance.stop(ctx.currentTime + 0.25);
-    } catch (e) {
-      console.warn('Collision sound failed:', e);
-    }
-  };
+  // Match success: bright chime pair
+  const matchSound = useCallback(() => {
+    if (!ok()) return;
+    playRichTone({ frequency: 660, duration: 0.15, volume: 0.14 * vol, type: "sine", harmonic: 3 });
+    playRichTone({ frequency: 880, duration: 0.18, volume: 0.14 * vol, type: "sine", delay: 0.08, harmonic: 3 });
+    playNoiseBurst({ duration: 0.12, volume: 0.03 * vol, filterType: "highpass", filterFreq: 5000, filterQ: 0.5, delay: 0.05 });
+  }, [vol]);
 
-  // Checker flip sound (snap + placement)
-  const checkerFlipSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    
-    const ctx = initAudioContext();
-    if (!ctx) return;
+  // Win: triumphant fanfare
+  const winSound = useCallback(() => {
+    if (!ok()) return;
+    playMelody([523, 659, 784, 1047], {
+      spacing: 0.1,
+      noteDuration: 0.3,
+      volume: 0.16 * vol,
+      type: "triangle",
+      harmonic: 2,
+    });
+    playRichTone({ frequency: 262, duration: 0.8, volume: 0.06 * vol, type: "sine", harmonic: 2 });
+    playNoiseBurst({ duration: 0.4, volume: 0.03 * vol, filterType: "highpass", filterFreq: 5000, filterQ: 0.3, delay: 0.15 });
+  }, [vol]);
 
-    try {
-      // Flip snap
-      const snap = ctx.createOscillator();
-      const snapGain = ctx.createGain();
-      snap.type = 'triangle';
-      snap.frequency.value = 600;
-      snapGain.gain.value = 0.15 * (sfxVolume / 2);
-      snap.connect(snapGain);
-      snapGain.connect(ctx.destination);
-      snap.start(ctx.currentTime);
-      snapGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-      snap.stop(ctx.currentTime + 0.15);
-
-      // Placement thud
-      playTone(200, 0.2, 'sine', 0.2);
-    } catch (e) {
-      console.warn('Flip sound failed:', e);
-    }
-  };
-
-  // Mahjong tile slide/place sound
-  const mahjongTileSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    
-    const ctx = initAudioContext();
-    if (!ctx) return;
-
-    try {
-      // Subtle slide + click
-      const slide = ctx.createOscillator();
-      const slideGain = ctx.createGain();
-      slide.type = 'sine';
-      slide.frequency.setValueAtTime(250, ctx.currentTime);
-      slide.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.15);
-      slideGain.gain.value = 0.12 * (sfxVolume / 2);
-      slide.connect(slideGain);
-      slideGain.connect(ctx.destination);
-      slide.start(ctx.currentTime);
-      slideGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-      slide.stop(ctx.currentTime + 0.15);
-
-      // Click accent
-      playTone(400, 0.08, 'square', 0.1);
-    } catch (e) {
-      console.warn('Tile sound failed:', e);
-    }
-  };
-
-  // Memory card flip
-  const cardFlipSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    playTone(500, 0.1, 'sine', 0.3);
-  };
-
-  // Match success
-  const matchSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    playTone(600, 0.15, 'sine', 0.4);
-    setTimeout(() => playTone(800, 0.15, 'sine', 0.4), 100);
-  };
-
-  // Game win
-  const winSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    playTone(400, 0.2, 'sine', 0.5);
-    setTimeout(() => playTone(500, 0.2, 'sine', 0.5), 150);
-    setTimeout(() => playTone(600, 0.3, 'sine', 0.5), 300);
-  };
-
-  // UI click
-  const uiClickSound = () => {
-    if (muteAll || sfxVolume === 0) return;
-    playTone(350, 0.08, 'sine', 0.2);
-  };
+  // UI click: clean and subtle
+  const uiClickSound = useCallback(() => {
+    if (!ok()) return;
+    playRichTone({ frequency: 800, freqEnd: 600, duration: 0.05, volume: 0.08 * vol, type: "sine" });
+    playNoiseBurst({ duration: 0.02, volume: 0.04 * vol, filterType: "highpass", filterFreq: 5000, filterQ: 1 });
+  }, [vol]);
 
   return {
     diceshakeSound,
