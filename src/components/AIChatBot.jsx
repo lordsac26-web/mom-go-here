@@ -195,9 +195,6 @@ export default function AIChatBot() {
   }
 
   async function handleClearChat() {
-    if (conversation?.id) {
-      await base44.agents.updateConversation(conversation.id, { metadata: { name: "Chat (cleared)" } });
-    }
     setMessages([]);
     setConversation(null);
     conversationRef.current = null;
