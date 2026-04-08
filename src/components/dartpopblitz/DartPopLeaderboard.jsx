@@ -20,24 +20,11 @@ export default function DartPopLeaderboard() {
 
     async function fetchScores() {
       setLoading(true);
-      const all = await base44.entities.DartPopBlitzScore.filter(
-        { dart_limit: tab },
-        "-score",
-        50
-      );
-
-      // Deduplicate: keep only best score per user
-      const bestByUser = {};
-      for (const s of all) {
-        const email = s.user_email;
-        if (!bestByUser[email] || s.score > bestByUser[email].score) {
-          bestByUser[email] = s;
-        }
-      }
-
-      const top10 = Object.values(bestByUser)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+      const res = await base44.functions.invoke('getLeaderboardScores', {
+        type: 'dartpop',
+        dart_limit: tab,
+      });
+      const top10 = res.data.scores || [];
 
       if (mounted) {
         setScores(top10);
@@ -48,7 +35,7 @@ export default function DartPopLeaderboard() {
     fetchScores();
 
     const unsub = base44.entities.DartPopBlitzScore.subscribe((event) => {
-      if (event.data?.dart_limit === tab || event.type === "delete") {
+      if (event.type === "create" || event.type === "delete") {
         fetchScores();
       }
     });
@@ -94,8 +81,8 @@ export default function DartPopLeaderboard() {
           </p>
         ) : (
           scores.map((s, i) => {
-            const isMe = currentUser && s.user_email === currentUser.email;
-            const displayName = s.user_email?.split("@")[0] || "Player";
+            const isMe = s.is_current_user;
+            const displayName = s.display_name || "Player";
             return (
               <div
                 key={s.id}

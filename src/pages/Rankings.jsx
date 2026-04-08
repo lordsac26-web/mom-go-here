@@ -32,8 +32,8 @@ export default function Rankings() {
   }, []);
 
   async function loadScores() {
-    const all = await base44.entities.GameScore.list("-score", 200);
-    setScores(all);
+    const res = await base44.functions.invoke('getLeaderboardScores', {});
+    setScores(res.data.scores || []);
     setLoading(false);
   }
 
@@ -45,7 +45,7 @@ export default function Rankings() {
       : scores;
 
     filtered.forEach((s) => {
-      const key = `${s.user_email}__${s.game_name}`;
+      const key = `${s.display_name}__${s.game_name}`;
       const existing = bestMap.get(key);
       if (!existing || s.score > existing.score) {
         bestMap.set(key, s);
@@ -55,9 +55,9 @@ export default function Rankings() {
     // Now get each player's overall best score (highest across games for "All" view)
     const playerBest = new Map();
     bestMap.forEach((s) => {
-      const existing = playerBest.get(s.user_email);
+      const existing = playerBest.get(s.display_name);
       if (!existing || s.score > existing.score) {
-        playerBest.set(s.user_email, s);
+        playerBest.set(s.display_name, s);
       }
     });
 
@@ -69,13 +69,13 @@ export default function Rankings() {
   // Current player stats
   const currentPlayerRank = useMemo(() => {
     if (!user?.email) return null;
-    const idx = topScores.findIndex((s) => s.user_email === user.email);
+    const idx = topScores.findIndex((s) => s.is_current_user);
     return idx >= 0 ? idx + 1 : null;
   }, [topScores, user]);
 
   const currentPlayerBest = useMemo(() => {
     if (!user?.email) return { score: 0, game: "" };
-    const mine = scores.filter((s) => s.user_email === user.email);
+    const mine = scores.filter((s) => s.is_current_user);
     if (mine.length === 0) return { score: 0, game: "" };
     const best = mine.reduce((a, b) => (a.score > b.score ? a : b));
     return { score: best.score, game: best.game_name };
@@ -83,7 +83,7 @@ export default function Rankings() {
 
   // Unique players count
   const totalPlayers = useMemo(() => {
-    return new Set(scores.map((s) => s.user_email)).size;
+    return new Set(scores.map((s) => s.display_name)).size;
   }, [scores]);
 
   // Available games that have scores
@@ -171,12 +171,12 @@ export default function Rankings() {
               >
                 {displayList.map((s, i) => (
                   <RankRow
-                    key={`${s.user_email}-${s.game_name}`}
+                    key={`${s.display_name}-${s.game_name}`}
                     rank={i + 1}
-                    name={s.user_email?.split("@")[0] || "Anonymous"}
+                    name={s.display_name || "Anonymous"}
                     score={s.score}
                     game={s.game_name}
-                    isCurrentUser={s.user_email === user?.email}
+                    isCurrentUser={s.is_current_user}
                     index={i}
                   />
                 ))}
