@@ -12,7 +12,7 @@ import ThemePanel from "../../components/wordsearch/ThemePanel";
 import useGridReveal, { PATTERN_LIST } from "../../hooks/useGridReveal";
 import { useGameActivity } from "../../hooks/useGameActivity";
 
-const WORD_LISTS = [
+const WORD_LISTS_EASY = [
   ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
   ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE"],
   ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM"],
@@ -29,6 +29,26 @@ const WORD_LISTS = [
   ["RECIPE", "SPICE", "SAUCE", "GRILL", "ROAST", "CHOP", "STEW", "HERB"],
   ["PAINT", "BRUSH", "CANVAS", "COLOR", "FRAME", "DRAW", "SKETCH", "ART"],
 ];
+
+const WORD_LISTS_ADVANCED = [
+  ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART", "BLESSING", "WISDOM", "PRAYER", "HEAVEN"],
+  ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE", "MEADOW", "BLOSSOM", "PETAL", "CREEK"],
+  ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM", "MELODY", "RHYTHM", "CHORUS", "LYRICS"],
+  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE", "ISLAND", "HARBOR", "ANCHOR", "DRIFT"],
+  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET", "PASTRY", "DOUGH", "MUFFIN", "TART"],
+  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY", "AURORA", "COMET", "GALAXY", "PLANET"],
+  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD", "DOLPHIN", "PANDA", "OTTER", "HAWK"],
+  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE", "ACORN", "SQUASH", "WREATH", "FROST"],
+  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP", "JOURNEY", "TICKET", "SUNSET", "TRAIL"],
+  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK", "KNIGHT", "BISHOP", "ROOK", "PAWN"],
+  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM", "GRIND", "ROAST", "FILTER", "DRIP"],
+  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL", "MITTEN", "BOOTS", "LODGE", "FLURRY"],
+];
+
+const DIFFICULTIES = {
+  easy: { label: "Easy", emoji: "😊", gridSize: 10, wordLists: WORD_LISTS_EASY, desc: "10×10 grid · 8 words" },
+  advanced: { label: "Advanced", emoji: "🧠", gridSize: 14, wordLists: WORD_LISTS_ADVANCED, desc: "14×14 grid · 12 words" },
+};
 
 function generateGrid(size, words) {
   const grid = Array(size).fill(null).map(() => Array(size).fill(""));
@@ -79,7 +99,8 @@ export default function WordSearch() {
   const { uiClickSound, matchSound, winSound } = useGameAudio();
   const { reportWin } = useGameActivity();
   const [started, setStarted] = useState(false);
-  const [size] = useState(10);
+  const [difficulty, setDifficulty] = useState(null);
+  const size = difficulty ? DIFFICULTIES[difficulty].gridSize : 10;
   const [gridData, setGridData] = useState(null);
   const [words, setWords] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -118,11 +139,13 @@ export default function WordSearch() {
     return () => { clearTimeout(glowTimerRef.current); };
   }, []);
 
-  function startGame() {
-    const wlist = WORD_LISTS[Math.floor(Math.random() * WORD_LISTS.length)];
-    const data = generateGrid(size, wlist);
+  function startGame(diff) {
+    const d = diff || difficulty || "easy";
+    if (!difficulty) setDifficulty(d);
+    const config = DIFFICULTIES[d];
+    const wlist = config.wordLists[Math.floor(Math.random() * config.wordLists.length)];
+    const data = generateGrid(config.gridSize, wlist);
     setGridData(data);
-    // FIX (bug): use only the words that were successfully placed in the grid
     setWords(data.placedWords);
     setSelected([]);
     setFoundWords([]);
@@ -243,6 +266,8 @@ export default function WordSearch() {
       <div className="text-8xl mb-4">🔤</div>
       <h1 className="text-4xl font-black text-primary mb-4 text-center">Word Search</h1>
       <p className="text-xl text-muted-foreground text-center mb-6">Tap letters to spell out hidden words!</p>
+
+      {/* Theme picker */}
       <div className="flex flex-wrap gap-2 justify-center mb-6">
         {Object.entries(WS_THEMES).map(([key, t]) => (
           <button key={key} onClick={() => setThemeKey(key)}
@@ -252,10 +277,23 @@ export default function WordSearch() {
           </button>
         ))}
       </div>
-      <button onClick={() => { tapVibrate(); uiClickSound(); startGame(); }} className="text-white text-2xl font-black px-10 py-6 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
-        🔤 Start Game
-      </button>
-      <GameBackButton className="mt-4" />
+
+      {/* Difficulty picker */}
+      <p className="text-lg font-bold text-muted-foreground mb-3">Choose Difficulty:</p>
+      <div className="flex gap-4 mb-6">
+        {Object.entries(DIFFICULTIES).map(([key, d]) => (
+          <button
+            key={key}
+            onClick={() => { tapVibrate(); uiClickSound(); setDifficulty(key); startGame(key); }}
+            className="flex flex-col items-center gap-1 px-6 py-5 rounded-2xl border-2 font-black text-xl shadow-xl active:scale-95 transition-transform"
+            style={{ background: theme.selected, color: theme.selectedText, borderColor: theme.selected }}
+          >
+            <span className="text-3xl">{d.emoji}</span>
+            <span>{d.label}</span>
+            <span className="text-xs font-bold opacity-80">{d.desc}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -263,10 +301,12 @@ export default function WordSearch() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center" style={{ background: theme.bg }}>
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black mb-4" style={{ color: theme.selected }}>All Words Found!</h1>
-      <button onClick={startGame} className="text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
+      <button onClick={() => startGame(difficulty)} className="text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
         🔄 New Puzzle
       </button>
-      <GameBackButton />
+      <button onClick={() => { setStarted(false); setDifficulty(null); }} className="text-lg font-bold px-6 py-3 rounded-xl mb-4" style={{ background: theme.cell, color: theme.cellText }}>
+        Change Difficulty
+      </button>
     </div>
   );
 
@@ -310,7 +350,7 @@ export default function WordSearch() {
             {PATTERN_LIST.find(p => p.key === revealPattern)?.emoji || "🌀"}
           </button>
           <button onClick={clearSelection} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>✕</button>
-          <button onClick={startGame} className="px-4 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
+          <button onClick={() => startGame(difficulty)} className="px-4 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
         </div>
       </div>
 
