@@ -135,7 +135,7 @@ export default function DartPopBlitz() {
 
   if (gameState === "menu") {
     return (
-      <div className="min-h-screen px-4 py-4 pb-24">
+      <div className="min-h-screen px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] select-none">
         <div className="flex items-center justify-end mb-4">
           <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
         </div>
@@ -146,7 +146,7 @@ export default function DartPopBlitz() {
 
   if (gameState === "won" || gameState === "lost") {
     return (
-      <div className="min-h-screen px-4 py-4 pb-24">
+      <div className="min-h-screen px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] select-none">
         <div className="flex items-center justify-end mb-4">
           <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
         </div>
@@ -165,7 +165,7 @@ export default function DartPopBlitz() {
   }
 
   return (
-    <div className="min-h-screen px-2 py-2 pb-24 flex flex-col items-center gap-2">
+    <div className="min-h-screen px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+4rem)] flex flex-col items-center gap-2 select-none">
       <div className="flex items-center justify-end w-full max-w-[400px]">
         <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
       </div>

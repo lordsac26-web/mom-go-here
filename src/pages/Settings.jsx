@@ -287,18 +287,68 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Log Out */}
-        <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4">
-          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">🚪 Account</h2>
-          <p className="text-muted-foreground text-lg mt-2 mb-4">
-            Sign out of your account on this device.
+        {/* Account Management */}
+        <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4 space-y-4">
+          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">🔒 Account Management</h2>
+          <p className="text-muted-foreground text-lg">
+            Manage your account and sign-in.
           </p>
           <button
             onClick={() => base44.auth.logout("/")}
-            className="w-full bg-destructive text-destructive-foreground text-xl font-black py-4 rounded-2xl"
+            className="w-full bg-secondary text-foreground text-xl font-black py-4 rounded-2xl border-2 border-border"
           >
             🚪 Log Out
           </button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="w-full bg-destructive text-destructive-foreground text-xl font-black py-4 rounded-2xl">
+                🗑️ Delete My Account
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-sm mx-auto">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl font-black">Delete your account?</AlertDialogTitle>
+                <AlertDialogDescription className="text-base">
+                  This will <span className="font-black text-destructive">permanently delete</span> all your data — scores, achievements, journal entries, contacts, and settings. This action <span className="font-black">cannot be undone</span>.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="text-lg font-bold">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    // Delete all user-owned entity records then log out
+                    const email = user?.email;
+                    if (!email) return;
+                    const entities = [
+                      base44.entities.UserProfile,
+                      base44.entities.GameScore,
+                      base44.entities.PlayerXP,
+                      base44.entities.Achievement,
+                      base44.entities.DailyLoginBonus,
+                      base44.entities.SolitaireStats,
+                      base44.entities.ZenPoints,
+                      base44.entities.EngagementStreak,
+                      base44.entities.JournalEntry,
+                      base44.entities.Contact,
+                      base44.entities.PersonalEvent,
+                      base44.entities.DailyProgress,
+                      base44.entities.SavedGame,
+                      base44.entities.DartPopBlitzScore,
+                    ];
+                    for (const entity of entities) {
+                      const records = await entity.filter({ user_email: email });
+                      for (const r of records) await entity.delete(r.id);
+                    }
+                    base44.auth.logout("/");
+                  }}
+                  className="bg-destructive text-destructive-foreground text-lg font-black"
+                >
+                  Delete Everything
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>

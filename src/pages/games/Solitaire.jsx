@@ -309,7 +309,7 @@ export default function Solitaire() {
   }
 
   if (won) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24 text-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] text-center select-none">
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
       {winTime != null && (
@@ -329,7 +329,7 @@ export default function Solitaire() {
   const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 
   return (
-    <div className="min-h-screen bg-green-900 px-1 py-3 pb-24">
+    <div className="min-h-screen bg-green-900 px-1 py-3 pb-[calc(env(safe-area-inset-bottom)+4rem)] select-none">
       <div className="flex items-center justify-between px-2 mb-3">
         <GameBackButton className="text-yellow-300" />
         <div className="text-2xl font-black text-yellow-300">♠ Solitaire</div>

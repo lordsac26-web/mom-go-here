@@ -87,6 +87,16 @@
     -webkit-user-select: none;
   }
 
+  .lucide,
+  .mahjong-tile,
+  .card-container,
+  .reel-window,
+  [class*="game-area"] {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   input, textarea, select {
     font-size: 16px; /* prevents iOS zoom on focus */
   }
