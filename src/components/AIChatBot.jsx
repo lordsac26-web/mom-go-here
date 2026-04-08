@@ -195,10 +195,15 @@ export default function AIChatBot() {
   }
 
   async function handleClearChat() {
+    setLoading(true);
+    const convo = await base44.agents.createConversation({
+      agent_name: "momHelper",
+      metadata: { name: "Chat" },
+    });
     setMessages([]);
-    setConversation(null);
-    conversationRef.current = null;
-    initConversation();
+    setConversation(convo);
+    conversationRef.current = convo;
+    setLoading(false);
   }
 
   const visibleMessages = messages.filter(
