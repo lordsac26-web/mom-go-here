@@ -44,7 +44,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
       photo_url = result.file_url;
     }
 
-    await base44.entities.JournalEntry.create({
+    const newEntry = await base44.entities.JournalEntry.create({
       user_email: user.email,
       photo_url,
       memory_text: text.trim(),
@@ -54,7 +54,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
 
     setSaving(false);
     toast.success("Memory saved! 💛");
-    onSaved();
+    onSaved(newEntry);
   }
 
   return (

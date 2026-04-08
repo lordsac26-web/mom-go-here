@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, SkipForward, Loader2, ChevronDown, X } from "lucide-react";
+import { Play, Pause, SkipForward, Loader2, ChevronDown } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import GenrePickerDropdown from "./GenrePickerDropdown";
 import MUSIC_GENRES from "./MusicGenreData";
 import { useAudioStore } from "@/stores/audioStore";
@@ -162,17 +163,19 @@ export default function MiniMusicPlayer() {
         </button>
       </div>
 
-      {/* Genre Picker Dropdown */}
-      {showPicker && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+      {/* Genre Picker — Bottom Sheet on mobile, same behavior on desktop */}
+      <Drawer open={showPicker} onOpenChange={setShowPicker}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle className="text-primary">🎶 Pick a Genre</DrawerTitle>
+          </DrawerHeader>
           <GenrePickerDropdown
             musicGenre={musicGenre}
             onSelect={(key) => { setMusicGenre(key); setShowPicker(false); }}
             onClose={() => setShowPicker(false)}
           />
-        </>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       <style>{`
         @keyframes miniBarBounce {

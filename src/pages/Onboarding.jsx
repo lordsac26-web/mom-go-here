@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -14,9 +15,6 @@ const RELIGIONS = [
   { value: "None",         label: "No Preference",emoji: "🌍", sub: "Motivational quotes only" },
 ];
 
-// FIX (bug): path corrected from "/games/spotdiff" → "/games/artstudio" to match
-// Games.jsx and the actual route. The old value was being saved to the user's
-// favorite_games array, so the AI Art Studio card could never be matched/filtered.
 const ALL_GAMES = [
   { name: "Memory Match",  emoji: "🧠", path: "/games/memory" },
   { name: "Mahjong",       emoji: "🀄", path: "/games/mahjong" },
@@ -31,7 +29,6 @@ const ALL_GAMES = [
   { name: "Lucky Slots",   emoji: "🎰", path: "/games/slots" },
 ];
 
-// FIX (security): cap display name length and strip leading/trailing whitespace
 const MAX_NAME_LENGTH = 50;
 
 export default function Onboarding() {
@@ -45,6 +42,7 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [chatbotName, setChatbotName] = useState("");
+  const [religionDrawerOpen, setReligionDrawerOpen] = useState(false);
 
   function toggleGame(path) {
     setFavoriteGames(prev =>
@@ -55,11 +53,8 @@ export default function Onboarding() {
   async function finish() {
     setSaving(true);
     setError(null);
-    // FIX (bug): try/catch so a failed save doesn't leave the button stuck on "Saving..."
     try {
-      // FIX (security): trim and cap display name before saving
       const safeName = displayName.trim().slice(0, MAX_NAME_LENGTH);
-
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       const data = {
         user_email: user.email,
@@ -81,6 +76,8 @@ export default function Onboarding() {
       setSaving(false);
     }
   }
+
+  const selectedReligion = RELIGIONS.find(r => r.value === religion);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -105,7 +102,6 @@ export default function Onboarding() {
                 <input
                   type="text"
                   value={displayName}
-                  // FIX (security): enforce max length in the input itself too
                   onChange={e => setDisplayName(e.target.value.slice(0, MAX_NAME_LENGTH))}
                   placeholder="Your first name or nickname"
                   maxLength={MAX_NAME_LENGTH}
@@ -134,33 +130,54 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Step 2: Religion */}
+        {/* Step 2: Religion — bottom sheet picker */}
         {step === 2 && (
           <div className="text-center">
             <div className="text-7xl mb-4">🙏</div>
             <h1 className="text-4xl font-black text-primary mb-2">Daily Inspiration</h1>
             <p className="text-xl text-muted-foreground mb-6">Choose your faith for daily readings</p>
 
-            <div className="space-y-3">
-              {RELIGIONS.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => setReligion(r.value)}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left ${
-                    religion === r.value ? "border-primary bg-primary/10" : "border-border bg-card"
-                  }`}
-                >
-                  <span className="text-4xl">{r.emoji}</span>
-                  <div>
-                    <p className="text-xl font-black text-foreground">{r.label}</p>
-                    <p className="text-muted-foreground text-base">{r.sub}</p>
-                  </div>
-                  {religion === r.value && <span className="ml-auto text-3xl">✅</span>}
-                </button>
-              ))}
-            </div>
+            {/* Selected faith display — tapping opens the bottom sheet */}
+            <button
+              onClick={() => setReligionDrawerOpen(true)}
+              className="w-full flex items-center gap-4 px-5 py-5 rounded-2xl border-2 border-primary bg-primary/10 text-left mb-6"
+            >
+              <span className="text-4xl">{selectedReligion?.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xl font-black text-foreground">{selectedReligion?.label}</p>
+                <p className="text-muted-foreground text-base">{selectedReligion?.sub}</p>
+              </div>
+              <span className="text-2xl text-muted-foreground">▾</span>
+            </button>
 
-            <div className="flex gap-3 mt-6">
+            {/* Bottom Sheet */}
+            <Drawer open={religionDrawerOpen} onOpenChange={setReligionDrawerOpen}>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle className="text-primary">🙏 Choose Your Faith</DrawerTitle>
+                </DrawerHeader>
+                <div className="px-4 pb-8 space-y-3 overflow-y-auto max-h-[60vh]">
+                  {RELIGIONS.map(r => (
+                    <button
+                      key={r.value}
+                      onClick={() => { setReligion(r.value); setReligionDrawerOpen(false); }}
+                      className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all text-left ${
+                        religion === r.value ? "border-primary bg-primary/10" : "border-border bg-card"
+                      }`}
+                    >
+                      <span className="text-4xl">{r.emoji}</span>
+                      <div>
+                        <p className="text-xl font-black text-foreground">{r.label}</p>
+                        <p className="text-muted-foreground text-base">{r.sub}</p>
+                      </div>
+                      {religion === r.value && <span className="ml-auto text-3xl">✅</span>}
+                    </button>
+                  ))}
+                </div>
+              </DrawerContent>
+            </Drawer>
+
+            <div className="flex gap-3 mt-2">
               <button onClick={() => setStep(1)} className="flex-1 bg-secondary text-foreground text-xl font-black py-4 rounded-2xl">← Back</button>
               <button onClick={() => setStep(3)} className="flex-1 bg-primary text-primary-foreground text-xl font-black py-4 rounded-2xl shadow-xl">Next →</button>
             </div>
@@ -223,7 +240,6 @@ export default function Onboarding() {
 
             <p className="text-muted-foreground text-lg mb-4">{favoriteGames.length} of {ALL_GAMES.length} selected</p>
 
-            {/* FIX (bug): surface save errors to the user */}
             {error && (
               <p className="text-red-500 font-bold text-lg mb-4">{error}</p>
             )}

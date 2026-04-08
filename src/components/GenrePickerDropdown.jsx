@@ -19,13 +19,7 @@ export default function GenrePickerDropdown({ musicGenre, onSelect, onClose }) {
   }, []);
 
   return (
-    <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-card border-2 border-border rounded-2xl shadow-2xl p-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-black text-primary">🎶 Pick a Genre</p>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
-          <X size={16} className="text-muted-foreground" />
-        </button>
-      </div>
+    <div className="w-full p-3">
       <div ref={scrollRef} className="relative max-h-64 overflow-hidden">
         <div className="grid grid-cols-2 gap-1.5">
           {MUSIC_GENRES.map(g => (

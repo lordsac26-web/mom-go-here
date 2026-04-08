@@ -177,13 +177,19 @@ export default function Contacts() {
   }
 
   async function handleEventSave(data) {
-    if (editingEvent) {
+    const isEdit = !!editingEvent;
+    // Optimistic update for new events
+    if (!isEdit) {
+      const optimistic = { id: `temp-${Date.now()}`, user_email: user.email, ...data, notified_day_before: false, notified_day_of: false };
+      setEvents(prev => [optimistic, ...prev]);
+    }
+    setShowEventForm(false);
+    setEditingEvent(null);
+    if (isEdit) {
       await base44.entities.PersonalEvent.update(editingEvent.id, { ...data, notified_day_before: false, notified_day_of: false });
     } else {
       await base44.entities.PersonalEvent.create({ user_email: user.email, ...data, notified_day_before: false, notified_day_of: false });
     }
-    setShowEventForm(false);
-    setEditingEvent(null);
     loadEvents();
   }
 
