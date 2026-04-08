@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import WarmLoader from "../components/WarmLoader";
 import ACHIEVEMENTS, { CATEGORIES } from "../components/achievementDefinitions";
 import { motion } from "framer-motion";
-import { ChevronLeft, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
+import SubPageHeader from "../components/SubPageHeader";
 
 function BadgeCard({ ach, earned, index }) {
   const isEarned = !!earned;
@@ -85,18 +85,9 @@ export default function Achievements() {
 
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <Link to="/" className="bg-secondary p-2 rounded-xl">
-            <ChevronLeft size={24} className="text-foreground" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <Trophy size={28} className="text-primary" />
-            <h1 className="text-3xl font-black text-primary">Achievements</h1>
-          </div>
-        </div>
+      <SubPageHeader backTo="/" title="Achievements" icon={Trophy} />
 
+      <div className="px-4">
         {/* Summary card */}
         <div className="bg-card border-2 border-primary rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between mb-3">

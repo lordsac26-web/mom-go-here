@@ -4,7 +4,8 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import WarmLoader from "../components/WarmLoader";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
+import SubPageHeader from "../components/SubPageHeader";
 import { ALL_GAMES } from "../components/GameTileManager";
 import MarqueeBanner from "../components/rankings/MarqueeBanner";
 import RankRow from "../components/rankings/RankRow";
@@ -96,18 +97,7 @@ export default function Rankings() {
 
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-3">
-        <div className="flex items-center gap-3 mb-4">
-          <Link to="/games" className="bg-secondary p-2 rounded-xl">
-            <ChevronLeft size={24} className="text-foreground" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <Trophy size={28} className="text-primary" />
-            <h1 className="text-3xl font-black text-primary">Rankings</h1>
-          </div>
-        </div>
-      </div>
+      <SubPageHeader backTo="/games" title="Rankings" icon={Trophy} />
 
       {/* Marquee Banner */}
       <MarqueeBanner speed={20} className="bg-primary/10 border-y border-primary/30 py-3 mb-5">

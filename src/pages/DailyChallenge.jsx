@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { ArrowLeft, Zap, Check } from "lucide-react";
+import { Zap, Check } from "lucide-react";
+import SubPageHeader from "../components/SubPageHeader";
 import WarmLoader from "../components/WarmLoader";
 import ZenWeeklyChart from "../components/ZenWeeklyChart";
 import { getDailyGame, getTodayStr } from "../utils/dailyGame";
@@ -104,14 +105,7 @@ export default function DailyChallenge() {
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">
-      {/* Header */}
-      <Link
-        to="/"
-        className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 mb-6 shadow-lg hover:bg-muted transition-colors"
-      >
-        <ArrowLeft size={20} className="text-primary" />
-        <span className="text-lg font-bold text-primary">Back Home</span>
-      </Link>
+      <SubPageHeader backTo="/" title="Daily Brain Challenge" emoji="🧠" />
 
       <div className="text-center mb-6">
         <h1 className="text-4xl font-black text-primary">🧠 Daily Brain Challenge</h1>

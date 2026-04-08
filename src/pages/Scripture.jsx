@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { ArrowLeft, RefreshCw, BookOpen } from "lucide-react";
+import { RefreshCw, BookOpen } from "lucide-react";
+import SubPageHeader from "../components/SubPageHeader";
 
 const RELIGION_META = {
   Christianity: { emoji: "✝️", label: "Holy Bible", color: "text-blue-400" },
@@ -82,21 +83,21 @@ export default function Scripture() {
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <Link to="/" className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 shadow-lg hover:bg-muted transition-colors">
-          <ArrowLeft size={20} className="text-primary" />
-          <span className="text-lg font-bold text-primary">Back</span>
-        </Link>
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold shadow-lg disabled:opacity-50"
-        >
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          New Chapter
-        </button>
-      </div>
+      <SubPageHeader
+        backTo="/"
+        title={meta?.label || "Scripture"}
+        emoji={meta?.emoji}
+        rightSlot={
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 min-h-[44px] rounded-xl font-bold shadow-lg disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">New Chapter</span>
+          </button>
+        }
+      />
 
       {/* Title */}
       {meta && (

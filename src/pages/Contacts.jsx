@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { ArrowLeft, Plus, Trash2, Edit2, X, Check } from "lucide-react";
+import { Plus, Trash2, Edit2, X, Check } from "lucide-react";
+import SubPageHeader from "../components/SubPageHeader";
 import WarmLoader from "../components/WarmLoader";
 import EventForm from "../components/EventForm";
 import EventList from "../components/EventList";
@@ -207,12 +207,7 @@ export default function Contacts() {
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">
-      {/* Back Nav */}
-      <Link to="/" className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 mb-6 shadow-lg hover:bg-muted transition-colors">
-        <ArrowLeft size={20} className="text-primary" />
-        <span className="text-xl">🌸</span>
-        <span className="text-lg font-bold text-primary">Mom, Go Here</span>
-      </Link>
+      <SubPageHeader backTo="/" title="Contacts & Events" emoji="👥" />
 
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">

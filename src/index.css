@@ -30,6 +30,31 @@
   }
 }
 
+/* Light mode for Android/iOS system theme */
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 220 40% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 10%;
+    --primary: 43 96% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 220 40% 10%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 15% 40%;
+    --accent: 43 96% 46%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 85%;
+    --input: 220 15% 90%;
+    --ring: 43 96% 46%;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
