@@ -18,9 +18,6 @@
       "type": "number",
       "description": "Total spins contributed"
     },
-    "last_winner_email": {
-      "type": "string"
-    },
     "last_winner_name": {
       "type": "string"
     },
@@ -34,5 +31,27 @@
   "required": [
     "pool_name",
     "current_amount"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "created_by": {
+        "$ne": null
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

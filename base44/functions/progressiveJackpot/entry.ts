@@ -77,8 +77,7 @@ Deno.serve(async (req) => {
         current_amount: remainingPool,
         total_contributions: newTotalContributions,
         total_spins: newTotalSpins,
-        last_winner_email: user.email,
-        last_winner_name: user.full_name || user.email,
+        last_winner_name: user.full_name || user.email.split("@")[0],
         last_win_amount: winAmount,
         last_win_date: new Date().toISOString(),
       });

@@ -2,10 +2,6 @@
   "name": "HallOfFame",
   "type": "object",
   "properties": {
-    "user_email": {
-      "type": "string",
-      "description": "Player email"
-    },
     "display_name": {
       "type": "string",
       "description": "Player display name"
@@ -40,7 +36,29 @@
     }
   },
   "required": [
-    "user_email",
+    "display_name",
     "total_score"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "created_by": {
+        "$ne": null
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

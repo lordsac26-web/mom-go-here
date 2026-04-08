@@ -40,7 +40,6 @@ Deno.serve(async (req) => {
         score > best.score ? { name, score } : best, { name: "", score: 0 });
       
       return {
-        user_email: email,
         display_name: nameMap[email] || email.split("@")[0],
         total_score: totalScore,
         games_played: gamesPlayed,
