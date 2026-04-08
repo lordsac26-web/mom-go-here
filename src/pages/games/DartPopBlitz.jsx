@@ -5,7 +5,6 @@ import { useGameActivity } from "../../hooks/useGameActivity";
 import useHaptics from "../../hooks/useHaptics";
 import useConfetti from "../../hooks/useConfetti";
 import useDartSounds from "../../components/dartpopblitz/useDartSounds";
-import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import DartPopBlitzCanvas from "../../components/dartpopblitz/DartPopBlitzCanvas.jsx";
 import GameUI from "../../components/dartpopblitz/GameUI";
@@ -137,8 +136,7 @@ export default function DartPopBlitz() {
   if (gameState === "menu") {
     return (
       <div className="min-h-screen px-4 py-4 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <GameBackButton />
+        <div className="flex items-center justify-end mb-4">
           <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
         </div>
         <ModeSelect onSelect={startGame} />
@@ -149,8 +147,7 @@ export default function DartPopBlitz() {
   if (gameState === "won" || gameState === "lost") {
     return (
       <div className="min-h-screen px-4 py-4 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <GameBackButton />
+        <div className="flex items-center justify-end mb-4">
           <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
         </div>
         <GameOver
@@ -169,8 +166,7 @@ export default function DartPopBlitz() {
 
   return (
     <div className="min-h-screen px-2 py-2 pb-24 flex flex-col items-center gap-2">
-      <div className="flex items-center justify-between w-full max-w-[400px]">
-        <GameBackButton />
+      <div className="flex items-center justify-end w-full max-w-[400px]">
         <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
       </div>
 
