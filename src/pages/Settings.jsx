@@ -287,46 +287,18 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Delete Account */}
-        <div className="bg-card border-2 border-destructive/30 rounded-2xl p-6 shadow-xl mt-4">
-          <h2 className="text-2xl font-black text-destructive flex items-center gap-2">⚠️ Danger Zone</h2>
+        {/* Log Out */}
+        <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4">
+          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">🚪 Account</h2>
           <p className="text-muted-foreground text-lg mt-2 mb-4">
-            Permanently delete your account and all associated data.
+            Sign out of your account on this device.
           </p>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="w-full bg-destructive text-destructive-foreground text-xl font-black py-4 rounded-2xl">
-                🗑️ Delete My Account
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-card border-border max-w-sm mx-auto">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black text-destructive">Delete Account?</AlertDialogTitle>
-                <AlertDialogDescription className="text-lg text-muted-foreground leading-relaxed">
-                  This action is <span className="font-black text-foreground">permanent and cannot be undone</span>. You will lose:
-                  <ul className="list-disc list-inside mt-2 space-y-1 text-base">
-                    <li>All game scores &amp; progress</li>
-                    <li>Saved games &amp; achievements</li>
-                    <li>Journal entries &amp; memories</li>
-                    <li>Contacts &amp; personal events</li>
-                    <li>Your profile &amp; settings</li>
-                  </ul>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel className="text-lg font-bold">Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground text-lg font-black"
-                  onClick={async () => {
-                    await base44.auth.deleteMyAccount();
-                    window.location.href = "/";
-                  }}
-                >
-                  Yes, Delete Everything
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <button
+            onClick={() => base44.auth.logout("/")}
+            className="w-full bg-destructive text-destructive-foreground text-xl font-black py-4 rounded-2xl"
+          >
+            🚪 Log Out
+          </button>
         </div>
       </div>
     </div>
