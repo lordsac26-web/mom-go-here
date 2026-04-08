@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
 /**
  * Renders a floating toast when an achievement is unlocked.
@@ -8,14 +9,22 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function AchievementUnlockToast({ achievement }) {
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(null);
+  const lastTsRef = useRef(null);
+  const clearBadge = useAchievementToastStore((s) => s.clearBadge);
 
   useEffect(() => {
-    if (!achievement) return;
+    if (!achievement || !achievement._ts) return;
+    // Only show if this is a genuinely new toast (unique timestamp)
+    if (lastTsRef.current === achievement._ts) return;
+    lastTsRef.current = achievement._ts;
     setCurrent(achievement);
     setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 4000);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      clearBadge();
+    }, 4000);
     return () => clearTimeout(timer);
-  }, [achievement]);
+  }, [achievement, clearBadge]);
 
   return (
     <AnimatePresence>
