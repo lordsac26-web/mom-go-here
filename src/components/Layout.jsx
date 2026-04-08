@@ -12,6 +12,7 @@ import MiniMusicPlayer from "./MiniMusicPlayer";
 import HeaderSoundControls from "./HeaderSoundControls";
 import AchievementUnlockToast from "./AchievementUnlockToast";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
+import OfflineBanner from "./OfflineBanner";
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -77,6 +78,9 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
 
+
+      {/* Offline indicator */}
+      <OfflineBanner />
 
       {/* Persistent audio stream */}
       <PersistentAudioStream />
