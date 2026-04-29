@@ -33,13 +33,16 @@ export function useLocation(savedLocation) {
       setLocation({ latitude, longitude });
       setHasPermission(true);
 
-      // Try to reverse geocode to get city name
+      // Try to reverse geocode to get city name + state
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
         );
         const data = await res.json();
-        const cityName = data.address?.city || data.address?.town || data.address?.county || 'Unknown';
+        const place = data.address?.city || data.address?.town || data.address?.village || data.address?.hamlet || data.address?.county || 'Unknown';
+        const state = data.address?.state || '';
+        // Include state for disambiguation (e.g. "Greene County, New York")
+        const cityName = state ? `${place}, ${state}` : place;
         setCity(cityName);
       } catch (e) {
         // Reverse geocoding failed, just use coordinates

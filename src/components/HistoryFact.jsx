@@ -15,7 +15,7 @@ export default function HistoryFact({ birthday, location }) {
     const today = new Date();
     const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
     const todayISO = today.toISOString().split("T")[0];
-    const locationContext = location?.city ? ` in or near ${location.city}` : '';
+    const locationContext = location?.city ? ` in or near ${location.city} (use the full location including state to find the correct place)` : '';
 
     const [todayRes, bdayRes] = await Promise.allSettled([
       base44.integrations.Core.InvokeLLM({

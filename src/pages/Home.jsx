@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -61,6 +61,52 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const locationRefreshed = useRef(false);
+
+  // Auto-refresh geolocation on each visit and save to profile
+  const refreshLocation = useCallback(async (prof) => {
+    if (!prof || locationRefreshed.current) return;
+    locationRefreshed.current = true;
+    if (!navigator.geolocation) return;
+
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000, // 5 min cache
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      let cityName = prof.city || '';
+
+      // Reverse geocode with state for disambiguation
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+        );
+        const data = await res.json();
+        const place = data.address?.city || data.address?.town || data.address?.village || data.address?.hamlet || data.address?.county || 'Unknown';
+        const state = data.address?.state || '';
+        cityName = state ? `${place}, ${state}` : place;
+      } catch {}
+
+      // Only update if coords or city actually changed
+      const latChanged = Math.abs((prof.latitude || 0) - latitude) > 0.005;
+      const lngChanged = Math.abs((prof.longitude || 0) - longitude) > 0.005;
+      const cityChanged = cityName && cityName !== prof.city;
+
+      if (latChanged || lngChanged || cityChanged) {
+        await base44.entities.UserProfile.update(prof.id, {
+          latitude, longitude, city: cityName,
+        });
+        setProfile(prev => prev ? { ...prev, latitude, longitude, city: cityName } : prev);
+      }
+    } catch {
+      // Location permission denied or unavailable — keep existing data
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -82,7 +128,10 @@ export default function Home() {
     }
     setQuote(MOTIVATIONAL_QUOTES[idx]);
     setLoading(false);
-  }, [user, navigate]);
+
+    // Refresh location in background after page loads
+    refreshLocation(prof);
+  }, [user, navigate, refreshLocation]);
 
   useEffect(() => {
     loadData();
