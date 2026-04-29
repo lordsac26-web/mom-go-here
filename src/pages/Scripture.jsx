@@ -39,12 +39,13 @@ export default function Scripture() {
     fetchScripture(prof.religion);
   }
 
-  async function fetchScripture(rel) {
+  async function fetchScripture(rel, forceRandom = false) {
     setLoading(true);
     setError(null);
     const response = await base44.functions.invoke("getScripture", {
       religion: rel,
       action: "random_chapter",
+      forceRandom,
     });
     if (response.data?.error) {
       setError(response.data.error);
@@ -55,7 +56,7 @@ export default function Scripture() {
   }
 
   function handleRefresh() {
-    if (religion) fetchScripture(religion);
+    if (religion) fetchScripture(religion, true);
   }
 
   const meta = religion ? RELIGION_META[religion] : null;

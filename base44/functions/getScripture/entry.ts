@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // Free APIs used:
 // Bible (Christianity/Catholicism): bible-api.com (no key)
@@ -56,8 +56,28 @@ const GURBANI_VERSES = [
   { section: "Guru Granth Sahib", text: "Let compassion be your cotton, contentment your thread, modesty your knot, and truth your twist. This is the sacred thread of the soul; if you have it, then go ahead and put it on me." },
 ];
 
-function randomInt(max) {
-  return Math.floor(Math.random() * max);
+// Seeded pseudo-random so the same seed always gives the same sequence,
+// but a different seed (e.g. different day or explicit refresh) gives variety.
+function seededRandom(seed) {
+  let h = seed;
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+}
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
+function randomInt(max, rng) {
+  return Math.floor((rng ? rng() : Math.random()) * max);
 }
 
 async function fetchBible(book, chapter) {
@@ -135,12 +155,19 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { religion, action } = body;
+    const { religion, action, forceRandom } = body;
     // action: "random_chapter" — returns a full chapter/surah/section
 
+    // Build a seed: date-based for consistency within a day, or truly random on refresh
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const seedStr = forceRandom
+      ? `${religion}-${Date.now()}-${Math.random()}`
+      : `${religion}-${today}`;
+    const rng = seededRandom(hashString(seedStr));
+
     if (religion === "Christianity" || religion === "Catholicism") {
-      const book = BIBLE_BOOKS[randomInt(BIBLE_BOOKS.length)];
-      const chapter = randomInt(book.chapters) + 1;
+      const book = BIBLE_BOOKS[randomInt(BIBLE_BOOKS.length, rng)];
+      const chapter = randomInt(book.chapters, rng) + 1;
       const result = await fetchBible(book.ref, chapter);
       if (result) return Response.json(result);
       // fallback
@@ -149,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     if (religion === "Islam") {
-      const surah = randomInt(114) + 1;
+      const surah = randomInt(114, rng) + 1;
       const result = await fetchQuran(surah);
       if (result) return Response.json(result);
       const fb = await fetchQuran(1);
@@ -157,9 +184,9 @@ Deno.serve(async (req) => {
     }
 
     if (religion === "Judaism") {
-      const book = TORAH_BOOKS[randomInt(TORAH_BOOKS.length)];
+      const book = TORAH_BOOKS[randomInt(TORAH_BOOKS.length, rng)];
       const maxCh = { Genesis: 50, Exodus: 40, Leviticus: 27, Numbers: 36, Deuteronomy: 34, Psalms: 150, Proverbs: 31, Isaiah: 66, Jeremiah: 52, Ecclesiastes: 12 };
-      const chapter = randomInt(maxCh[book] || 10) + 1;
+      const chapter = randomInt(maxCh[book] || 10, rng) + 1;
       const result = await fetchTorah(book, chapter);
       if (result) return Response.json(result);
       const fb = await fetchTorah("Genesis", 1);
@@ -167,7 +194,7 @@ Deno.serve(async (req) => {
     }
 
     if (religion === "Hinduism") {
-      const chapter = randomInt(18) + 1;
+      const chapter = randomInt(18, rng) + 1;
       const result = await fetchGita(chapter);
       if (result && result.verses.length > 0) return Response.json(result);
       // fallback to bundled
@@ -179,7 +206,7 @@ Deno.serve(async (req) => {
     }
 
     if (religion === "Buddhism") {
-      const startIdx = randomInt(Math.max(1, DHAMMAPADA_VERSES.length - 4));
+      const startIdx = randomInt(Math.max(1, DHAMMAPADA_VERSES.length - 4), rng);
       const selection = DHAMMAPADA_VERSES.slice(startIdx, startIdx + 5);
       return Response.json({
         source: `Dhammapada — ${selection[0].chapter}`,
@@ -189,7 +216,7 @@ Deno.serve(async (req) => {
     }
 
     if (religion === "Sikhism") {
-      const startIdx = randomInt(Math.max(1, GURBANI_VERSES.length - 4));
+      const startIdx = randomInt(Math.max(1, GURBANI_VERSES.length - 4), rng);
       const selection = GURBANI_VERSES.slice(startIdx, startIdx + 5);
       return Response.json({
         source: `Guru Granth Sahib — ${selection[0].section}`,
