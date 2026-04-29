@@ -206,9 +206,10 @@ export default function AIChatBot() {
     setLoading(false);
   }
 
-  const visibleMessages = messages.filter(
-    (m) => (m.role === "user" || m.role === "assistant") && m.content
-  );
+  const SYSTEM_PREFIX = "[System notification — respond warmly] ";
+  const visibleMessages = messages
+    .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
+    .filter((m) => !(m.role === "user" && m.content.startsWith("[System notification")));
 
   if (!chatBubbleEnabled) return null;
 
