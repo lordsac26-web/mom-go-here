@@ -27,7 +27,7 @@ import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
 import { base44 } from "@/api/base44Client";
 import {
   REELS, ROWS, BET_LEVELS,
-  STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
+  STARTING_BALANCE, TOPOFF_THRESHOLD,
   PAYLINES,
 } from "../../components/slots/slotConfig";
 import {
@@ -129,7 +129,9 @@ export default function SlotMachine() {
   const machine = selectedMachineId ? getMachineById(selectedMachineId) : null;
 
   const [balance, setBalance] = useState(loadBalance);
-  const [bet, setBet] = useState(BET_LEVELS[1]);
+  const machineBetLevels = machine ? (machine.betLevels || BET_LEVELS) : BET_LEVELS;
+  const machineTopOff = machine ? (machine.topOffAmount || 50000) : 50000;
+  const [bet, setBet] = useState(machineBetLevels[1] || machineBetLevels[0]);
   const [activePaylines, setActivePaylines] = useState(20);
   const [grid, setGrid] = useState([]);
   const [spinning, setSpinning] = useState(false);
@@ -163,6 +165,9 @@ export default function SlotMachine() {
     if (!machine) return;
     setGrid(generateMachineGrid(machine));
     setReelStrip(buildMachineReelStrip(machine));
+    // Reset bet to second tier of the new machine's bet levels
+    const levels = machine.betLevels || BET_LEVELS;
+    setBet(levels[1] || levels[0]);
   }, [selectedMachineId]);
 
   useEffect(() => {
@@ -200,13 +205,15 @@ export default function SlotMachine() {
   }, [grid]);
 
   useEffect(() => {
-    const threshold = STARTING_BALANCE * TOPOFF_THRESHOLD;
-    if (balance > 0 && balance <= threshold && !spinning) {
-      setBalance(prev => prev + TOPOFF_AMOUNT);
+    // Scale top-off threshold relative to the machine's minimum bet so players always have enough spins
+    const minBet = machineBetLevels[0] || 100;
+    const dynamicThreshold = Math.max(STARTING_BALANCE * TOPOFF_THRESHOLD, minBet * 10);
+    if (balance > 0 && balance <= dynamicThreshold && !spinning) {
+      setBalance(prev => prev + machineTopOff);
       setTopOffMessage(true);
       setTimeout(() => setTopOffMessage(false), 3000);
     }
-  }, [balance, spinning]);
+  }, [balance, spinning, machineTopOff, machineBetLevels]);
 
   useEffect(() => { autoSpinRef.current = autoSpin; }, [autoSpin]);
 
@@ -409,7 +416,7 @@ export default function SlotMachine() {
         {topOffMessage && (
           <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }}
             className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-center py-3 px-4 font-bold text-lg shadow-lg">
-            🎁 Lucky Top-Off! +{TOPOFF_AMOUNT.toLocaleString()} points added!
+            🎁 Lucky Top-Off! +{machineTopOff.toLocaleString()} points added!
           </motion.div>
         )}
       </AnimatePresence>
@@ -463,6 +470,7 @@ export default function SlotMachine() {
       <SlotAudioSettings open={showAudioSettings} onClose={() => setShowAudioSettings(false)} prefs={audioPrefs} updatePrefs={updateAudioPrefs} />
       <SlotControls
         balance={balance} bet={bet} onBetChange={setBet}
+        betLevels={machineBetLevels}
         activePaylines={activePaylines}
         onPaylinesChange={(newVal) => {
           setActivePaylines(newVal);

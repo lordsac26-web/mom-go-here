@@ -1,4 +1,4 @@
-import { BET_LEVELS, PAYLINES } from "./slotConfig";
+import { BET_LEVELS as DEFAULT_BET_LEVELS, PAYLINES } from "./slotConfig";
 
 export default function SlotControls({
   balance,
@@ -11,8 +11,10 @@ export default function SlotControls({
   autoSpin,
   onAutoSpinToggle,
   lastWin,
+  betLevels,
 }) {
-  const betIdx = BET_LEVELS.indexOf(bet);
+  const levels = betLevels || DEFAULT_BET_LEVELS;
+  const betIdx = levels.indexOf(bet);
 
   return (
     <div className="bg-gradient-to-t from-gray-900 via-gray-800 to-gray-800 border-t-2 border-yellow-600/50 px-3 py-3 space-y-3">
@@ -39,8 +41,8 @@ export default function SlotControls({
         {/* Bet adjustment */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onBetChange(BET_LEVELS[Math.max(0, betIdx - 1)])}
-            disabled={spinning || betIdx === 0}
+            onClick={() => onBetChange(levels[Math.max(0, betIdx - 1)])}
+            disabled={spinning || betIdx <= 0}
             className="w-9 h-9 rounded-lg bg-gray-700 text-white font-black text-lg disabled:opacity-30 active:scale-90 transition-all border border-gray-600"
           >
             −
@@ -49,8 +51,8 @@ export default function SlotControls({
             {bet.toLocaleString()}
           </div>
           <button
-            onClick={() => onBetChange(BET_LEVELS[Math.min(BET_LEVELS.length - 1, betIdx + 1)])}
-            disabled={spinning || betIdx === BET_LEVELS.length - 1}
+            onClick={() => onBetChange(levels[Math.min(levels.length - 1, betIdx + 1)])}
+            disabled={spinning || betIdx >= levels.length - 1}
             className="w-9 h-9 rounded-lg bg-gray-700 text-white font-black text-lg disabled:opacity-30 active:scale-90 transition-all border border-gray-600"
           >
             +

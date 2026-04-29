@@ -102,6 +102,11 @@ export default function MachineSelectScreen({ onSelect }) {
                         <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-300">
                           {BONUS_LABELS[machine.bonusType]}
                         </span>
+                        {machine.betLevels && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-300">
+                            💰 {machine.betLevels[0].toLocaleString()}–{machine.betLevels[machine.betLevels.length - 1].toLocaleString()}
+                          </span>
+                        )}
                         {machine.hasRandomPlinko && (
                           <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-900/40 text-cyan-300">
                             📍 Random Plinko
