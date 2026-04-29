@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -120,10 +120,17 @@ export default function Onboarding() {
               </div>
             </div>
 
+            <p className="text-muted-foreground text-sm mt-6 text-center leading-snug">
+              By continuing, you agree to our{" "}
+              <Link to="/privacy" className="text-primary underline font-bold">Privacy Policy</Link>
+              {" "}and{" "}
+              <Link to="/terms" className="text-primary underline font-bold">Terms of Service</Link>.
+            </p>
+
             <button
               onClick={() => setStep(2)}
               disabled={!displayName.trim()}
-              className="w-full mt-8 bg-primary text-primary-foreground text-2xl font-black py-5 rounded-2xl shadow-xl disabled:opacity-40"
+              className="w-full mt-4 bg-primary text-primary-foreground text-2xl font-black py-5 rounded-2xl shadow-xl disabled:opacity-40"
             >
               Next →
             </button>

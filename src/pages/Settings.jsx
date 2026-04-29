@@ -6,6 +6,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Link } from "react-router-dom";
 import AudioSettings from "@/components/AudioSettings";
 import WarmLoader from "../components/WarmLoader";
 import { useUIStore } from "@/stores/uiStore";
@@ -286,6 +287,19 @@ export default function Settings() {
             ✅ Saved successfully!
           </div>
         )}
+
+        {/* Legal */}
+        <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4 space-y-3">
+          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">📋 Legal</h2>
+          <Link to="/privacy" className="w-full flex items-center justify-between bg-secondary text-foreground text-lg font-bold py-4 px-5 rounded-2xl border-2 border-border">
+            <span>🔒 Privacy Policy</span>
+            <span className="text-muted-foreground">→</span>
+          </Link>
+          <Link to="/terms" className="w-full flex items-center justify-between bg-secondary text-foreground text-lg font-bold py-4 px-5 rounded-2xl border-2 border-border">
+            <span>📜 Terms of Service</span>
+            <span className="text-muted-foreground">→</span>
+          </Link>
+        </div>
 
         {/* Account Management */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4 space-y-4">
