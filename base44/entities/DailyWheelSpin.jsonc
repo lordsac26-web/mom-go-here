@@ -1,0 +1,39 @@
+{
+  "name": "DailyWheelSpin",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "last_spin_date": {
+      "type": "string",
+      "description": "YYYY-MM-DD of last spin"
+    },
+    "total_coins_won": {
+      "type": "number"
+    },
+    "total_xp_won": {
+      "type": "number"
+    },
+    "total_spins": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
