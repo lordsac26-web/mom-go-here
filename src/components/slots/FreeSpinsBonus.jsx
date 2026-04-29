@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
 import SlotReel from "./SlotReel";
-import { PAYLINES, PAYLINE_COLORS } from "./slotConfig";
+import { PAYLINES } from "./slotConfig";
 
 /**
  * Free Spins bonus round. Auto-spins N times with a random escalating multiplier.
  * Scatters during free spins grant extra spins.
+ *
+ * All mutable game state is kept in refs to avoid stale-closure bugs.
+ * React state is used only for rendering.
  */
 
 export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onComplete }) {
@@ -23,22 +26,44 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
     return strip;
   };
 
-  const [reelStrip] = useState(buildStrip);
+  function generateGrid() {
+    const g = [];
+    for (let r = 0; r < 5; r++) {
+      const col = [];
+      for (let row = 0; row < 3; row++) {
+        col.push(allSymbols[Math.floor(Math.random() * allSymbols.length)]);
+      }
+      g.push(col);
+    }
+    return g;
+  }
+
   const initialFreeSpins = scatterCount >= 5 ? 15 : scatterCount >= 4 ? 10 : 7;
+
+  // ── Refs for mutable game state (avoids stale closures) ──
+  const totalFreeSpinsRef = useRef(initialFreeSpins);
+  const currentSpinRef = useRef(0);
+  const spinningRef = useRef(false);
+  const multiplierRef = useRef(1);
+  const totalWinRef = useRef(0);
+  const reelsStopped = useRef(0);
+  const nextGridRef = useRef(null);
+  const autoTimerRef = useRef(null);
+
+  // ── React state for rendering only ──
+  const [reelStrip] = useState(buildStrip);
+  const [grid, setGrid] = useState(generateGrid);
+  const [spinning, setSpinning] = useState(false);
   const [totalFreeSpins, setTotalFreeSpins] = useState(initialFreeSpins);
   const [currentSpin, setCurrentSpin] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [grid, setGrid] = useState(() => generateGrid(allSymbols));
   const [totalWinnings, setTotalWinnings] = useState(0);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [spinResult, setSpinResult] = useState(null);
-  const [phase, setPhase] = useState("ready"); // ready | spinning | result | done
   const [extraSpinsMsg, setExtraSpinsMsg] = useState(null);
-  const reelsStopped = useRef(0);
-  const nextGridRef = useRef(null);
+  const [phase, setPhase] = useState("playing"); // playing | done
   const containerRef = useRef(null);
-  const autoSpinTimerRef = useRef(null);
 
+  // ── Entrance animation + auto-start ──
   useEffect(() => {
     if (containerRef.current) {
       gsap.fromTo(containerRef.current,
@@ -46,29 +71,19 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
         { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" }
       );
     }
-    // Auto start first spin after short delay
     const timer = setTimeout(() => doSpin(), 1500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    };
   }, []);
 
-  function generateGrid(syms) {
-    const g = [];
-    for (let r = 0; r < 5; r++) {
-      const col = [];
-      for (let row = 0; row < 3; row++) {
-        col.push(syms[Math.floor(Math.random() * syms.length)]);
-      }
-      g.push(col);
-    }
-    return g;
-  }
-
+  // ── Win checker ──
   function checkFreeSpinWins(g) {
     let totalWin = 0;
     let scatters = 0;
     const wins = [];
 
-    // Count scatters
     for (let r = 0; r < 5; r++) {
       for (let row = 0; row < 3; row++) {
         if (g[r][row].id === "scatter") scatters++;
@@ -80,7 +95,6 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
       wins.push({ type: "scatter", count: scatters });
     }
 
-    // Payline wins (use baseWin/20 as line bet)
     const lineBet = Math.max(1, Math.round(baseWin / 20));
     for (let i = 0; i < 20; i++) {
       const line = PAYLINES[i];
@@ -114,67 +128,72 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
     return { totalWin, wins, scatters };
   }
 
+  // ── Core spin function (reads refs, not state) ──
   function doSpin() {
-    if (spinning || currentSpin >= totalFreeSpins) return;
+    if (spinningRef.current) return;
+    if (currentSpinRef.current >= totalFreeSpinsRef.current) {
+      setPhase("done");
+      return;
+    }
+
+    spinningRef.current = true;
     setSpinning(true);
     setSpinResult(null);
     setExtraSpinsMsg(null);
     reelsStopped.current = 0;
 
-    const newGrid = generateGrid(allSymbols);
+    // Escalate multiplier every 3 spins
+    const spinNum = currentSpinRef.current + 1;
+    if (spinNum % 3 === 0 && multiplierRef.current < 5) {
+      multiplierRef.current += 1;
+      setCurrentMultiplier(multiplierRef.current);
+    }
+
+    const newGrid = generateGrid();
     nextGridRef.current = newGrid;
     setGrid(newGrid);
-
-    // Escalate multiplier every 3 spins
-    setCurrentMultiplier(prev => {
-      const spinNum = currentSpin + 1;
-      if (spinNum % 3 === 0 && prev < 5) return prev + 1;
-      return prev;
-    });
   }
 
-  const handleReelStop = useCallback((reelIndex) => {
+  // ── Reel stop handler (reads refs, never stale) ──
+  const handleReelStop = useCallback(() => {
     reelsStopped.current += 1;
-    if (reelsStopped.current === 5) {
-      setTimeout(() => {
-        const g = nextGridRef.current;
-        const result = checkFreeSpinWins(g);
-        const multipliedWin = Math.round(result.totalWin * currentMultiplier);
+    if (reelsStopped.current < 5) return;
 
-        setSpinResult({ ...result, multipliedWin });
-        setTotalWinnings(prev => prev + multipliedWin);
-        setCurrentSpin(prev => prev + 1);
-        setSpinning(false);
+    setTimeout(() => {
+      const g = nextGridRef.current;
+      if (!g) return;
 
-        // Extra scatters grant more spins
-        if (result.scatters >= 3) {
-          const extra = result.scatters >= 5 ? 5 : result.scatters >= 4 ? 3 : 2;
-          setTotalFreeSpins(prev => prev + extra);
-          setExtraSpinsMsg(`+${extra} Extra Free Spins!`);
-        }
+      const result = checkFreeSpinWins(g);
+      const multipliedWin = Math.round(result.totalWin * multiplierRef.current);
 
-        // Auto-advance
-        setTimeout(() => {
-          setCurrentSpin(prev => {
-            if (prev >= totalFreeSpins + (result.scatters >= 3 ? (result.scatters >= 5 ? 5 : result.scatters >= 4 ? 3 : 2) : 0)) {
-              setPhase("done");
-              return prev;
-            }
-            // Auto spin next
-            autoSpinTimerRef.current = setTimeout(() => doSpin(), 800);
-            return prev;
-          });
-        }, 1200);
-      }, 200);
-    }
-  }, [currentMultiplier, currentSpin, totalFreeSpins]);
+      // Update refs
+      totalWinRef.current += multipliedWin;
+      currentSpinRef.current += 1;
+      spinningRef.current = false;
 
-  // Check if done after currentSpin updates
-  useEffect(() => {
-    if (currentSpin >= totalFreeSpins && !spinning && phase !== "done") {
-      setTimeout(() => setPhase("done"), 1000);
-    }
-  }, [currentSpin, totalFreeSpins, spinning, phase]);
+      // Update render state
+      setSpinResult({ ...result, multipliedWin });
+      setTotalWinnings(totalWinRef.current);
+      setCurrentSpin(currentSpinRef.current);
+      setSpinning(false);
+
+      // Handle extra scatters
+      if (result.scatters >= 3) {
+        const extra = result.scatters >= 5 ? 5 : result.scatters >= 4 ? 3 : 2;
+        totalFreeSpinsRef.current += extra;
+        setTotalFreeSpins(totalFreeSpinsRef.current);
+        setExtraSpinsMsg(`+${extra} Extra Free Spins!`);
+      }
+
+      // Check if we're done
+      if (currentSpinRef.current >= totalFreeSpinsRef.current) {
+        setTimeout(() => setPhase("done"), 1200);
+      } else {
+        // Schedule next spin
+        autoTimerRef.current = setTimeout(() => doSpin(), 1200);
+      }
+    }, 200);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/90 flex items-start sm:items-center justify-center px-4 overflow-y-auto py-4">
