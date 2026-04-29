@@ -10,7 +10,6 @@ import SlotReel from "../../components/slots/SlotReel";
 import SlotControls from "../../components/slots/SlotControls";
 import WinDisplay from "../../components/slots/WinDisplay";
 import PaylineOverlay from "../../components/slots/PaylineOverlay";
-import PayTable from "../../components/slots/PayTable";
 import CasinoFrame from "../../components/slots/CasinoFrame";
 import NeonSign from "../../components/slots/NeonSign";
 import SlotStatsOverlay from "../../components/slots/SlotStatsOverlay";
@@ -18,56 +17,115 @@ import AchievementToast from "../../components/slots/AchievementToast";
 import useSlotAchievements from "../../hooks/useSlotAchievements";
 import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/SlotAudioSettings";
 import BonusRound from "../../components/slots/BonusRound";
+import PlinkoBonus from "../../components/slots/PlinkoBonus";
+import FreeSpinsBonus from "../../components/slots/FreeSpinsBonus";
+import MachinePayTable from "../../components/slots/MachinePayTable";
+import MachineSelectScreen from "../../components/slots/MachineSelectScreen";
 import GameInstructions from "../../components/GameInstructions";
 import JackpotTicker from "../../components/slots/JackpotTicker";
 import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
 import { base44 } from "@/api/base44Client";
 import {
-  ALL_SYMBOLS, REELS, ROWS, BET_LEVELS,
+  REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD, TOPOFF_AMOUNT,
-  buildReelStrip, checkWins,
+  PAYLINES,
 } from "../../components/slots/slotConfig";
+import {
+  getMachineById, getMachineAllSymbols,
+  buildMachineReelStrip, loadGlobalStats, saveGlobalStats,
+} from "../../components/slots/machineDefinitions";
 import { useGameActivity } from "../../hooks/useGameActivity";
 
-function getRandomSymbols(count) {
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    result.push(ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)]);
-  }
-  return result;
-}
-
-function generateGrid() {
+function generateMachineGrid(machine) {
+  const allSyms = getMachineAllSymbols(machine);
   const grid = [];
   for (let r = 0; r < REELS; r++) {
-    grid.push(getRandomSymbols(ROWS));
+    const col = [];
+    for (let row = 0; row < ROWS; row++) {
+      col.push(allSyms[Math.floor(Math.random() * allSyms.length)]);
+    }
+    grid.push(col);
   }
   return grid;
 }
 
-// FIX (security): parse balance safely — fall back to STARTING_BALANCE if corrupted
+function checkMachineWins(grid, bet, activePaylines, machine) {
+  const wins = [];
+  let totalWin = 0;
+  let scatterCount = 0;
+
+  for (let r = 0; r < REELS; r++) {
+    for (let row = 0; row < ROWS; row++) {
+      if (grid[r][row].id === "scatter") scatterCount++;
+    }
+  }
+
+  if (scatterCount >= 3) {
+    const scatterPay = scatterCount === 3 ? 5 : scatterCount === 4 ? 20 : 100;
+    totalWin += bet * scatterPay;
+    wins.push({ type: "scatter", count: scatterCount, payout: bet * scatterPay, positions: [] });
+  }
+
+  for (let i = 0; i < activePaylines; i++) {
+    const line = PAYLINES[i];
+    const lineSymbols = line.map((row, reel) => grid[reel][row]);
+    let matchSymId = lineSymbols[0].id === "wild" ? null : lineSymbols[0].id;
+    let matchCount = 0;
+    const positions = [];
+
+    for (let r = 0; r < REELS; r++) {
+      const sym = lineSymbols[r];
+      if (sym.id === "wild") {
+        if (!matchSymId) { matchCount++; positions.push([r, line[r]]); continue; }
+        matchCount++; positions.push([r, line[r]]);
+      } else if (!matchSymId) {
+        matchSymId = sym.id; matchCount++; positions.push([r, line[r]]);
+      } else if (sym.id === matchSymId) {
+        matchCount++; positions.push([r, line[r]]);
+      } else break;
+    }
+
+    if (matchCount >= 3 && matchSymId) {
+      const symDef = machine.symbols.find(s => s.id === matchSymId) || machine.wild;
+      const lineBet = bet / activePaylines;
+      let payout = 0;
+      if (matchCount === 3) payout = lineBet * symDef.multiplier * 0.3;
+      else if (matchCount === 4) payout = lineBet * symDef.multiplier * 0.7;
+      else payout = lineBet * symDef.multiplier;
+      payout = Math.round(payout);
+      if (payout > 0) {
+        totalWin += payout;
+        wins.push({ type: "line", lineIndex: i, symbol: matchSymId, count: matchCount, payout, positions });
+      }
+    }
+  }
+
+  return { wins, totalWin, scatterCount };
+}
+
 function loadBalance() {
   try {
     const saved = localStorage.getItem("slots_balance");
     if (saved === null) return STARTING_BALANCE;
     const parsed = parseInt(saved, 10);
     return isNaN(parsed) ? STARTING_BALANCE : parsed;
-  } catch {
-    return STARTING_BALANCE;
-  }
+  } catch { return STARTING_BALANCE; }
 }
 
 export default function SlotMachine() {
   useGameTimer();
-  const { tapVibrate, matchVibrate, winVibrate, scoreHit, scoreMilestone } = useHaptics();
-  const { matchSound, winSound, uiClickSound, diceshakeSound, diceCollideSound } = useGameAudio();
-  const { spark, burst, sideCannons, fireworks, emojiRain } = useConfetti();
+  const { tapVibrate, winVibrate, scoreHit, scoreMilestone } = useHaptics();
+  const { matchSound, winSound, uiClickSound, diceshakeSound } = useGameAudio();
+  const { spark, sideCannons, fireworks, emojiRain } = useConfetti();
   const { reportWin: reportActivityWin, reportLoss: reportActivityLoss } = useGameActivity();
+
+  const [selectedMachineId, setSelectedMachineId] = useState(null);
+  const machine = selectedMachineId ? getMachineById(selectedMachineId) : null;
 
   const [balance, setBalance] = useState(loadBalance);
   const [bet, setBet] = useState(BET_LEVELS[1]);
   const [activePaylines, setActivePaylines] = useState(20);
-  const [grid, setGrid] = useState(generateGrid);
+  const [grid, setGrid] = useState([]);
   const [spinning, setSpinning] = useState(false);
   const [reelsStopped, setReelsStopped] = useState(0);
   const [wins, setWins] = useState([]);
@@ -77,24 +135,33 @@ export default function SlotMachine() {
   const [winningLines, setWinningLines] = useState([]);
   const [autoSpin, setAutoSpin] = useState(false);
   const [topOffMessage, setTopOffMessage] = useState(false);
-  const [reelStrip] = useState(buildReelStrip);
+  const [reelStrip, setReelStrip] = useState([]);
   const [previewLines, setPreviewLines] = useState(null);
   const previewTimerRef = useRef(null);
   const [showStats, setShowStats] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
-  const [bonusRound, setBonusRound] = useState(null); // { baseWin, scatterCount }
+  const [bonusRound, setBonusRound] = useState(null);
+  const [plinkoBonus, setPlinkoBonus] = useState(null);
+  const [freeSpinsBonus, setFreeSpinsBonus] = useState(null);
   const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
   const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
   const [jackpotAmount, setJackpotAmount] = useState(0);
-  const [jackpotWin, setJackpotWin] = useState(null); // { winAmount }
+  const [jackpotWin, setJackpotWin] = useState(null);
   const spinCountRef = useRef(0);
   const pendingJackpotRef = useRef(0);
 
-  // Fetch jackpot on mount + subscribe for real-time updates
+  const selectedMachineIdRef = useRef(selectedMachineId);
+  useEffect(() => { selectedMachineIdRef.current = selectedMachineId; }, [selectedMachineId]);
+
+  useEffect(() => {
+    if (!machine) return;
+    setGrid(generateMachineGrid(machine));
+    setReelStrip(buildMachineReelStrip(machine));
+  }, [selectedMachineId]);
+
   useEffect(() => {
     base44.functions.invoke("progressiveJackpot", { action: "get" })
       .then(res => { if (res.data?.jackpot) setJackpotAmount(res.data.jackpot); });
-
     const unsub = base44.entities.ProgressiveJackpot.subscribe((event) => {
       if (event.data?.current_amount) setJackpotAmount(event.data.current_amount);
     });
@@ -105,30 +172,20 @@ export default function SlotMachine() {
   const [gridRect, setGridRect] = useState(null);
   const nextGridRef = useRef(null);
   const autoSpinRef = useRef(false);
-
-  // FIX (bug): keep refs in sync with state so callbacks always use current values
   const betRef = useRef(bet);
   const activePaylinesRef = useRef(activePaylines);
   useEffect(() => { betRef.current = bet; }, [bet]);
   useEffect(() => { activePaylinesRef.current = activePaylines; }, [activePaylines]);
 
-  // FIX (perf): debounce localStorage writes to reduce I/O during rapid auto-spin
   const saveBalanceTimerRef = useRef(null);
   useEffect(() => {
     if (saveBalanceTimerRef.current) clearTimeout(saveBalanceTimerRef.current);
     saveBalanceTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem("slots_balance", balance.toString());
-      } catch {
-        // localStorage may be unavailable in some environments — fail silently
-      }
+      try { localStorage.setItem("slots_balance", balance.toString()); } catch {}
     }, 500);
-    return () => {
-      if (saveBalanceTimerRef.current) clearTimeout(saveBalanceTimerRef.current);
-    };
+    return () => { if (saveBalanceTimerRef.current) clearTimeout(saveBalanceTimerRef.current); };
   }, [balance]);
 
-  // Measure grid for payline overlay
   useEffect(() => {
     if (gridRef.current) {
       const rect = gridRef.current.getBoundingClientRect();
@@ -136,7 +193,6 @@ export default function SlotMachine() {
     }
   }, [grid]);
 
-  // Auto top-off when balance gets low
   useEffect(() => {
     const threshold = STARTING_BALANCE * TOPOFF_THRESHOLD;
     if (balance > 0 && balance <= threshold && !spinning) {
@@ -146,20 +202,30 @@ export default function SlotMachine() {
     }
   }, [balance, spinning]);
 
-  useEffect(() => {
-    autoSpinRef.current = autoSpin;
-  }, [autoSpin]);
+  useEffect(() => { autoSpinRef.current = autoSpin; }, [autoSpin]);
 
-  // FIX (bug): use refs for bet and activePaylines inside useCallback so values are never stale
   const handleReelStop = useCallback((reelIndex) => {
     setReelsStopped(prev => {
       const newCount = prev + 1;
       if (newCount === REELS) {
         setTimeout(() => {
           const currentGrid = nextGridRef.current;
-          if (!currentGrid) return;
-          // FIX (bug): read from refs so mid-spin bet/payline changes are respected
-          const result = checkWins(currentGrid, betRef.current, activePaylinesRef.current);
+          const currentMachine = getMachineById(selectedMachineIdRef.current);
+          if (!currentGrid || !currentMachine) return;
+          const result = checkMachineWins(currentGrid, betRef.current, activePaylinesRef.current, currentMachine);
+
+          const gStats = loadGlobalStats();
+          if (result.totalWin > 0) {
+            gStats.totalWins += 1;
+            gStats.totalEarned += result.totalWin;
+            gStats.biggestWin = Math.max(gStats.biggestWin, result.totalWin);
+            gStats.currentWinStreak += 1;
+            gStats.bestWinStreak = Math.max(gStats.bestWinStreak, gStats.currentWinStreak);
+            if (result.scatterCount >= 3) gStats.scatterWins = (gStats.scatterWins || 0) + 1;
+          } else {
+            gStats.currentWinStreak = 0;
+          }
+          saveGlobalStats(gStats);
 
           if (result.totalWin > 0) {
             setWins(result.wins);
@@ -169,11 +235,9 @@ export default function SlotMachine() {
             setBalance(prev => prev + result.totalWin);
             setWinningLines(result.wins.filter(w => w.type === "line").map(w => w.lineIndex));
 
-            // Record achievement stats
             const lineWinCount = result.wins.filter(w => w.type === "line").length;
             const hasScatter = result.wins.some(w => w.type === "scatter");
             recordWin(result.totalWin, lineWinCount, hasScatter);
-
             reportActivityWin("Lucky Slots");
 
             if (result.totalWin >= 25000) {
@@ -184,21 +248,30 @@ export default function SlotMachine() {
               scoreHit(); matchSound(); spark();
             }
 
-            // Check for bonus round trigger (3+ scatters)
             if (result.scatterCount >= 3) {
               setTimeout(() => {
-                setShowWin(false);
-                setWinningLines([]);
-                setSpinning(false);
-                setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+                setShowWin(false); setWinningLines([]); setSpinning(false);
+                if (currentMachine.bonusType === "plinko") {
+                  setPlinkoBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+                } else if (currentMachine.bonusType === "freeSpins") {
+                  setFreeSpinsBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+                } else {
+                  setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+                }
               }, 2500);
             } else {
-              setTimeout(() => {
-                setShowWin(false);
-                setWinningLines([]);
-                setSpinning(false);
-                if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
-              }, 2500);
+              const triggerRandomPlinko = currentMachine.hasRandomPlinko && Math.random() < 0.10;
+              if (triggerRandomPlinko) {
+                setTimeout(() => {
+                  setShowWin(false); setWinningLines([]); setSpinning(false);
+                  setPlinkoBonus({ baseWin: result.totalWin, scatterCount: 3 });
+                }, 2500);
+              } else {
+                setTimeout(() => {
+                  setShowWin(false); setWinningLines([]); setSpinning(false);
+                  if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
+                }, 2500);
+              }
             }
           } else {
             setLastWin(0);
@@ -211,47 +284,37 @@ export default function SlotMachine() {
       }
       return newCount;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // FIX (bug): intentionally empty — reads bet/paylines via refs, not stale closure
+  }, []);
 
-  // Track spinning in a ref so guards work synchronously
   const spinningRef = useRef(false);
   useEffect(() => { spinningRef.current = spinning; }, [spinning]);
 
-  // Simpler, correct doSpin that uses refs properly
   function handleSpin() {
-    if (spinningRef.current) return;
+    if (spinningRef.current || !machine) return;
     const currentBet = betRef.current;
 
     setBalance(prev => {
-      if (prev < currentBet) {
-        tapVibrate();
-        return prev;
-      }
-      return prev;
-    });
+      if (prev < currentBet) { tapVibrate(); return prev; }
 
-    setBalance(prev => {
-      if (prev < currentBet) return prev;
+      uiClickSound(); tapVibrate(); diceshakeSound();
 
-      uiClickSound();
-      tapVibrate();
-      diceshakeSound();
+      setWins([]); setTotalWin(0); setShowWin(false);
+      setWinningLines([]); setReelsStopped(0);
 
-      setWins([]);
-      setTotalWin(0);
-      setShowWin(false);
-      setWinningLines([]);
-      setReelsStopped(0);
-
-      const newGrid = generateGrid();
+      const newGrid = generateMachineGrid(machine);
       nextGridRef.current = newGrid;
       setGrid(newGrid);
       setSpinning(true);
-
       recordSpin(currentBet);
 
-      // Throttle jackpot contributions: batch every 10 spins
+      const gStats = loadGlobalStats();
+      gStats.totalSpins += 1;
+      gStats.totalSpent += currentBet;
+      gStats.maxBet = Math.max(gStats.maxBet, currentBet);
+      gStats.machineSpins = gStats.machineSpins || {};
+      gStats.machineSpins[machine.id] = (gStats.machineSpins[machine.id] || 0) + 1;
+      saveGlobalStats(gStats);
+
       spinCountRef.current += 1;
       pendingJackpotRef.current += currentBet;
       if (spinCountRef.current % 10 === 0) {
@@ -260,9 +323,7 @@ export default function SlotMachine() {
         base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: batchAmount })
           .then(res => {
             if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
-            if (res.data?.jackpotWin) {
-              setJackpotWin({ winAmount: res.data.winAmount });
-            }
+            if (res.data?.jackpotWin) setJackpotWin({ winAmount: res.data.winAmount });
           });
       }
 
@@ -272,211 +333,135 @@ export default function SlotMachine() {
 
   function handleAutoSpinToggle() {
     uiClickSound();
-    if (autoSpin) {
-      setAutoSpin(false);
-    } else {
-      setAutoSpin(true);
-      if (!spinningRef.current) handleSpin();
-    }
+    if (autoSpin) { setAutoSpin(false); }
+    else { setAutoSpin(true); if (!spinningRef.current) handleSpin(); }
   }
 
   function handleNudge(reelIdx) {
     if (spinningRef.current) return;
-    uiClickSound();
-    tapVibrate();
+    uiClickSound(); tapVibrate();
     setGrid(prev => {
       const newGrid = [...prev];
       const reel = [...newGrid[reelIdx]];
-      const nudged = [reel[2], reel[0], reel[1]];
-      newGrid[reelIdx] = nudged;
+      newGrid[reelIdx] = [reel[2], reel[0], reel[1]];
       return newGrid;
     });
   }
 
+  function handleBonusComplete(extraWinnings) {
+    if (extraWinnings > 0) {
+      setBalance(prev => prev + extraWinnings);
+      setLastWin(prev => prev + extraWinnings);
+    }
+    setBonusRound(null); setPlinkoBonus(null); setFreeSpinsBonus(null);
+    if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
+  }
+
+  function handleBackToLobby() {
+    setAutoSpin(false);
+    setSelectedMachineId(null);
+  }
+
+  if (!selectedMachineId) {
+    return <MachineSelectScreen onSelect={setSelectedMachineId} />;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 flex flex-col pb-24">
+    <div className={`min-h-screen bg-gradient-to-b ${machine.bgGradient} flex flex-col pb-24`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-900 via-yellow-900/30 to-gray-900 px-3 py-3 flex items-center justify-between shadow-lg border-b-2 border-yellow-600/50">
-        <Link to="/games" className="text-yellow-400 text-lg font-bold">← Back</Link>
-        <NeonSign text="LUCKY SLOTS" spinning={spinning} />
+      <div className={`bg-gradient-to-r ${machine.frameGradient} px-3 py-3 flex items-center justify-between shadow-lg border-b-2 ${machine.borderColor}/50`}>
+        <button onClick={handleBackToLobby} className="text-yellow-400 text-lg font-bold">← Lobby</button>
+        <NeonSign text={machine.name.toUpperCase()} spinning={spinning} />
         <div className="flex items-center gap-1.5">
           <GameInstructions
-            title="Lucky Slots"
-            emoji="🎰"
+            title={machine.name}
+            emoji={machine.emoji}
             steps={[
-              "Set your bet amount using the bet buttons at the bottom.",
-              "Adjust the number of active paylines (more lines = more chances to win!).",
-              "Tap SPIN to spin the reels! The cost is your bet × paylines.",
-              "Match 3+ symbols across a payline to win! Check the Pay Table for symbol values.",
-              "🌟 Scatter symbols pay anywhere — 3+ scatters trigger a BONUS ROUND!",
-              "Use Auto-Spin to keep spinning automatically.",
-              "Tap a reel to nudge it one position — a free mini re-spin!",
-              "Your balance tops up automatically when it gets low. Have fun!",
+              "Set your bet amount using the controls at the bottom.",
+              "Tap SPIN to spin the reels!",
+              `Match 3+ symbols on a payline to win! ${machine.name} has ${machine.volatility} volatility.`,
+              `${machine.scatter.emoji} 3+ Scatters trigger the ${machine.bonusType === "boxes" ? "Mystery Box" : machine.bonusType === "plinko" ? "Plinko Drop" : "Free Spins"} bonus!`,
+              machine.hasRandomPlinko ? "Any win has a 10% chance to trigger a bonus Plinko round!" : "Use Auto-Spin for hands-free play.",
+              "Tap a reel to nudge it one position for a free re-spin!",
             ]}
           />
-          <button
-            onClick={() => setShowAudioSettings(true)}
-            className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold flex items-center border border-gray-600 text-sm"
-            title="Audio Settings"
-          >
-            🎚️
-          </button>
-          <button
-            onClick={() => setShowStats(true)}
-            className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold flex items-center border border-gray-600 text-sm"
-            title="Stats"
-          >
-            🏆
-          </button>
-          <PayTable />
+          <button onClick={() => setShowAudioSettings(true)} className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold border border-gray-600 text-sm">🎚️</button>
+          <button onClick={() => setShowStats(true)} className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold border border-gray-600 text-sm">🏆</button>
+          <MachinePayTable machine={machine} />
         </div>
       </div>
 
-      {/* Jackpot Ticker */}
       <div className="px-3 pt-2">
         <JackpotTicker amount={jackpotAmount} spinning={spinning} />
       </div>
 
-      {/* Top-off notification */}
       <AnimatePresence>
         {topOffMessage && (
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-center py-3 px-4 font-bold text-lg shadow-lg"
-          >
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }}
+            className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-center py-3 px-4 font-bold text-lg shadow-lg">
             🎁 Lucky Top-Off! +{TOPOFF_AMOUNT.toLocaleString()} points added!
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Machine Body */}
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 relative">
         <div className="w-full max-w-md">
           <CasinoFrame spinning={spinning}>
-          {/* Reel Window */}
-          <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-4 border-yellow-600 rounded-2xl p-3 shadow-[0_0_30px_rgba(234,179,8,0.15),inset_0_2px_10px_rgba(0,0,0,0.5)] relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none rounded-2xl z-10" />
-
-            <div className="relative" ref={gridRef}>
-              <PaylineOverlay
-                activePaylines={activePaylines}
-                winningLines={winningLines}
-                gridRect={gridRect}
-                previewLines={previewLines}
-              />
-              <div className="flex justify-center gap-1.5 sm:gap-2">
-                {Array.from({ length: REELS }).map((_, reelIdx) => (
-                  <div key={reelIdx} onClick={() => handleNudge(reelIdx)} className="cursor-pointer">
-                    <SlotReel
-                      symbols={reelStrip}
-                      spinning={spinning}
-                      finalSymbols={grid[reelIdx]}
-                      reelIndex={reelIdx}
-                      onStop={handleReelStop}
-                    />
-                  </div>
-                ))}
+            <div className={`bg-gradient-to-b from-gray-800 to-gray-900 border-4 ${machine.borderColor} rounded-2xl p-3 shadow-[0_0_30px_rgba(234,179,8,0.15),inset_0_2px_10px_rgba(0,0,0,0.5)] relative overflow-hidden`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none rounded-2xl z-10" />
+              <div className="relative" ref={gridRef}>
+                <PaylineOverlay activePaylines={activePaylines} winningLines={winningLines} gridRect={gridRect} previewLines={previewLines} />
+                <div className="flex justify-center gap-1.5 sm:gap-2">
+                  {grid.length > 0 && reelStrip.length > 0 && Array.from({ length: REELS }).map((_, reelIdx) => (
+                    <div key={reelIdx} onClick={() => handleNudge(reelIdx)} className="cursor-pointer">
+                      <SlotReel symbols={reelStrip} spinning={spinning} finalSymbols={grid[reelIdx]} reelIndex={reelIdx} onStop={handleReelStop} />
+                    </div>
+                  ))}
+                </div>
               </div>
+              <div className="absolute left-0 top-3 bottom-3 w-2 flex flex-col justify-around">
+                {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
+              </div>
+              <div className="absolute right-0 top-3 bottom-3 w-2 flex flex-col justify-around">
+                {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
+              </div>
+              <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} />
             </div>
-
-            <div className="absolute left-0 top-3 bottom-3 w-2 flex flex-col justify-around">
-              {[0, 1, 2].map(r => (
-                <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />
-              ))}
-            </div>
-            <div className="absolute right-0 top-3 bottom-3 w-2 flex flex-col justify-around">
-              {[0, 1, 2].map(r => (
-                <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />
-              ))}
-            </div>
-
-            <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} />
-          </div>
           </CasinoFrame>
         </div>
-
         <div className="text-center mt-2">
-          <span className="text-xs text-gray-500">{activePaylines} paylines active</span>
+          <span className="text-xs text-gray-500">{activePaylines} paylines active • {machine.volatility} volatility</span>
         </div>
-
         {lastWin > 0 && !showWin && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center mt-1"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-1">
             <span className="text-green-400 text-lg font-bold">Last win: +{lastWin.toLocaleString()}</span>
           </motion.div>
         )}
       </div>
 
-      {/* Controls — pass handleSpin instead of doSpin */}
-      {/* Achievement Toast */}
       <AchievementToast badge={newBadge} />
-
-      {/* Jackpot Win Overlay */}
-      {jackpotWin && (
-        <JackpotWinOverlay
-          winAmount={jackpotWin.winAmount}
-          onCollect={() => {
-            setBalance(prev => prev + jackpotWin.winAmount);
-            setLastWin(jackpotWin.winAmount);
-            setJackpotWin(null);
-            fireworks();
-            emojiRain(["💰", "🏆", "💎", "👑"]);
-          }}
-        />
-      )}
-
-      {/* Bonus Round */}
-      {bonusRound && (
-        <BonusRound
-          baseWin={bonusRound.baseWin}
-          scatterCount={bonusRound.scatterCount}
-          onComplete={(extraWinnings) => {
-            // extraWinnings is ONLY the bonus portion (multiplied - base)
-            // because base win was already credited during the normal spin
-            if (extraWinnings > 0) {
-              setBalance(prev => prev + extraWinnings);
-              setLastWin(prev => prev + extraWinnings);
-            }
-            setBonusRound(null);
-            if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
-          }}
-        />
-      )}
-
-      {/* Stats Overlay */}
+      {jackpotWin && <JackpotWinOverlay winAmount={jackpotWin.winAmount} onCollect={() => {
+        setBalance(prev => prev + jackpotWin.winAmount);
+        setLastWin(jackpotWin.winAmount);
+        setJackpotWin(null);
+        fireworks(); emojiRain(["💰", "🏆", "💎", "👑"]);
+      }} />}
+      {bonusRound && <BonusRound baseWin={bonusRound.baseWin} scatterCount={bonusRound.scatterCount} onComplete={handleBonusComplete} />}
+      {plinkoBonus && <PlinkoBonus baseWin={plinkoBonus.baseWin} scatterCount={plinkoBonus.scatterCount} onComplete={handleBonusComplete} accentColor={machine.accentColor} />}
+      {freeSpinsBonus && <FreeSpinsBonus machine={machine} baseWin={freeSpinsBonus.baseWin} scatterCount={freeSpinsBonus.scatterCount} onComplete={handleBonusComplete} />}
       <SlotStatsOverlay open={showStats} onClose={() => setShowStats(false)} stats={stats} />
-
-      {/* Audio Settings Overlay */}
-      <SlotAudioSettings
-        open={showAudioSettings}
-        onClose={() => setShowAudioSettings(false)}
-        prefs={audioPrefs}
-        updatePrefs={updateAudioPrefs}
-      />
-
+      <SlotAudioSettings open={showAudioSettings} onClose={() => setShowAudioSettings(false)} prefs={audioPrefs} updatePrefs={updateAudioPrefs} />
       <SlotControls
-        balance={balance}
-        bet={bet}
-        onBetChange={setBet}
+        balance={balance} bet={bet} onBetChange={setBet}
         activePaylines={activePaylines}
         onPaylinesChange={(newVal) => {
           setActivePaylines(newVal);
-          // Show preview of all active lines
           if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-          const lines = Array.from({ length: newVal }, (_, i) => i);
-          setPreviewLines(lines);
+          setPreviewLines(Array.from({ length: newVal }, (_, i) => i));
           previewTimerRef.current = setTimeout(() => setPreviewLines(null), 2000);
         }}
-        onSpin={handleSpin}
-        spinning={spinning}
-        autoSpin={autoSpin}
-        onAutoSpinToggle={handleAutoSpinToggle}
-        lastWin={lastWin}
+        onSpin={handleSpin} spinning={spinning} autoSpin={autoSpin}
+        onAutoSpinToggle={handleAutoSpinToggle} lastWin={lastWin}
       />
     </div>
   );

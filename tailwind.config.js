@@ -18,6 +18,15 @@ module.exports = {
       "from-purple-700", "via-purple-800", "to-purple-950", "border-purple-500", "border-purple-400/30", "border-purple-300/15", "border-purple-500/60",
       "from-gray-900", "via-yellow-900", "to-gray-950", "border-yellow-600", "border-yellow-500/30", "border-yellow-400/15", "border-yellow-600/60",
       "from-cyan-700", "via-sky-800", "to-blue-950", "border-cyan-500", "border-cyan-400/30", "border-cyan-300/15", "border-cyan-500/60",
+      // Slot machine theme colors
+      "from-gray-950", "via-gray-900", "to-gray-950",
+      "from-blue-950", "via-cyan-900", "to-blue-950", "from-blue-900", "via-cyan-800/30", "to-blue-900",
+      "from-amber-950", "via-yellow-900", "to-amber-950", "from-amber-900", "via-yellow-800/30", "to-amber-900",
+      "from-pink-950", "via-fuchsia-900", "to-pink-950", "from-pink-900", "via-fuchsia-800/30", "to-pink-900",
+      "from-violet-950", "via-indigo-900", "to-violet-950", "from-violet-900", "via-purple-800/30", "to-violet-900",
+      "border-cyan-500", "border-amber-500", "border-pink-500", "border-violet-500",
+      "border-cyan-500/50", "border-amber-500/50", "border-pink-500/50", "border-violet-500/50",
+      "border-yellow-600/50",
     ],
   theme: {
   	extend: {
