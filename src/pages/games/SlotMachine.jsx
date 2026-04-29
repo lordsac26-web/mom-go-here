@@ -35,6 +35,7 @@ import {
   buildMachineReelStrip, loadGlobalStats, saveGlobalStats,
 } from "../../components/slots/machineDefinitions";
 import { useGameActivity } from "../../hooks/useGameActivity";
+import { useSlotSounds } from "../../hooks/useSlotSounds";
 
 function generateMachineGrid(machine) {
   const allSyms = getMachineAllSymbols(machine);
@@ -118,6 +119,11 @@ export default function SlotMachine() {
   const { matchSound, winSound, uiClickSound, diceshakeSound } = useGameAudio();
   const { spark, sideCannons, fireworks, emojiRain } = useConfetti();
   const { reportWin: reportActivityWin, reportLoss: reportActivityLoss } = useGameActivity();
+  const {
+    leverPull, reelSpinStart, reelSpinStop, reelStopClick,
+    coinClink, smallWinSound, mediumWinSound, bigWinSound,
+    scatterSound, nudgeSound,
+  } = useSlotSounds();
 
   const [selectedMachineId, setSelectedMachineId] = useState(null);
   const machine = selectedMachineId ? getMachineById(selectedMachineId) : null;
@@ -205,9 +211,11 @@ export default function SlotMachine() {
   useEffect(() => { autoSpinRef.current = autoSpin; }, [autoSpin]);
 
   const handleReelStop = useCallback((reelIndex) => {
+    reelStopClick(reelIndex);
     setReelsStopped(prev => {
       const newCount = prev + 1;
       if (newCount === REELS) {
+        reelSpinStop();
         setTimeout(() => {
           const currentGrid = nextGridRef.current;
           const currentMachine = getMachineById(selectedMachineIdRef.current);
@@ -241,14 +249,15 @@ export default function SlotMachine() {
             reportActivityWin("Lucky Slots");
 
             if (result.totalWin >= 25000) {
-              winVibrate(); winSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
+              winVibrate(); bigWinSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
             } else if (result.totalWin >= 5000) {
-              scoreMilestone(); matchSound(); sideCannons();
+              scoreMilestone(); mediumWinSound(); sideCannons();
             } else {
-              scoreHit(); matchSound(); spark();
+              scoreHit(); smallWinSound(); coinClink(4); spark();
             }
 
             if (result.scatterCount >= 3) {
+              scatterSound();
               setTimeout(() => {
                 setShowWin(false); setWinningLines([]); setSpinning(false);
                 if (currentMachine.bonusType === "plinko") {
@@ -296,7 +305,8 @@ export default function SlotMachine() {
     setBalance(prev => {
       if (prev < currentBet) { tapVibrate(); return prev; }
 
-      uiClickSound(); tapVibrate(); diceshakeSound();
+      leverPull(); tapVibrate();
+      setTimeout(() => reelSpinStart(), 150);
 
       setWins([]); setTotalWin(0); setShowWin(false);
       setWinningLines([]); setReelsStopped(0);
@@ -339,7 +349,7 @@ export default function SlotMachine() {
 
   function handleNudge(reelIdx) {
     if (spinningRef.current) return;
-    uiClickSound(); tapVibrate();
+    nudgeSound(); tapVibrate();
     setGrid(prev => {
       const newGrid = [...prev];
       const reel = [...newGrid[reelIdx]];
