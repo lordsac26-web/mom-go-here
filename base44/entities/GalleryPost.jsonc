@@ -1,0 +1,67 @@
+{
+  "name": "GalleryPost",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the artist"
+    },
+    "artist_name": {
+      "type": "string",
+      "description": "Display name of the artist"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL of the generated image"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The prompt used to generate the image"
+    },
+    "style": {
+      "type": "string",
+      "description": "Art style used"
+    },
+    "likes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of user emails who liked this post"
+    },
+    "like_count": {
+      "type": "number",
+      "description": "Cached count of likes for sorting"
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_email": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Array of comments on this post"
+    },
+    "comment_count": {
+      "type": "number",
+      "description": "Cached count of comments"
+    }
+  },
+  "required": [
+    "user_email",
+    "image_url",
+    "prompt"
+  ]
+}

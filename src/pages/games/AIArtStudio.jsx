@@ -5,7 +5,8 @@ import GameBackButton from "../../components/GameBackButton";
 import { base44 } from "@/api/base44Client";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
-import { Download, Share2, Mail, Facebook, Twitter } from "lucide-react";
+import { Download, Share2, Mail, Facebook, Twitter, Globe } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import GameInstructions from "../../components/GameInstructions";
 
@@ -37,6 +38,8 @@ export default function AIArtStudio() {
   const [imageUrl, setImageUrl] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState([]);
+  const [publishing, setPublishing] = useState(false);
+  const navigate = useNavigate();
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
@@ -89,6 +92,36 @@ export default function AIArtStudio() {
       // FIX (security): handle CORS / network failure gracefully instead of silent crash
       console.error("Download error:", err);
       toast.error("Could not download image. Try right-clicking and saving instead.");
+    }
+  }
+
+  async function handlePublishToGallery() {
+    if (!imageUrl || publishing) return;
+    setPublishing(true);
+    try {
+      const user = await base44.auth.me();
+      let displayName = "Anonymous";
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      if (profiles[0]?.display_name) displayName = profiles[0].display_name;
+      else if (user.full_name) displayName = user.full_name;
+
+      await base44.entities.GalleryPost.create({
+        user_email: user.email,
+        artist_name: displayName,
+        image_url: imageUrl,
+        prompt: prompt.trim(),
+        style: STYLES.find(s => s.value === selectedStyle)?.label || "",
+        likes: [],
+        like_count: 0,
+        comments: [],
+        comment_count: 0,
+      });
+      toast.success("Published to Gallery! 🎉");
+    } catch (err) {
+      console.error("Publish failed:", err);
+      toast.error("Failed to publish. Please try again.");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -194,19 +227,25 @@ export default function AIArtStudio() {
               className="w-full rounded-xl border-2 border-border"
             />
             <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              {/* FIX (bug + security): extracted handler with CORS error handling */}
+            <div className="grid grid-cols-3 gap-2 mt-3">
               <button
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 bg-secondary text-foreground text-lg font-bold py-3 rounded-xl border-2 border-border"
+                className="flex items-center justify-center gap-1.5 bg-secondary text-foreground text-base font-bold py-3 rounded-xl border-2 border-border"
               >
-                <Download size={20} /> Download
+                <Download size={18} /> Save
+              </button>
+              <button
+                onClick={handlePublishToGallery}
+                disabled={publishing}
+                className="flex items-center justify-center gap-1.5 bg-green-600 text-white text-base font-bold py-3 rounded-xl active:scale-95 disabled:opacity-50"
+              >
+                <Globe size={18} /> {publishing ? "..." : "Publish"}
               </button>
               <button
                 onClick={() => { setPrompt(""); setImageUrl(null); }}
-                className="flex items-center justify-center gap-2 bg-primary text-primary-foreground text-lg font-bold py-3 rounded-xl"
+                className="flex items-center justify-center gap-1.5 bg-primary text-primary-foreground text-base font-bold py-3 rounded-xl"
               >
-                ✨ New Image
+                ✨ New
               </button>
             </div>
 
