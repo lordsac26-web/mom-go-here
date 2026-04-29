@@ -14,11 +14,12 @@ export default function HistoryFact({ birthday, location }) {
   async function loadFacts() {
     const today = new Date();
     const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    const todayISO = today.toISOString().split("T")[0];
     const locationContext = location?.city ? ` in or near ${location.city}` : '';
 
     const [todayRes, bdayRes] = await Promise.allSettled([
       base44.integrations.Core.InvokeLLM({
-        prompt: `Give me one fascinating "This Day in History" fact for ${monthDay}${locationContext}. Pick a random historical year. Write 2 sentences, friendly and easy to read for an older adult.`,
+        prompt: `Give me one fascinating "This Day in History" fact for ${monthDay}${locationContext}. Pick a random historical year — do NOT repeat the same event you may have given before. Today is ${todayISO}, nonce=${Math.random().toString(36).slice(2)}. Write 2 sentences, friendly and easy to read for an older adult.`,
         add_context_from_internet: true,
         response_json_schema: {
           type: "object",
@@ -33,7 +34,7 @@ export default function HistoryFact({ birthday, location }) {
         const bdayDate = new Date(year, month - 1, day);
         const bdayLabel = bdayDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
         return base44.integrations.Core.InvokeLLM({
-          prompt: `Give me one fascinating historical event that happened on ${bdayLabel} in any year in history. Write 2 sentences, friendly and easy to read for an older adult.`,
+          prompt: `Give me one fascinating historical event that happened on ${bdayLabel} in any year in history. Pick a different event than you might have given before — surprise me! Today is ${todayISO}, nonce=${Math.random().toString(36).slice(2)}. Write 2 sentences, friendly and easy to read for an older adult.`,
           add_context_from_internet: true,
           response_json_schema: {
             type: "object",
