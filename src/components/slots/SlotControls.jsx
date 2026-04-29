@@ -1,4 +1,5 @@
 import { BET_LEVELS as DEFAULT_BET_LEVELS, PAYLINES } from "./slotConfig";
+import { getSafeMaxBet } from "./betScaling";
 
 export default function SlotControls({
   balance,
@@ -14,7 +15,17 @@ export default function SlotControls({
   betLevels,
 }) {
   const levels = betLevels || DEFAULT_BET_LEVELS;
-  const betIdx = levels.indexOf(bet);
+  let betIdx = levels.indexOf(bet);
+  // If current bet isn't in available levels (e.g. level changed), snap to nearest
+  if (betIdx < 0) {
+    const nearest = levels.reduce((prev, curr) =>
+      Math.abs(curr - bet) < Math.abs(prev - bet) ? curr : prev
+    );
+    betIdx = levels.indexOf(nearest);
+    // Schedule a correction on next tick
+    Promise.resolve().then(() => onBetChange(nearest));
+  }
+  const safeMax = getSafeMaxBet(balance, levels);
 
   return (
     <div className="bg-gradient-to-t from-gray-900 via-gray-800 to-gray-800 border-t-2 border-yellow-600/50 px-3 py-3 space-y-3">
@@ -22,7 +33,7 @@ export default function SlotControls({
       <div className="flex items-center justify-between text-sm font-bold">
         <div className="text-center">
           <div className="text-yellow-400/70 text-xs uppercase tracking-wider">Balance</div>
-          <div className="text-yellow-300 text-lg tabular-nums">{balance.toLocaleString()}</div>
+          <div className={`text-lg tabular-nums ${balance <= levels[0] * 5 ? "text-red-400 animate-pulse" : "text-yellow-300"}`}>{balance.toLocaleString()}</div>
         </div>
         <div className="text-center">
           <div className="text-green-400/70 text-xs uppercase tracking-wider">Last Win</div>
@@ -47,8 +58,8 @@ export default function SlotControls({
           >
             −
           </button>
-          <div className="w-16 text-center text-yellow-300 font-black text-sm">
-            {bet.toLocaleString()}
+          <div className="flex flex-col items-center w-16">
+            <div className="text-yellow-300 font-black text-sm">{bet.toLocaleString()}</div>
           </div>
           <button
             onClick={() => onBetChange(levels[Math.min(levels.length - 1, betIdx + 1)])}
@@ -58,6 +69,20 @@ export default function SlotControls({
             +
           </button>
         </div>
+
+        {/* Max Bet (capped at 20% of balance) */}
+        <button
+          onClick={() => onBetChange(safeMax)}
+          disabled={spinning || bet >= safeMax}
+          className={`h-9 px-2 rounded-lg text-[10px] font-black active:scale-90 transition-all border uppercase leading-tight ${
+            bet >= safeMax
+              ? "bg-gray-700 text-gray-500 border-gray-600 opacity-40"
+              : "bg-amber-700 text-amber-100 border-amber-500/50"
+          }`}
+          title="Max bet is capped at 20% of your balance"
+        >
+          MAX<br />{safeMax.toLocaleString()}
+        </button>
 
         {/* Lines */}
         <div className="flex items-center gap-1">

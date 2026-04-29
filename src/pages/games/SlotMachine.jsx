@@ -34,8 +34,11 @@ import {
   getMachineById, getMachineAllSymbols,
   buildMachineReelStrip, loadGlobalStats, saveGlobalStats,
 } from "../../components/slots/machineDefinitions";
+import { getEffectiveBetLevels, EMERGENCY_THRESHOLD, EMERGENCY_DRIP_AMOUNT } from "../../components/slots/betScaling";
+import LowBalanceWarning from "../../components/slots/LowBalanceWarning";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { useSlotSounds } from "../../hooks/useSlotSounds";
+import { getLevelInfo } from "../../hooks/usePlayerXP";
 
 function generateMachineGrid(machine) {
   const allSyms = getMachineAllSymbols(machine);
@@ -129,9 +132,28 @@ export default function SlotMachine() {
   const machine = selectedMachineId ? getMachineById(selectedMachineId) : null;
 
   const [balance, setBalance] = useState(loadBalance);
-  const machineBetLevels = machine ? (machine.betLevels || BET_LEVELS) : BET_LEVELS;
+  const [playerLevel, setPlayerLevel] = useState(1);
+  const [emergencyDripShown, setEmergencyDripShown] = useState(false);
+
+  // Fetch player level on mount
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (!user?.email) return;
+      base44.entities.PlayerXP.filter({ user_email: user.email }).then(rows => {
+        const totalXP = rows[0]?.total_xp || 0;
+        setPlayerLevel(getLevelInfo(totalXP).level);
+      });
+    });
+  }, []);
+
+  // Compute effective bet levels based on player level
+  const rawBetLevels = machine ? (machine.betLevels || BET_LEVELS) : BET_LEVELS;
+  const machineBetLevels = getEffectiveBetLevels(rawBetLevels, playerLevel);
   const machineTopOff = machine ? (machine.topOffAmount || 50000) : 50000;
-  const [bet, setBet] = useState(machineBetLevels[1] || machineBetLevels[0]);
+  const [bet, setBet] = useState(rawBetLevels[1] || rawBetLevels[0]);
+
+  // Low balance state
+  const isLowBalance = balance > 0 && balance < machineBetLevels[0] * 15;
   const [activePaylines, setActivePaylines] = useState(20);
   const [grid, setGrid] = useState([]);
   const [spinning, setSpinning] = useState(false);
@@ -165,10 +187,11 @@ export default function SlotMachine() {
     if (!machine) return;
     setGrid(generateMachineGrid(machine));
     setReelStrip(buildMachineReelStrip(machine));
-    // Reset bet to second tier of the new machine's bet levels
-    const levels = machine.betLevels || BET_LEVELS;
-    setBet(levels[1] || levels[0]);
-  }, [selectedMachineId]);
+    setEmergencyDripShown(false);
+    // Reset bet to second tier of the effective (level-gated) bet levels
+    const effective = getEffectiveBetLevels(machine.betLevels || BET_LEVELS, playerLevel);
+    setBet(effective[1] || effective[0]);
+  }, [selectedMachineId, playerLevel]);
 
   useEffect(() => {
     base44.functions.invoke("progressiveJackpot", { action: "get" })
@@ -214,6 +237,39 @@ export default function SlotMachine() {
       setTimeout(() => setTopOffMessage(false), 3000);
     }
   }, [balance, spinning, machineTopOff, machineBetLevels]);
+
+  // Emergency Fund: daily drip-feed when balance is critically low
+  useEffect(() => {
+    if (balance > EMERGENCY_THRESHOLD || emergencyDripShown || spinning) return;
+    const today = new Date().toISOString().slice(0, 10);
+
+    base44.auth.me().then(user => {
+      if (!user?.email) return;
+      base44.entities.EmergencyFund.filter({ user_email: user.email }).then(async records => {
+        let record = records[0];
+        if (record?.last_drip_date === today) return; // already dripped today
+
+        if (!record) {
+          record = await base44.entities.EmergencyFund.create({
+            user_email: user.email,
+            last_drip_date: today,
+            total_drips: 1,
+            total_drip_amount: EMERGENCY_DRIP_AMOUNT,
+          });
+        } else {
+          await base44.entities.EmergencyFund.update(record.id, {
+            last_drip_date: today,
+            total_drips: (record.total_drips || 0) + 1,
+            total_drip_amount: (record.total_drip_amount || 0) + EMERGENCY_DRIP_AMOUNT,
+          });
+        }
+        setBalance(prev => prev + EMERGENCY_DRIP_AMOUNT);
+        setEmergencyDripShown(true);
+        setTopOffMessage(true);
+        setTimeout(() => setTopOffMessage(false), 4000);
+      });
+    });
+  }, [balance, spinning, emergencyDripShown]);
 
   useEffect(() => { autoSpinRef.current = autoSpin; }, [autoSpin]);
 
@@ -415,11 +471,24 @@ export default function SlotMachine() {
       <AnimatePresence>
         {topOffMessage && (
           <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }}
-            className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-center py-3 px-4 font-bold text-lg shadow-lg">
-            🎁 Lucky Top-Off! +{machineTopOff.toLocaleString()} points added!
+            className={`text-white text-center py-3 px-4 font-bold text-lg shadow-lg ${
+              emergencyDripShown
+                ? "bg-gradient-to-r from-red-600 to-orange-500"
+                : "bg-gradient-to-r from-green-600 to-emerald-500"
+            }`}>
+            {emergencyDripShown
+              ? `🚨 Emergency Fund! +${EMERGENCY_DRIP_AMOUNT.toLocaleString()} coins rescued!`
+              : `🎁 Lucky Top-Off! +${machineTopOff.toLocaleString()} points added!`}
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LowBalanceWarning
+        visible={isLowBalance && !spinning && !topOffMessage}
+        balance={balance}
+        currentMachineId={selectedMachineId}
+        onSwitchMachine={(id) => { setAutoSpin(false); setSelectedMachineId(id); }}
+      />
 
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 relative">
         <div className="w-full max-w-md">

@@ -1,0 +1,38 @@
+{
+  "name": "EmergencyFund",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "last_drip_date": {
+      "type": "string",
+      "description": "YYYY-MM-DD of last emergency drip"
+    },
+    "total_drips": {
+      "type": "number",
+      "description": "Total emergency drips received"
+    },
+    "total_drip_amount": {
+      "type": "number",
+      "description": "Total coins received from emergency drips"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
