@@ -21,7 +21,7 @@ const STYLES = [
 ];
 
 // FIX (security): max prompt length to prevent prompt injection / runaway inputs
-const MAX_PROMPT_LENGTH = 300;
+const MAX_PROMPT_LENGTH = 500;
 
 // FIX (security): strip control characters and newlines from user prompt
 function sanitizePrompt(str) {
