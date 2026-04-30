@@ -580,6 +580,7 @@ export default function SlotMachine() {
               <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} onSkip={() => {
                 setShowWin(false); setWinningLines([]);
                 setSpinning(false); spinningRef.current = false;
+                if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
               }} />
             </div>
           </CasinoFrame>
