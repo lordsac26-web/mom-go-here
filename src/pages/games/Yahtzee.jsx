@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
@@ -9,26 +9,21 @@ import Dice2DRoller from "../../components/Dice2DRoller";
 import { useGameStore } from "../../stores/gameStore";
 import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
+import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
+import YahtzeeResetDialog from "../../components/yahtzee/YahtzeeResetDialog";
+import YahtzeeStatusBar from "../../components/yahtzee/YahtzeeStatusBar";
+import YahtzeeScorecard from "../../components/yahtzee/YahtzeeScorecard";
+import YahtzeeGameOver from "../../components/yahtzee/YahtzeeGameOver";
 
-const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+const UPPER_KEYS = ["ones", "twos", "threes", "fours", "fives", "sixes"];
+const UPPER_BONUS_TARGET = 63;
+const UPPER_BONUS_VALUE = 35;
 
-const CATEGORIES = [
-  { key: "ones", label: "Ones", desc: "Sum of all 1s" },
-  { key: "twos", label: "Twos", desc: "Sum of all 2s" },
-  { key: "threes", label: "Threes", desc: "Sum of all 3s" },
-  { key: "fours", label: "Fours", desc: "Sum of all 4s" },
-  { key: "fives", label: "Fives", desc: "Sum of all 5s" },
-  { key: "sixes", label: "Sixes", desc: "Sum of all 6s" },
-  { key: "threeofakind", label: "3 of a Kind", desc: "Sum of all dice" },
-  { key: "fourofakind", label: "4 of a Kind", desc: "Sum of all dice" },
-  { key: "fullhouse", label: "Full House", desc: "25 points" },
-  { key: "smallstraight", label: "Small Straight", desc: "30 points" },
-  { key: "largestraight", label: "Large Straight", desc: "40 points" },
-  { key: "yahtzee", label: "YAHTZEE!", desc: "50 points" },
-  { key: "chance", label: "Chance", desc: "Sum of all dice" },
+const ALL_CATEGORIES = [
+  "ones", "twos", "threes", "fours", "fives", "sixes",
+  "threeofakind", "fourofakind", "fullhouse", "smallstraight", "largestraight", "yahtzee", "chance",
 ];
-
-function rollDie() { return Math.floor(Math.random() * 6) + 1; }
 
 function calcScore(key, dice) {
   const counts = Array(7).fill(0);
@@ -60,45 +55,90 @@ function calcScore(key, dice) {
   }
 }
 
+function isYahtzee(dice) {
+  return dice.every(d => d === dice[0]);
+}
+
 export default function Yahtzee() {
   useGameTimer();
+  const { user } = useAuth();
   const { tapVibrate, scoreHit, scoreMilestone, bonusPoints, winVibrate } = useHaptics();
   const { diceshakeSound, diceCollideSound, matchSound, winSound, uiClickSound } = useGameAudio();
   const { spark, burst, sideCannons, fireworks, emojiRain } = useConfetti();
   const { reportWin } = useGameActivity();
+
   const rollerRef = useRef(null);
   const [dice, setDice] = useState([1, 1, 1, 1, 1]);
   const [held, setHeld] = useState([false, false, false, false, false]);
   const [rollsLeft, setRollsLeft] = useState(3);
   const [isRolling, setIsRolling] = useState(false);
   const [scores, setScores] = useState({});
+  const [yahtzeeBonus, setYahtzeeBonus] = useState(0);
   const [turn, setTurn] = useState(1);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [winTime, setWinTime] = useState(null);
 
   const totalTurns = 13;
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-  const gameOver = Object.keys(scores).length === totalTurns;
-
-  // FIX (perf): guard Zustand init so it only fires once
+  const gameStartRef = useRef(Date.now());
+  const statsRecordedRef = useRef(false);
+  const isRollingRef = useRef(false);
   const zustandInitRef = useRef(false);
 
-  const initializeGame = useGameStore((state) => state.initializeGame);
-  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
-  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
-  const gameStatus = useGameStore((state) => state.gameStatus);
+  // Computed scores
+  const upperSubtotal = useMemo(() =>
+    UPPER_KEYS.reduce((sum, k) => sum + (scores[k] || 0), 0),
+  [scores]);
+
+  const upperBonusEarned = upperSubtotal >= UPPER_BONUS_TARGET;
+
+  const lowerSubtotal = useMemo(() =>
+    ALL_CATEGORIES.filter(k => !UPPER_KEYS.includes(k)).reduce((sum, k) => sum + (scores[k] || 0), 0),
+  [scores]);
+
+  const totalScore = useMemo(() =>
+    upperSubtotal + (upperBonusEarned ? UPPER_BONUS_VALUE : 0) + lowerSubtotal + yahtzeeBonus,
+  [upperSubtotal, upperBonusEarned, lowerSubtotal, yahtzeeBonus]);
+
+  const gameOver = Object.keys(scores).length === totalTurns;
+
+  // Zustand init
+  const initializeGame = useGameStore(s => s.initializeGame);
+  const addHistoryEntry = useGameStore(s => s.addHistoryEntry);
+  const setPlayerScore = useGameStore(s => s.setPlayerScore);
+  const gameStatus = useGameStore(s => s.gameStatus);
 
   useEffect(() => {
     if (gameStatus === "setup" && !zustandInitRef.current) {
       zustandInitRef.current = true;
-      initializeGame(
-        [{ id: "player-1", name: "Player" }],
-        totalTurns
-      );
+      initializeGame([{ id: "player-1", name: "Player" }], totalTurns);
     }
   }, [gameStatus, initializeGame, totalTurns]);
 
-  // FIX (bug): prevent a fourth roll slipping through on rapid double-tap
-  // isRolling is already checked in roll(), but ensure it is set synchronously
-  const isRollingRef = useRef(false);
+  // Handle game over side effects
+  useEffect(() => {
+    if (!gameOver) return;
+    winVibrate();
+    winSound();
+    fireworks();
+    emojiRain(["🎲", "🎉", "⭐"]);
+    reportWin("Yahtzee");
+    setPlayerScore("player-1", totalScore);
+    const elapsed = Math.round((Date.now() - gameStartRef.current) / 1000);
+    setWinTime(elapsed);
+    recordStats(elapsed);
+  }, [gameOver]);
+
+  async function recordStats(elapsed) {
+    if (!user?.email || statsRecordedRef.current) return;
+    statsRecordedRef.current = true;
+    await base44.entities.GameScore.create({
+      user_email: user.email,
+      game_name: "Yahtzee",
+      score: totalScore,
+      duration_seconds: elapsed,
+      completed: true,
+    });
+  }
 
   const handleRollComplete = useCallback((results) => {
     diceCollideSound();
@@ -109,7 +149,6 @@ export default function Yahtzee() {
   }, [diceCollideSound]);
 
   function roll() {
-    // FIX (bug): check ref synchronously to block double-taps before state updates propagate
     if (isRollingRef.current || rollsLeft === 0) return;
     isRollingRef.current = true;
     tapVibrate();
@@ -124,12 +163,10 @@ export default function Yahtzee() {
     setHeld(h => h.map((v, idx) => idx === i ? !v : v));
   }
 
-  // FIX (perf): memoize score previews so they aren't recalculated on every
-  // unrelated re-render (e.g. confetti state changes, held updates)
   const scorePreviews = useMemo(() => {
     if (rollsLeft === 3) return {};
     return Object.fromEntries(
-      CATEGORIES.map(cat => [cat.key, calcScore(cat.key, dice)])
+      ALL_CATEGORIES.map(key => [key, calcScore(key, dice)])
     );
   }, [dice, rollsLeft]);
 
@@ -138,9 +175,18 @@ export default function Yahtzee() {
 
     const s = scorePreviews[key] ?? calcScore(key, dice);
 
-    // FIX (bug): trigger all effects BEFORE calling setScores so they run
-    // exactly once — not inside the updater which React may call twice in Strict Mode
-    if (s > 50) {
+    // Check for Yahtzee Bonus: if rolling a Yahtzee and yahtzee category already scored with 50
+    let bonusAwarded = 0;
+    if (isYahtzee(dice) && scores.yahtzee === 50 && key !== "yahtzee") {
+      bonusAwarded = 100;
+      setYahtzeeBonus(prev => prev + 100);
+      scoreMilestone();
+      fireworks();
+      emojiRain(["🎲", "💯", "🔥"]);
+    }
+
+    // Celebration effects based on score
+    if (s >= 50) {
       scoreMilestone(); matchSound(); fireworks(); emojiRain(["🎲", "🏆", "🔥"]);
     } else if (s >= 25) {
       scoreMilestone(); matchSound(); sideCannons();
@@ -150,34 +196,26 @@ export default function Yahtzee() {
       tapVibrate(); uiClickSound();
     }
 
-    // FIX (bug): compute the new scores object outside setScores so we can
-    // call addHistoryEntry and setPlayerScore without being inside the updater
-    setScores(prev => {
-      const next = { ...prev, [key]: s };
-      const newTotal = Object.values(next).reduce((a, b) => a + b, 0);
-
-      // FIX (bug): moved side effects OUT of the updater to avoid double-calls in Strict Mode.
-      // Using a setTimeout(0) defers them to after the render cycle — safe and reliable.
+    // Check if upper bonus just earned
+    const newScores = { ...scores, [key]: s };
+    const newUpperSub = UPPER_KEYS.reduce((sum, k) => sum + (newScores[k] || 0), 0);
+    if (newUpperSub >= UPPER_BONUS_TARGET && upperSubtotal < UPPER_BONUS_TARGET) {
+      // Just crossed the threshold!
       setTimeout(() => {
-        addHistoryEntry({
-          round: turn,
-          playerId: "player-1",
-          playerName: "Player",
-          action: "score",
-          result: { category: key, score: s, totalScore: newTotal },
-        });
+        bonusPoints();
+        burst();
+        emojiRain(["🎁", "⭐", "💰"]);
+      }, 300);
+    }
 
-        if (Object.keys(next).length === totalTurns) {
-          winVibrate();
-          winSound();
-          fireworks();
-          emojiRain(["🎲", "🎉", "⭐"]);
-          reportWin("Yahtzee");
-          setPlayerScore("player-1", newTotal);
-        }
-      }, 0);
+    setScores(newScores);
 
-      return next;
+    addHistoryEntry({
+      round: turn,
+      playerId: "player-1",
+      playerName: "Player",
+      action: "score",
+      result: { category: key, score: s, bonus: bonusAwarded },
     });
 
     setDice([1, 1, 1, 1, 1]);
@@ -188,64 +226,87 @@ export default function Yahtzee() {
 
   function reset() {
     uiClickSound();
+    tapVibrate();
     setDice([1, 1, 1, 1, 1]);
     setHeld([false, false, false, false, false]);
     setRollsLeft(3);
     setScores({});
+    setYahtzeeBonus(0);
     setTurn(1);
+    setWinTime(null);
+    setShowResetConfirm(false);
     isRollingRef.current = false;
     zustandInitRef.current = false;
+    statsRecordedRef.current = false;
+    gameStartRef.current = Date.now();
   }
 
+  function handleResetClick() {
+    if (Object.keys(scores).length > 0 && !gameOver) {
+      setShowResetConfirm(true);
+    } else {
+      reset();
+    }
+  }
+
+  // ── GAME OVER SCREEN ──
   if (gameOver) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <div className="text-8xl mb-4">🎲</div>
-      <h1 className="text-4xl font-black text-primary mb-4">Game Over!</h1>
-      <p className="text-3xl text-foreground mb-2">Final Score: <span className="text-primary font-black">{totalScore}</span></p>
-      <button
-        onClick={() => { tapVibrate(); reset(); }}
-        className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mt-6 mb-4"
-      >
-        🔄 Play Again
-      </button>
-      <GameBackButton />
-    </div>
+    <YahtzeeGameOver
+      totalScore={totalScore}
+      upperSubtotal={upperSubtotal}
+      lowerSubtotal={lowerSubtotal}
+      upperBonusEarned={upperBonusEarned}
+      yahtzeeBonus={yahtzeeBonus}
+      winTime={winTime}
+      onPlayAgain={reset}
+    />
   );
 
   return (
-    <div className="min-h-screen px-4 py-4 pb-24">
-      <div className="flex items-center justify-between mb-4">
+    <div className="min-h-screen px-2 py-4 pb-24">
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
-        <div className="text-center">
-          <div className="text-2xl font-black text-primary">🎲 Yahtzee</div>
-          <div className="text-muted-foreground">Turn {turn}/{totalTurns} | Score: {totalScore}</div>
-        </div>
-        <div className="flex gap-2">
+        <div className="text-xl sm:text-2xl font-black text-primary">🎲 Yahtzee</div>
+        <div className="flex gap-1.5">
           <GameInstructions
             title="Yahtzee"
             emoji="🎲"
             steps={[
               "Tap 'Roll Dice' to roll all five dice (3 rolls per turn).",
-              "After the first roll, tap any dice you want to HOLD (keep).",
+              "After rolling, tap any die to HOLD (keep) it for the next roll.",
               "Roll again to re-roll the dice you didn't hold.",
-              "After rolling, tap a scoring category on the scorecard to lock in your points.",
-              "Upper section (Ones–Sixes): scores the sum of matching dice.",
-              "Lower section: 3/4 of a Kind, Full House (25 pts), Straights (30/40 pts), Yahtzee (50 pts!), or Chance.",
+              "Tap a scoring category on the scorecard to lock in your points.",
+              "Upper section (Ones–Sixes): scores the sum of matching dice. Get 63+ for a 35-point bonus!",
+              "Lower section: 3/4 of a Kind, Full House (25), Straights (30/40), Yahtzee (50!), or Chance.",
+              "Extra Yahtzees earn a 100-point bonus each!",
               "Play 13 turns — score as high as you can!"
             ]}
           />
-          <button
-            onClick={() => { tapVibrate(); reset(); }}
-            className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold"
-          >
-            🔄
-          </button>
+          <button onClick={handleResetClick} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
 
+      {/* Status bar */}
+      <YahtzeeStatusBar
+        turn={turn}
+        totalTurns={totalTurns}
+        totalScore={totalScore}
+        gameStartTime={gameStartRef.current}
+        gameOver={gameOver}
+      />
+
       {/* Dice Roller */}
-      <div className="bg-card border-2 border-border rounded-2xl p-4 mb-4 overflow-hidden space-y-3">
+      <div className="bg-card border-2 border-border rounded-2xl p-3 mb-3 overflow-hidden space-y-2">
         <Dice2DRoller ref={rollerRef} onRollComplete={handleRollComplete} held={held} onToggleHold={toggleHold} />
+
+        {/* Hold hint */}
+        {rollsLeft < 3 && rollsLeft > 0 && (
+          <p className="text-center text-muted-foreground text-sm">Tap a die to hold/release it 👆</p>
+        )}
+        {rollsLeft === 3 && turn > 1 && (
+          <p className="text-center text-muted-foreground text-sm">Roll the dice to start your turn!</p>
+        )}
 
         <button
           onClick={roll}
@@ -256,51 +317,32 @@ export default function Yahtzee() {
               : "bg-red-600 text-white hover:bg-red-700 active:scale-95"
           }`}
         >
-          {isRolling ? "🎲 Rolling..." : rollsLeft === 0 ? "🎲 No rolls left" : `🎲 Roll Dice (${rollsLeft} left)`}
+          {isRolling ? "🎲 Rolling..." : rollsLeft === 0 ? "Pick a category below ⬇️" : `🎲 Roll Dice (${rollsLeft} left)`}
         </button>
-
-        <div className="flex justify-center gap-2 flex-wrap">
-          {dice.map((d, i) => (
-            <button key={i} onClick={() => toggleHold(i)}
-              disabled={rollsLeft === 3}
-              className={`text-sm px-3 py-2 rounded-lg border-2 transition-all ${
-                held[i] ? "border-primary bg-primary/20 text-primary font-black" : "border-border bg-secondary text-foreground"
-              }`}>
-              Die {i + 1}: {DIE_FACES[d]} {held[i] ? "🔒" : ""}
-            </button>
-          ))}
-        </div>
-        {rollsLeft < 3 && <p className="text-center text-muted-foreground text-sm">Tap dice above to hold them 👆</p>}
       </div>
 
-      {/* Scorecard — scrollable frame */}
-      <div className="bg-card border-2 border-border rounded-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 340px)' }}>
-        <div className="bg-primary px-4 py-3 text-primary-foreground font-black text-xl text-center shrink-0">📊 Scorecard</div>
-        <div className="overflow-y-auto flex-1 overscroll-contain">
-          {CATEGORIES.map(cat => {
-            const scored = scores[cat.key] !== undefined;
-            const preview = !scored && rollsLeft < 3 ? (scorePreviews[cat.key] ?? null) : null;
-            return (
-              <button key={cat.key} onClick={() => scoreCategory(cat.key)} disabled={scored || rollsLeft === 3}
-                className={`w-full flex items-center justify-between px-4 py-3 border-b border-border text-left transition-all ${
-                  scored ? "opacity-60" : rollsLeft < 3 ? "hover:bg-muted cursor-pointer" : "cursor-default"
-                }`}>
-                <div>
-                  <div className="text-lg font-bold text-foreground">{cat.label}</div>
-                  <div className="text-muted-foreground text-sm">{cat.desc}</div>
-                </div>
-                <div className={`text-xl font-black min-w-[3rem] text-right ${scored ? "text-primary" : "text-green-400"}`}>
-                  {scored ? scores[cat.key] : preview !== null ? preview : "—"}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex justify-between px-4 py-3 bg-primary/10 shrink-0 border-t border-border">
-          <span className="text-lg font-black text-foreground">Total</span>
-          <span className="text-xl font-black text-primary">{totalScore}</span>
-        </div>
-      </div>
+      {/* Scorecard */}
+      <YahtzeeScorecard
+        scores={scores}
+        scorePreviews={scorePreviews}
+        rollsLeft={rollsLeft}
+        yahtzeeBonus={yahtzeeBonus}
+        onScoreCategory={scoreCategory}
+        totalScore={totalScore}
+        upperSubtotal={upperSubtotal}
+        lowerSubtotal={lowerSubtotal}
+        upperBonusEarned={upperBonusEarned}
+      />
+
+      {/* Reset Confirmation */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <YahtzeeResetDialog
+            onConfirm={reset}
+            onCancel={() => setShowResetConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
