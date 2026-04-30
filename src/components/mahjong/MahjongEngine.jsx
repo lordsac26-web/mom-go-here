@@ -9,7 +9,7 @@
  *    - Suited tiles: same suit + same value
  *    - Winds: same wind
  *    - Dragons: same dragon
- *    - Flowers (seasons): all 4 flowers match each other
+ *    - Flowers: all 4 flowers match each other
  *    - Seasons: all 4 seasons match each other
  * 4. Standard set: 4 copies of each of 34 base tiles + 4 flowers + 4 seasons = 144
  */
@@ -58,49 +58,50 @@ function shuffle(arr) {
 }
 
 /**
- * Generate tiles for a given layout.
+ * Generate tiles for a given layout with guaranteed pair integrity.
+ * Every tile in the pool has at least one matching partner.
  * @param {Array} positions - Array of {row, col, layer}
  * @returns {Array} tiles with id, position, tile data, and state
  */
 export function generateTiles(positions) {
   const count = positions.length;
-  
-  // Build the tile pool: need count tiles total, in matched pairs/quads
+  const pairsNeeded = count / 2;
   let pool = [];
+
+  // Build a pool of exactly count tiles with proper pairing
+  // Strategy: pick tile types, add them in pairs (2 copies each)
+  const allTypes = shuffle([...BASE_TILES, ...BASE_TILES, ...BASE_TILES]); // 34*3 = 102 types (allows up to 102 pairs)
+  // Also include flowers/seasons as matchable pairs
+  const bonusTypes = [...FLOWERS, ...SEASONS]; // 8 extra single types (but they match by group)
+
+  // For flowers/seasons, they match each other in groups of 4, so add as pairs
+  // flower: plum+orchid, chrysanthemum+bamboo_flower → 2 natural pairs
+  // season: spring+summer, autumn+winter → 2 natural pairs
   
-  if (count <= 72) {
-    // For smaller layouts, use a subset of base tiles (no flowers/seasons)
-    const needed = count / 2; // pairs needed
-    const available = [];
-    // Each base tile can provide 2 pairs (4 copies = 2 pairs)
-    for (const tile of BASE_TILES) {
-      available.push({ ...tile });
-      available.push({ ...tile });
-      if (available.length >= needed) break;
-    }
-    pool = shuffle(available).slice(0, needed);
-    pool = [...pool, ...pool]; // duplicate to get pairs
-  } else {
-    // Standard 144: 4 of each base + flowers + seasons
+  if (count === 144) {
+    // Standard set: 4 of each base (34×4=136) + 4 flowers + 4 seasons = 144
     for (const tile of BASE_TILES) {
       pool.push(tile, tile, tile, tile);
     }
     pool.push(...FLOWERS, ...SEASONS);
-    
-    // If layout needs fewer, trim (keep even)
-    while (pool.length > count) {
-      // Remove 4 at a time from the end
-      pool.splice(pool.length - 4, 4);
+  } else {
+    // For non-standard counts, build pairs from base tiles only
+    const shuffledBase = shuffle([...BASE_TILES]);
+    for (let i = 0; i < pairsNeeded && i < shuffledBase.length; i++) {
+      pool.push({ ...shuffledBase[i] }, { ...shuffledBase[i] });
     }
-    // If layout needs more (shouldn't happen), pad
+    // If we need more pairs than 34, cycle through again
+    let idx = 0;
     while (pool.length < count) {
-      const extra = BASE_TILES[Math.floor(Math.random() * BASE_TILES.length)];
-      pool.push(extra, extra);
+      pool.push({ ...BASE_TILES[idx % BASE_TILES.length] }, { ...BASE_TILES[idx % BASE_TILES.length] });
+      idx++;
     }
+    // Trim to exact count (should already be exact)
+    pool = pool.slice(0, count);
   }
-  
+
   pool = shuffle(pool);
-  
+
   return positions.map((pos, i) => ({
     id: i,
     row: pos.row,
@@ -122,25 +123,26 @@ export function generateTiles(positions) {
 export function isTileFree(tile, allTiles) {
   const active = allTiles.filter(t => !t.removed && t.id !== tile.id);
   
-  // Check: is any tile on top? (layer above, overlapping position)
-  // A tile on top overlaps if its row/col ranges intersect
+  // Check: is any tile on top? (any higher layer, overlapping position)
+  // Two tiles overlap if their row AND col are within 0.9 units
   const hasAbove = active.some(t => {
     if (t.layer <= tile.layer) return false;
-    // Tiles overlap if within 1 unit of each other in both row and col
-    return Math.abs(t.row - tile.row) < 1 && Math.abs(t.col - tile.col) < 1;
+    return Math.abs(t.row - tile.row) < 0.9 && Math.abs(t.col - tile.col) < 0.9;
   });
   if (hasAbove) return false;
   
   // Check: is left OR right clear?
-  // Left neighbor: same layer, same row (within 0.5), col is exactly 1 less
+  // Left neighbor: same layer, overlapping row (within 0.9), col is ~1 unit to the left
   const hasLeft = active.some(t => {
     if (t.layer !== tile.layer) return false;
-    return Math.abs(t.row - tile.row) < 1 && Math.abs(t.col - (tile.col - 1)) < 0.5;
+    const colDiff = tile.col - t.col;
+    return colDiff > 0.1 && colDiff < 1.9 && Math.abs(t.row - tile.row) < 0.9;
   });
   
   const hasRight = active.some(t => {
     if (t.layer !== tile.layer) return false;
-    return Math.abs(t.row - tile.row) < 1 && Math.abs(t.col - (tile.col + 1)) < 0.5;
+    const colDiff = t.col - tile.col;
+    return colDiff > 0.1 && colDiff < 1.9 && Math.abs(t.row - tile.row) < 0.9;
   });
   
   // Free if at least one side is open
@@ -172,6 +174,20 @@ export function hasValidMoves(allTiles) {
     }
   }
   return false;
+}
+
+/**
+ * Find one valid matching pair from free tiles (for hint system).
+ * Returns [tile1, tile2] or null if no match exists.
+ */
+export function findHintPair(allTiles) {
+  const free = getFreeTiles(allTiles);
+  for (let i = 0; i < free.length; i++) {
+    for (let j = i + 1; j < free.length; j++) {
+      if (canMatch(free[i], free[j])) return [free[i], free[j]];
+    }
+  }
+  return null;
 }
 
 /**
