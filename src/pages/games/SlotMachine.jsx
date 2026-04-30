@@ -9,6 +9,7 @@ import useConfetti from "../../hooks/useConfetti";
 import SlotReel from "../../components/slots/SlotReel";
 import SlotControls from "../../components/slots/SlotControls";
 import WinDisplay from "../../components/slots/WinDisplay";
+import WinParticles from "../../components/slots/WinParticles";
 import PaylineOverlay from "../../components/slots/PaylineOverlay";
 import CasinoFrame from "../../components/slots/CasinoFrame";
 import NeonSign from "../../components/slots/NeonSign";
@@ -166,6 +167,7 @@ export default function SlotMachine() {
   const [lastWin, setLastWin] = useState(0);
   const [showWin, setShowWin] = useState(false);
   const [winningLines, setWinningLines] = useState([]);
+  const [winCellMap, setWinCellMap] = useState({}); // { reelIdx: [rowIdx, ...] }
   const [autoSpin, setAutoSpin] = useState(false);
   const [topOffMessage, setTopOffMessage] = useState(false);
   const [reelStrip, setReelStrip] = useState([]);
@@ -279,7 +281,37 @@ export default function SlotMachine() {
     });
   }, [balance, spinning, emergencyDripShown]);
 
+  const spinningRef = useRef(false);
+  useEffect(() => { spinningRef.current = spinning; }, [spinning]);
+
+  // Stable ref so stale closures always call the latest handleSpin
+  const handleSpinRef = useRef(null);
+
   useEffect(() => { autoSpinRef.current = autoSpin; }, [autoSpin]);
+
+  // Refs for functions called inside the stable handleReelStop callback
+  const resolveSpinEndRef = useRef(null);
+  const scheduleNextAutoSpinRef = useRef(null);
+
+  // Centralized auto-spin scheduler
+  function scheduleNextAutoSpin(delayMs = 500) {
+    if (!autoSpinRef.current) return;
+    setTimeout(() => {
+      if (!autoSpinRef.current) return;
+      handleSpinRef.current?.();
+    }, delayMs);
+  }
+  scheduleNextAutoSpinRef.current = scheduleNextAutoSpin;
+
+  // Clear win visuals and unlock spinning
+  function resolveSpinEnd() {
+    setShowWin(false);
+    setWinningLines([]);
+    setWinCellMap({});
+    spinningRef.current = false;
+    setSpinning(false);
+  }
+  resolveSpinEndRef.current = resolveSpinEnd;
 
   const handleReelStop = useCallback((reelIndex) => {
     reelStopClick(reelIndex);
@@ -307,6 +339,18 @@ export default function SlotMachine() {
           saveGlobalStats(gStats);
 
           if (result.totalWin > 0) {
+            // Build per-reel win position map for glow effects
+            const cellMap = {};
+            result.wins.forEach(w => {
+              if (w.positions) {
+                w.positions.forEach(([reel, row]) => {
+                  if (!cellMap[reel]) cellMap[reel] = [];
+                  if (!cellMap[reel].includes(row)) cellMap[reel].push(row);
+                });
+              }
+            });
+            setWinCellMap(cellMap);
+
             setWins(result.wins);
             setTotalWin(result.totalWin);
             setLastWin(result.totalWin);
@@ -333,8 +377,7 @@ export default function SlotMachine() {
             if (result.scatterCount >= 3) {
               scatterSound();
               setTimeout(() => {
-                setShowWin(false); setWinningLines([]);
-                setSpinning(false); spinningRef.current = false;
+                resolveSpinEndRef.current?.();
                 if (currentMachine.bonusType === "plinko") {
                   setPlinkoBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
                 } else if (currentMachine.bonusType === "freeSpins") {
@@ -347,38 +390,30 @@ export default function SlotMachine() {
               const triggerRandomPlinko = currentMachine.hasRandomPlinko && Math.random() < 0.10;
               if (triggerRandomPlinko) {
                 setTimeout(() => {
-                  setShowWin(false); setWinningLines([]);
-                  setSpinning(false); spinningRef.current = false;
+                  resolveSpinEndRef.current?.();
                   setPlinkoBonus({ baseWin: result.totalWin, scatterCount: 3 });
                 }, 2500);
               } else {
                 setTimeout(() => {
-                  setShowWin(false); setWinningLines([]);
-                  setSpinning(false); spinningRef.current = false;
-                  // Delay auto-spin to guarantee React commits spinning=false before next spin
-                  if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 400);
+                  resolveSpinEndRef.current?.();
+                  scheduleNextAutoSpinRef.current?.(400);
                 }, 2500);
               }
             }
           } else {
             setLastWin(0);
-            setSpinning(false); spinningRef.current = false;
+            setWinCellMap({});
+            spinningRef.current = false;
+            setSpinning(false);
             recordLoss();
             reportActivityLoss();
-            if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 500);
+            scheduleNextAutoSpinRef.current?.(500);
           }
         }, 200);
       }
       return newCount;
     });
   }, []);
-
-  const spinningRef = useRef(false);
-  // Keep ref in sync — but also update directly in critical paths below
-  useEffect(() => { spinningRef.current = spinning; }, [spinning]);
-
-  // Stable ref so stale closures (handleReelStop) always call the latest version
-  const handleSpinRef = useRef(null);
 
   function handleSpin() {
     if (spinningRef.current || !machine) return;
@@ -400,7 +435,7 @@ export default function SlotMachine() {
     sessionSpinsRef.current += 1;
 
     setWins([]); setTotalWin(0); setShowWin(false);
-    setWinningLines([]); setReelsStopped(0);
+    setWinningLines([]); setWinCellMap({}); setReelsStopped(0);
 
     const newGrid = generateMachineGrid(machine);
     nextGridRef.current = newGrid;
@@ -461,7 +496,7 @@ export default function SlotMachine() {
       setLastWin(prev => prev + extraWinnings);
     }
     setBonusRound(null); setPlinkoBonus(null); setFreeSpinsBonus(null);
-    if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
+    scheduleNextAutoSpin(800);
   }
 
   // Record session to GameScore when leaving
@@ -583,10 +618,15 @@ export default function SlotMachine() {
                 <div className="flex justify-center gap-1.5 sm:gap-2">
                   {grid.length > 0 && reelStrip.length > 0 && Array.from({ length: REELS }).map((_, reelIdx) => (
                     <div key={reelIdx} onClick={() => handleNudge(reelIdx)} className="cursor-pointer">
-                      <SlotReel symbols={reelStrip} spinning={spinning} finalSymbols={grid[reelIdx]} reelIndex={reelIdx} onStop={handleReelStop} />
+                      <SlotReel symbols={reelStrip} spinning={spinning} finalSymbols={grid[reelIdx]} reelIndex={reelIdx} onStop={handleReelStop} winPositions={winCellMap[reelIdx]} />
                     </div>
                   ))}
                 </div>
+                <WinParticles
+                  active={showWin && totalWin > 0}
+                  intensity={totalWin >= 25000 ? "mega" : totalWin >= 5000 ? "big" : "small"}
+                  containerRef={gridRef}
+                />
               </div>
               <div className="absolute left-0 top-3 bottom-3 w-2 flex flex-col justify-around">
                 {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
@@ -595,9 +635,8 @@ export default function SlotMachine() {
                 {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
               </div>
               <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} onSkip={() => {
-                setShowWin(false); setWinningLines([]);
-                setSpinning(false); spinningRef.current = false;
-                if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
+                resolveSpinEnd();
+                scheduleNextAutoSpin(400);
               }} />
             </div>
           </CasinoFrame>
