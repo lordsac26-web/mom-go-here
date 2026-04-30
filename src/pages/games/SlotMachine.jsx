@@ -328,7 +328,8 @@ export default function SlotMachine() {
             if (result.scatterCount >= 3) {
               scatterSound();
               setTimeout(() => {
-                setShowWin(false); setWinningLines([]); setSpinning(false);
+                setShowWin(false); setWinningLines([]);
+                setSpinning(false); spinningRef.current = false;
                 if (currentMachine.bonusType === "plinko") {
                   setPlinkoBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
                 } else if (currentMachine.bonusType === "freeSpins") {
@@ -341,19 +342,21 @@ export default function SlotMachine() {
               const triggerRandomPlinko = currentMachine.hasRandomPlinko && Math.random() < 0.10;
               if (triggerRandomPlinko) {
                 setTimeout(() => {
-                  setShowWin(false); setWinningLines([]); setSpinning(false);
+                  setShowWin(false); setWinningLines([]);
+                  setSpinning(false); spinningRef.current = false;
                   setPlinkoBonus({ baseWin: result.totalWin, scatterCount: 3 });
                 }, 2500);
               } else {
                 setTimeout(() => {
-                  setShowWin(false); setWinningLines([]); setSpinning(false);
+                  setShowWin(false); setWinningLines([]);
+                  setSpinning(false); spinningRef.current = false;
                   if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
                 }, 2500);
               }
             }
           } else {
             setLastWin(0);
-            setSpinning(false);
+            setSpinning(false); spinningRef.current = false;
             recordLoss();
             reportActivityLoss();
             if (autoSpinRef.current) setTimeout(() => handleSpin(), 500);
@@ -365,6 +368,7 @@ export default function SlotMachine() {
   }, []);
 
   const spinningRef = useRef(false);
+  // Keep ref in sync — but also update directly in critical paths below
   useEffect(() => { spinningRef.current = spinning; }, [spinning]);
 
   function handleSpin() {
@@ -569,7 +573,8 @@ export default function SlotMachine() {
                 {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
               </div>
               <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} onSkip={() => {
-                setShowWin(false); setWinningLines([]); setSpinning(false);
+                setShowWin(false); setWinningLines([]);
+                setSpinning(false); spinningRef.current = false;
               }} />
             </div>
           </CasinoFrame>
