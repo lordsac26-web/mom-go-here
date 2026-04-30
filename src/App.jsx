@@ -12,7 +12,7 @@ import Games from './pages/Games';
 import Settings from './pages/Settings';
 import Daily from './pages/Daily';
 import MemoryGame from './pages/games/MemoryGame';
-import TicTacToe from './pages/games/TicTacToe';
+
 import Yahtzee from './pages/games/Yahtzee';
 import WordSearch from './pages/games/WordSearch';
 import Sudoku from './pages/games/Sudoku';
@@ -69,7 +69,7 @@ const AuthenticatedApp = () => {
           <Route path="/settings" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Settings /></motion.div>} />
           <Route path="/daily" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Daily /></motion.div>} />
           <Route path="/games/memory" element={<MemoryGame />} />
-          <Route path="/games/tictactoe" element={<TicTacToe />} />
+
           <Route path="/games/yahtzee" element={<Yahtzee />} />
           <Route path="/games/wordsearch" element={<WordSearch />} />
           <Route path="/games/sudoku" element={<Sudoku />} />
