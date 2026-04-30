@@ -132,6 +132,8 @@ export default function SlotMachine() {
   const machine = selectedMachineId ? getMachineById(selectedMachineId) : null;
 
   const [balance, setBalance] = useState(loadBalance);
+  const balanceRef = useRef(balance);
+  useEffect(() => { balanceRef.current = balance; }, [balance]);
   const [playerLevel, setPlayerLevel] = useState(1);
   const [emergencyDripShown, setEmergencyDripShown] = useState(false);
 
@@ -236,6 +238,7 @@ export default function SlotMachine() {
     const minBet = machineBetLevels[0] || 100;
     const dynamicThreshold = Math.max(STARTING_BALANCE * TOPOFF_THRESHOLD, minBet * 10);
     if (balance > 0 && balance <= dynamicThreshold && !spinning) {
+      balanceRef.current += machineTopOff;
       setBalance(prev => prev + machineTopOff);
       setTopOffMessage(true);
       setTimeout(() => setTopOffMessage(false), 3000);
@@ -267,6 +270,7 @@ export default function SlotMachine() {
             total_drip_amount: (record.total_drip_amount || 0) + EMERGENCY_DRIP_AMOUNT,
           });
         }
+        balanceRef.current += EMERGENCY_DRIP_AMOUNT;
         setBalance(prev => prev + EMERGENCY_DRIP_AMOUNT);
         setEmergencyDripShown(true);
         setTopOffMessage(true);
@@ -307,6 +311,7 @@ export default function SlotMachine() {
             setTotalWin(result.totalWin);
             setLastWin(result.totalWin);
             setShowWin(true);
+            balanceRef.current += result.totalWin;
             setBalance(prev => prev + result.totalWin);
             setWinningLines(result.wins.filter(w => w.type === "line").map(w => w.lineIndex));
 
@@ -350,7 +355,8 @@ export default function SlotMachine() {
                 setTimeout(() => {
                   setShowWin(false); setWinningLines([]);
                   setSpinning(false); spinningRef.current = false;
-                  if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
+                  // Delay auto-spin to guarantee React commits spinning=false before next spin
+                  if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 400);
                 }, 2500);
               }
             }
@@ -378,60 +384,63 @@ export default function SlotMachine() {
     if (spinningRef.current || !machine) return;
     const currentBet = betRef.current;
 
-    // Lock synchronously so no second call can sneak in
+    // Check balance synchronously via ref — no setState updater needed for the guard
+    if (balanceRef.current < currentBet) return;
+
+    // Lock synchronously BEFORE any async work
     spinningRef.current = true;
 
-    setBalance(prev => {
-      if (prev < currentBet) {
-        // Insufficient balance — unlock and abort
-        spinningRef.current = false;
-        return prev;
-      }
+    // Deduct balance (atomic, no side effects inside)
+    balanceRef.current -= currentBet;
+    setBalance(prev => prev - currentBet);
 
-      // Side effects are safe here since we only reach this when balance >= bet
-      leverPull(); tapVibrate();
-      setTimeout(() => reelSpinStart(), 150);
-      sessionSpinsRef.current += 1;
+    // All side effects run synchronously, outside any setState updater
+    leverPull(); tapVibrate();
+    setTimeout(() => reelSpinStart(), 150);
+    sessionSpinsRef.current += 1;
 
-      setWins([]); setTotalWin(0); setShowWin(false);
-      setWinningLines([]); setReelsStopped(0);
+    setWins([]); setTotalWin(0); setShowWin(false);
+    setWinningLines([]); setReelsStopped(0);
 
-      const newGrid = generateMachineGrid(machine);
-      nextGridRef.current = newGrid;
-      setGrid(newGrid);
-      setSpinning(true);
-      recordSpin(currentBet);
+    const newGrid = generateMachineGrid(machine);
+    nextGridRef.current = newGrid;
+    setGrid(newGrid);
+    setSpinning(true);
+    recordSpin(currentBet);
 
-      const gStats = loadGlobalStats();
-      gStats.totalSpins += 1;
-      gStats.totalSpent += currentBet;
-      gStats.maxBet = Math.max(gStats.maxBet, currentBet);
-      gStats.machineSpins = gStats.machineSpins || {};
-      gStats.machineSpins[machine.id] = (gStats.machineSpins[machine.id] || 0) + 1;
-      saveGlobalStats(gStats);
+    const gStats = loadGlobalStats();
+    gStats.totalSpins += 1;
+    gStats.totalSpent += currentBet;
+    gStats.maxBet = Math.max(gStats.maxBet, currentBet);
+    gStats.machineSpins = gStats.machineSpins || {};
+    gStats.machineSpins[machine.id] = (gStats.machineSpins[machine.id] || 0) + 1;
+    saveGlobalStats(gStats);
 
-      spinCountRef.current += 1;
-      pendingJackpotRef.current += currentBet;
-      if (spinCountRef.current % 10 === 0) {
-        const batchAmount = pendingJackpotRef.current;
-        pendingJackpotRef.current = 0;
-        base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: batchAmount })
-          .then(res => {
-            if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
-            if (res.data?.jackpotWin) setJackpotWin({ winAmount: res.data.winAmount });
-          });
-      }
-
-      return prev - currentBet;
-    });
+    spinCountRef.current += 1;
+    pendingJackpotRef.current += currentBet;
+    if (spinCountRef.current % 10 === 0) {
+      const batchAmount = pendingJackpotRef.current;
+      pendingJackpotRef.current = 0;
+      base44.functions.invoke("progressiveJackpot", { action: "spin", betAmount: batchAmount })
+        .then(res => {
+          if (res.data?.jackpot) setJackpotAmount(res.data.jackpot);
+          if (res.data?.jackpotWin) setJackpotWin({ winAmount: res.data.winAmount });
+        });
+    }
   }
 
   handleSpinRef.current = handleSpin;
 
   function handleAutoSpinToggle() {
     uiClickSound();
-    if (autoSpin) { setAutoSpin(false); }
-    else { setAutoSpin(true); if (!spinningRef.current) handleSpin(); }
+    if (autoSpin) {
+      setAutoSpin(false);
+      autoSpinRef.current = false;
+    } else {
+      setAutoSpin(true);
+      autoSpinRef.current = true;
+      if (!spinningRef.current) handleSpin();
+    }
   }
 
   function handleNudge(reelIdx) {
@@ -447,6 +456,7 @@ export default function SlotMachine() {
 
   function handleBonusComplete(extraWinnings) {
     if (extraWinnings > 0) {
+      balanceRef.current += extraWinnings;
       setBalance(prev => prev + extraWinnings);
       setLastWin(prev => prev + extraWinnings);
     }
@@ -604,6 +614,7 @@ export default function SlotMachine() {
 
       <AchievementToast badge={newBadge} />
       {jackpotWin && <JackpotWinOverlay winAmount={jackpotWin.winAmount} onCollect={() => {
+        balanceRef.current += jackpotWin.winAmount;
         setBalance(prev => prev + jackpotWin.winAmount);
         setLastWin(jackpotWin.winAmount);
         setJackpotWin(null);

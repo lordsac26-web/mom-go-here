@@ -10,9 +10,12 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
   const timeoutRef = useRef(null);
   const cellRefs = useRef([]);
   const containerRef = useRef(null);
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
     if (spinning) {
+      // Reset stop guard for this spin cycle
+      stoppedRef.current = false;
       setIsAnimating(true);
 
       // Start rapid symbol cycling
@@ -27,6 +30,10 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
       // Stop after staggered delay per reel
       const stopDelay = 600 + reelIndex * 350;
       timeoutRef.current = setTimeout(() => {
+        // Guard: only fire onStop once per spin cycle
+        if (stoppedRef.current) return;
+        stoppedRef.current = true;
+
         clearInterval(intervalRef.current);
         setDisplaySymbols(finalSymbols);
         setIsAnimating(false);
@@ -60,6 +67,9 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
 
         onStop?.(reelIndex);
       }, stopDelay);
+    } else {
+      // When spinning goes false, ensure we clean up and mark as stopped
+      stoppedRef.current = true;
     }
 
     return () => {
