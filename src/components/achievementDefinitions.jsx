@@ -31,14 +31,19 @@ const ACHIEVEMENTS = [
 
   // ── Levels ──
   { key: "level_2",     emoji: "🌿", title: "Rookie Rank",        description: "Reach Level 2",                          category: "Levels", check: s => s.level >= 2 },
-  { key: "level_5",     emoji: "💎", title: "Expert Rank",         description: "Reach Level 5",                          category: "Levels", check: s => s.level >= 5 },
-  { key: "level_7",     emoji: "👑", title: "Master Rank",         description: "Reach Level 7",                          category: "Levels", check: s => s.level >= 7 },
-  { key: "level_10",    emoji: "💫", title: "Grand Master",        description: "Reach Level 10",                         category: "Levels", check: s => s.level >= 10 },
+  { key: "level_5",     emoji: "💎", title: "Player Rank",         description: "Reach Level 5",                          category: "Levels", check: s => s.level >= 5 },
+  { key: "level_8",     emoji: "⚡", title: "Expert Rank",         description: "Reach Level 8",                          category: "Levels", check: s => s.level >= 8 },
+  { key: "level_10",    emoji: "🎖️", title: "Elite Rank",          description: "Reach Level 10",                         category: "Levels", check: s => s.level >= 10 },
+  { key: "level_15",    emoji: "🎵", title: "Virtuoso Rank",       description: "Reach Level 15",                         category: "Levels", check: s => s.level >= 15 },
+  { key: "level_20",    emoji: "🔮", title: "Immortal Rank",       description: "Reach Level 20",                         category: "Levels", check: s => s.level >= 20 },
+  { key: "level_25",    emoji: "💫", title: "Grand Master",        description: "Reach Level 25 — Max Level!",            category: "Levels", check: s => s.level >= 25 },
 
   // ── XP ──
   { key: "xp_500",      emoji: "✨", title: "XP Collector",       description: "Earn 500 XP",                            category: "XP",     check: s => s.totalXP >= 500 },
   { key: "xp_2000",     emoji: "🌟", title: "XP Hoarder",         description: "Earn 2,000 XP",                          category: "XP",     check: s => s.totalXP >= 2000 },
   { key: "xp_5000",     emoji: "💰", title: "XP Tycoon",          description: "Earn 5,000 XP",                          category: "XP",     check: s => s.totalXP >= 5000 },
+  { key: "xp_20000",    emoji: "🏦", title: "XP Mogul",            description: "Earn 20,000 XP",                         category: "XP",     check: s => s.totalXP >= 20000 },
+  { key: "xp_50000",    emoji: "💎", title: "XP Legend",            description: "Earn 50,000 XP",                         category: "XP",     check: s => s.totalXP >= 50000 },
 
   // ── Variety ──
   { key: "variety_3",   emoji: "🎯", title: "Variety Player",     description: "Play 3 different games",                 category: "Variety", check: s => s.distinctGames >= 3 },

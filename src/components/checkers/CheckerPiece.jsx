@@ -1,8 +1,27 @@
 /**
- * Beautiful 3D-style checker piece with gradients, rings, and crown.
+ * Checker piece with optional cosmetic skin support.
+ * Falls back to classic style if no skin is provided.
  */
-export default function CheckerPiece({ player, king, selected }) {
+export default function CheckerPiece({ player, king, selected, skin }) {
   const isRed = player === 1;
+
+  // Use skin if provided, otherwise classic defaults
+  const pieceStyle = skin
+    ? (isRed ? skin.p1 : skin.p2)
+    : null;
+
+  const gradient = pieceStyle?.gradient
+    || (isRed
+      ? "radial-gradient(circle at 35% 35%, #ff6b6b, #dc2626 50%, #991b1b)"
+      : "radial-gradient(circle at 35% 35%, #6b7280, #1f2937 50%, #111827)");
+
+  const shadowColor = pieceStyle?.shadow
+    || (isRed ? "#7f1d1d" : "#030712");
+
+  const glowEffect = pieceStyle?.glow || "none";
+
+  const ringColor = skin?.ringColor
+    || (isRed ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)");
 
   return (
     <div
@@ -10,20 +29,16 @@ export default function CheckerPiece({ player, king, selected }) {
         selected ? "scale-110 z-10" : ""
       }`}
       style={{
-        background: isRed
-          ? "radial-gradient(circle at 35% 35%, #ff6b6b, #dc2626 50%, #991b1b)"
-          : "radial-gradient(circle at 35% 35%, #6b7280, #1f2937 50%, #111827)",
+        background: gradient,
         boxShadow: selected
-          ? `0 0 0 3px #fbbf24, 0 0 16px rgba(251,191,36,0.5), 0 6px 0 ${isRed ? "#7f1d1d" : "#030712"}, 0 8px 12px rgba(0,0,0,0.5)`
-          : `0 4px 0 ${isRed ? "#7f1d1d" : "#030712"}, 0 6px 8px rgba(0,0,0,0.4)`,
+          ? `0 0 0 3px #fbbf24, 0 0 16px rgba(251,191,36,0.5), 0 6px 0 ${shadowColor}, 0 8px 12px rgba(0,0,0,0.5)${glowEffect !== "none" ? `, ${glowEffect}` : ""}`
+          : `0 4px 0 ${shadowColor}, 0 6px 8px rgba(0,0,0,0.4)${glowEffect !== "none" ? `, ${glowEffect}` : ""}`,
       }}
     >
       {/* Inner ring */}
       <div
         className="absolute inset-[12%] rounded-full"
-        style={{
-          border: `2px solid ${isRed ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)"}`,
-        }}
+        style={{ border: `2px solid ${ringColor}` }}
       />
       {/* Highlight */}
       <div

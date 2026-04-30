@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
@@ -13,6 +14,11 @@ import {
   initBoard, getAllMoves, applyMove, computerMove, countPieces,
 } from "../../components/checkers/CheckersEngine";
 import { useGameActivity } from "../../hooks/useGameActivity";
+import { base44 } from "@/api/base44Client";
+import {
+  BOARD_STYLES, PIECE_SKINS, rollRareDrops,
+} from "../../components/checkers/cosmeticDefinitions";
+import CosmeticPicker from "../../components/checkers/CosmeticPicker";
 
 export default function Checkers() {
   useGameTimer();
@@ -28,10 +34,82 @@ export default function Checkers() {
   const [gameOver, setGameOver] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
   const [lastMove, setLastMove] = useState(null); // {from, to}
+  const [showCosmetics, setShowCosmetics] = useState(false);
+  const [activeBoardStyle, setActiveBoardStyle] = useState(BOARD_STYLES[0]);
+  const [activePieceSkin, setActivePieceSkin] = useState(PIECE_SKINS[0]);
+  const [rareDropMsg, setRareDropMsg] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
 
   const moveCountRef = useRef(0);
   const thinkingRef = useRef(false);
   const zustandInitRef = useRef(false);
+
+  // Load cosmetics on mount
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (!user?.email) return;
+      setUserEmail(user.email);
+      base44.entities.CheckerCosmetic.filter({ user_email: user.email }).then(records => {
+        const rec = records[0];
+        if (rec) {
+          const board = BOARD_STYLES.find(b => b.id === rec.active_board) || BOARD_STYLES[0];
+          const pieces = PIECE_SKINS.find(p => p.id === rec.active_pieces) || PIECE_SKINS[0];
+          setActiveBoardStyle(board);
+          setActivePieceSkin(pieces);
+        }
+      });
+    });
+  }, []);
+
+  function reloadCosmetics() {
+    if (!userEmail) return;
+    base44.entities.CheckerCosmetic.filter({ user_email: userEmail }).then(records => {
+      const rec = records[0];
+      if (rec) {
+        setActiveBoardStyle(BOARD_STYLES.find(b => b.id === rec.active_board) || BOARD_STYLES[0]);
+        setActivePieceSkin(PIECE_SKINS.find(p => p.id === rec.active_pieces) || PIECE_SKINS[0]);
+      }
+    });
+  }
+
+  // Roll rare drops on win
+  async function checkRareDrops() {
+    if (!userEmail) return;
+    const records = await base44.entities.CheckerCosmetic.filter({ user_email: userEmail });
+    let rec = records[0];
+    const currentUnlocked = [...(rec?.unlocked_boards || ["classic"]), ...(rec?.unlocked_pieces || ["classic"])];
+    const drops = rollRareDrops(currentUnlocked);
+    if (drops.length === 0) return;
+
+    // Determine which are boards vs pieces
+    const newBoards = drops.filter(d => BOARD_STYLES.some(b => b.id === d));
+    const newPieces = drops.filter(d => PIECE_SKINS.some(p => p.id === d));
+
+    if (rec) {
+      await base44.entities.CheckerCosmetic.update(rec.id, {
+        unlocked_boards: [...(rec.unlocked_boards || ["classic"]), ...newBoards],
+        unlocked_pieces: [...(rec.unlocked_pieces || ["classic"]), ...newPieces],
+      });
+    } else {
+      await base44.entities.CheckerCosmetic.create({
+        user_email: userEmail,
+        unlocked_boards: ["classic", ...newBoards],
+        unlocked_pieces: ["classic", ...newPieces],
+        active_board: "classic",
+        active_pieces: "classic",
+      });
+    }
+
+    const allDropNames = drops.map(d => {
+      const b = BOARD_STYLES.find(x => x.id === d);
+      if (b) return `${b.emoji} ${b.name} Board`;
+      const p = PIECE_SKINS.find(x => x.id === d);
+      if (p) return `${p.emoji} ${p.name} Pieces`;
+      return d;
+    });
+    setRareDropMsg(`🌟 LEGENDARY DROP: ${allDropNames.join(", ")}!`);
+    setTimeout(() => setRareDropMsg(null), 6000);
+  }
 
   const initializeGame = useGameStore(s => s.initializeGame);
   const addHistoryEntry = useGameStore(s => s.addHistoryEntry);
@@ -132,6 +210,7 @@ export default function Checkers() {
         setMessage("🎉 You win! All enemy pieces captured!");
         setPlayerScore("player-1", moveCountRef.current);
         reportWin("Checkers");
+        checkRareDrops();
       } else {
         lossVibrate();
         setMessage("😔 Computer wins! Better luck next time.");
@@ -156,6 +235,7 @@ export default function Checkers() {
           setGameOver(true);
           setPlayerScore("player-1", moveCountRef.current);
           reportWin("Checkers");
+          checkRareDrops();
           thinkingRef.current = false;
           return;
         }
@@ -242,6 +322,7 @@ export default function Checkers() {
               "Capture all enemy pieces or block them to win!",
             ]}
           />
+          <button onClick={() => setShowCosmetics(true)} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🎨</button>
           <button onClick={reset} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
@@ -258,13 +339,22 @@ export default function Checkers() {
         {message}
       </div>
 
+      {/* Rare Drop Banner */}
+      <AnimatePresence>
+        {rareDropMsg && (
+          <div className="mx-2 mb-3 bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 text-white text-center py-3 px-4 rounded-2xl font-black text-sm animate-pulse shadow-lg border-2 border-purple-300">
+            {rareDropMsg}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Board */}
       <div className="flex justify-center px-2">
         <div
           className="rounded-xl overflow-hidden w-full max-w-sm shadow-2xl"
           style={{
-            border: "4px solid #5c3a1e",
-            boxShadow: "0 0 0 2px #3a2510, 0 8px 32px rgba(0,0,0,0.5)",
+            border: `4px solid ${activeBoardStyle.borderColor}`,
+            boxShadow: `0 0 0 2px ${activeBoardStyle.borderShadow}, 0 8px 32px rgba(0,0,0,0.5)`,
           }}
         >
           {board.map((row, r) => (
@@ -297,6 +387,8 @@ export default function Checkers() {
                       isJumpTarget={isJumpTarget}
                       lastMove={isLastMove}
                       onClick={() => handleClick(r, c)}
+                      boardStyle={activeBoardStyle}
+                      pieceSkin={activePieceSkin}
                     />
                   </div>
                 );
@@ -305,6 +397,17 @@ export default function Checkers() {
           ))}
         </div>
       </div>
+
+      {/* Cosmetic Picker Modal */}
+      <AnimatePresence>
+        {showCosmetics && (
+          <CosmeticPicker
+            userEmail={userEmail}
+            onSelect={reloadCosmetics}
+            onClose={() => setShowCosmetics(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Legend */}
       <div className="flex justify-center gap-6 mt-4 text-sm text-muted-foreground">

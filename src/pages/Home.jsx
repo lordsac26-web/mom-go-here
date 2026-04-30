@@ -18,6 +18,7 @@ import HallOfFameWidget from "../components/HallOfFameWidget";
 import LevelProgressBar from "../components/LevelProgressBar";
 import AchievementsWidget from "../components/AchievementsWidget";
 import DailyWheel from "../components/DailyWheel";
+import DailyMissionsWidget from "../components/missions/DailyMissionsWidget";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -173,6 +174,9 @@ export default function Home() {
 
       {/* Player Level */}
       <LevelProgressBar userEmail={user?.email} />
+
+      {/* Daily Missions */}
+      <DailyMissionsWidget userEmail={user?.email} refreshKey={refreshKey} />
 
       {/* Daily Wheel */}
       <DailyWheel userEmail={user?.email} />

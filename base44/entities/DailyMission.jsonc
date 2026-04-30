@@ -1,0 +1,76 @@
+{
+  "name": "DailyMission",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "description": "YYYY-MM-DD date these missions belong to"
+    },
+    "missions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "target": {
+            "type": "number"
+          },
+          "progress": {
+            "type": "number"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "xp_reward": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Array of 3 daily missions with progress tracking"
+    },
+    "all_completed": {
+      "type": "boolean",
+      "description": "True when all 3 missions are done"
+    },
+    "bonus_claimed": {
+      "type": "boolean",
+      "description": "True when the all-complete bonus XP has been awarded"
+    }
+  },
+  "required": [
+    "user_email",
+    "date",
+    "missions"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

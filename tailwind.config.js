@@ -27,6 +27,13 @@ module.exports = {
       "border-cyan-500", "border-amber-500", "border-pink-500", "border-violet-500",
       "border-cyan-500/50", "border-amber-500/50", "border-pink-500/50", "border-violet-500/50",
       "border-yellow-600/50",
+      // Checkers board cosmetic styles
+      "from-slate-900", "via-blue-900", "to-slate-900", "from-slate-200", "via-slate-100", "to-slate-200",
+      "from-rose-900", "via-pink-800", "to-rose-900", "from-pink-100", "via-rose-50", "to-pink-100",
+      "from-cyan-900", "via-teal-900", "to-cyan-900", "from-cyan-100", "via-teal-50", "to-cyan-100",
+      "from-red-950", "via-orange-900", "to-red-950", "from-orange-200", "via-amber-100", "to-orange-200",
+      "from-purple-950", "via-indigo-900", "to-purple-950", "from-purple-200", "via-indigo-100", "to-purple-200",
+      "from-gray-950", "via-gray-900", "to-gray-950", "from-gray-300", "via-gray-200", "to-gray-300",
     ],
   theme: {
   	extend: {
