@@ -1,47 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Lock, Check, Palette, X } from "lucide-react";
-import { Canvas, useFrame } from "@react-three/fiber";
 import {
   BOARD_STYLES, PIECE_SKINS,
   isCosmeticUnlocked, getUnlockLabel,
 } from "./cosmeticDefinitions";
 import { getLevelInfo } from "../../hooks/usePlayerXP";
 
-function Spinning3DPiece({ color1, color2, glow }) {
-  const meshRef = useRef();
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 1.5;
-    }
-  });
-
+function PiecePreviewCSS({ skin }) {
   return (
-    <mesh ref={meshRef} position={[0, 0, 0]}>
-      <cylinderGeometry args={[0.5, 0.5, 0.15, 32]} />
-      <meshStandardMaterial color={color1} metalness={0.6} roughness={0.3} />
-    </mesh>
-  );
-}
-
-function PiecePreview3D({ skin }) {
-  const color = skin?.p1?.gradient?.includes("#fbbf24") ? "#d97706"
-    : skin?.p1?.gradient?.includes("#22d3ee") ? "#06b6d4"
-    : skin?.p1?.gradient?.includes("#e0f2fe") ? "#0ea5e9"
-    : skin?.p1?.gradient?.includes("#fef08a") ? "#f97316"
-    : skin?.p1?.gradient?.includes("#a1a1aa") ? "#52525b"
-    : skin?.p1?.gradient?.includes("#fef9c3") ? "#a855f7"
-    : "#dc2626";
-
-  return (
-    <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-900">
-      <Canvas camera={{ position: [0, 1, 2], fov: 40 }}>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[2, 3, 1]} intensity={1} />
-        <pointLight position={[-1, 2, -1]} intensity={0.5} color="#fbbf24" />
-        <Spinning3DPiece color1={color} />
-      </Canvas>
+    <div className="w-16 h-16 rounded-xl bg-gray-900 flex items-center justify-center">
+      <div
+        className="w-10 h-10 rounded-full border-2"
+        style={{
+          background: skin?.p1?.gradient || "radial-gradient(circle at 35% 35%, #ff6b6b, #dc2626 50%, #991b1b)",
+          borderColor: skin?.ringColor || "rgba(255,255,255,0.25)",
+          boxShadow: skin?.p1?.glow || `0 4px 0 ${skin?.p1?.shadow || "#7f1d1d"}`,
+        }}
+      />
     </div>
   );
 }
@@ -184,7 +161,7 @@ export default function CosmeticPicker({ userEmail, onSelect, onClose }) {
               >
                 {/* Preview */}
                 {tab === "pieces" ? (
-                  <PiecePreview3D skin={item} />
+                  <PiecePreviewCSS skin={item} />
                 ) : (
                   <div
                     className={`w-16 h-16 rounded-xl bg-gradient-to-br ${item.darkColor} border-2 flex items-center justify-center`}
