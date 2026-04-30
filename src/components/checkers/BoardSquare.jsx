@@ -1,16 +1,19 @@
 /**
- * Single board square with dynamic cosmetic board styles and move highlights.
+ * Single board square with dynamic cosmetic board styles, move highlights, and hint flash.
  */
 import CheckerPiece from "./CheckerPiece";
 
 export default function BoardSquare({
   dark, piece, selected, isTarget, isJumpTarget, onClick, lastMove,
-  boardStyle, pieceSkin,
+  boardStyle, pieceSkin, hintFrom, hintTo, animating,
 }) {
   // Dynamic board colors from cosmetic, or classic defaults
   const darkClass = boardStyle?.darkColor || "from-green-900 via-green-800 to-green-900";
   const lightClass = boardStyle?.lightColor || "from-amber-100 via-amber-50 to-amber-100";
   const grainOpacity = boardStyle?.grainOpacity ?? 0.10;
+
+  const isHintSource = hintFrom;
+  const isHintTarget = hintTo;
 
   return (
     <button
@@ -22,12 +25,14 @@ export default function BoardSquare({
         }
         ${isTarget && !isJumpTarget ? "ring-[3px] ring-inset ring-yellow-400/80" : ""}
         ${isJumpTarget ? "ring-[3px] ring-inset ring-orange-400" : ""}
+        ${isHintSource ? "ring-[3px] ring-inset ring-cyan-400 animate-pulse" : ""}
+        ${isHintTarget ? "ring-[3px] ring-inset ring-cyan-400/60" : ""}
       `}
     >
       {/* Wood grain texture on dark squares */}
       {dark && (
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
             opacity: grainOpacity,
             backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(0,0,0,0.15) 4px, rgba(0,0,0,0.15) 5px)",
@@ -38,10 +43,15 @@ export default function BoardSquare({
       {/* Target dot indicator */}
       {isTarget && !piece && (
         <div className={`w-[30%] aspect-square rounded-full ${
-          isJumpTarget 
-            ? "bg-orange-400/60 shadow-[0_0_8px_rgba(251,146,60,0.5)]" 
+          isJumpTarget
+            ? "bg-orange-400/60 shadow-[0_0_8px_rgba(251,146,60,0.5)]"
             : "bg-yellow-400/50 shadow-[0_0_8px_rgba(250,204,21,0.3)]"
         }`} />
+      )}
+
+      {/* Hint target dot */}
+      {isHintTarget && !piece && !isTarget && (
+        <div className="w-[30%] aspect-square rounded-full bg-cyan-400/50 shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse" />
       )}
 
       {/* Last move highlight */}
@@ -56,6 +66,7 @@ export default function BoardSquare({
           king={piece.king}
           selected={selected}
           skin={pieceSkin}
+          animating={animating}
         />
       )}
     </button>

@@ -1,33 +1,25 @@
 /**
- * Checker piece with optional cosmetic skin support.
- * Falls back to classic style if no skin is provided.
+ * Checker piece with cosmetic skin support and move animation.
  */
-export default function CheckerPiece({ player, king, selected, skin }) {
+export default function CheckerPiece({ player, king, selected, skin, animating }) {
   const isRed = player === 1;
 
-  // Use skin if provided, otherwise classic defaults
-  const pieceStyle = skin
-    ? (isRed ? skin.p1 : skin.p2)
-    : null;
+  const pieceStyle = skin ? (isRed ? skin.p1 : skin.p2) : null;
 
   const gradient = pieceStyle?.gradient
     || (isRed
       ? "radial-gradient(circle at 35% 35%, #ff6b6b, #dc2626 50%, #991b1b)"
       : "radial-gradient(circle at 35% 35%, #6b7280, #1f2937 50%, #111827)");
 
-  const shadowColor = pieceStyle?.shadow
-    || (isRed ? "#7f1d1d" : "#030712");
-
+  const shadowColor = pieceStyle?.shadow || (isRed ? "#7f1d1d" : "#030712");
   const glowEffect = pieceStyle?.glow || "none";
-
-  const ringColor = skin?.ringColor
-    || (isRed ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)");
+  const ringColor = skin?.ringColor || (isRed ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)");
 
   return (
     <div
-      className={`w-[78%] aspect-square rounded-full relative transition-all duration-200 ${
+      className={`w-[78%] aspect-square rounded-full relative duration-200 ${
         selected ? "scale-110 z-10" : ""
-      }`}
+      } ${animating ? "transition-all scale-105" : "transition-transform"}`}
       style={{
         background: gradient,
         boxShadow: selected
