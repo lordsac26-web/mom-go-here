@@ -350,7 +350,7 @@ export default function SlotMachine() {
                 setTimeout(() => {
                   setShowWin(false); setWinningLines([]);
                   setSpinning(false); spinningRef.current = false;
-                  if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
+                  if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
                 }, 2500);
               }
             }
@@ -359,7 +359,7 @@ export default function SlotMachine() {
             setSpinning(false); spinningRef.current = false;
             recordLoss();
             reportActivityLoss();
-            if (autoSpinRef.current) setTimeout(() => handleSpin(), 500);
+            if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 500);
           }
         }, 200);
       }
@@ -370,6 +370,9 @@ export default function SlotMachine() {
   const spinningRef = useRef(false);
   // Keep ref in sync — but also update directly in critical paths below
   useEffect(() => { spinningRef.current = spinning; }, [spinning]);
+
+  // Stable ref so stale closures (handleReelStop) always call the latest version
+  const handleSpinRef = useRef(null);
 
   function handleSpin() {
     if (spinningRef.current || !machine) return;
@@ -416,6 +419,8 @@ export default function SlotMachine() {
     });
   }
 
+  handleSpinRef.current = handleSpin;
+
   function handleAutoSpinToggle() {
     uiClickSound();
     if (autoSpin) { setAutoSpin(false); }
@@ -439,7 +444,7 @@ export default function SlotMachine() {
       setLastWin(prev => prev + extraWinnings);
     }
     setBonusRound(null); setPlinkoBonus(null); setFreeSpinsBonus(null);
-    if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
+    if (autoSpinRef.current) setTimeout(() => handleSpinRef.current?.(), 800);
   }
 
   // Record session to GameScore when leaving
