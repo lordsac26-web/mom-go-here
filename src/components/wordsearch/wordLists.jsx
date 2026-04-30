@@ -1,0 +1,67 @@
+// ─── EASY WORD LISTS (10×10 grid, 8 words each) ───
+// 30 themed puzzle packs for maximum variety
+export const WORD_LISTS_EASY = [
+  // Original 15
+  ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
+  ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE"],
+  ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM"],
+  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE"],
+  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET"],
+  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY"],
+  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD"],
+  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE"],
+  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP"],
+  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK"],
+  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM"],
+  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL"],
+  ["NATURE", "FOREST", "BROOK", "EAGLE", "DEER", "MOSS", "STONE", "PATH"],
+  ["RECIPE", "SPICE", "SAUCE", "GRILL", "ROAST", "CHOP", "STEW", "HERB"],
+  ["PAINT", "BRUSH", "CANVAS", "COLOR", "FRAME", "DRAW", "SKETCH", "ART"],
+  // 15 new packs
+  ["QUILT", "THREAD", "NEEDLE", "PATCH", "FABRIC", "KNIT", "STITCH", "YARN"],
+  ["PIANO", "GUITAR", "VIOLIN", "FLUTE", "DRUM", "HORN", "HARP", "BELL"],
+  ["ROBIN", "WREN", "CRANE", "DOVE", "SWAN", "LARK", "FINCH", "OWL"],
+  ["HONEY", "LEMON", "GINGER", "MINT", "BASIL", "SAGE", "THYME", "DILL"],
+  ["CANDLE", "LAMP", "FIRE", "GLOW", "LIGHT", "FLAME", "SPARK", "TORCH"],
+  ["BRIDGE", "CASTLE", "TOWER", "GATE", "WALL", "FORT", "ARCH", "DOME"],
+  ["MARBLE", "CLAY", "GLASS", "WOOD", "IRON", "SILK", "LINEN", "WOOL"],
+  ["VIOLET", "DAISY", "TULIP", "LILY", "IRIS", "POPPY", "PANSY", "ORCHID"],
+  ["CHERRY", "PEACH", "GRAPE", "MELON", "BERRY", "PLUM", "MANGO", "PEAR"],
+  ["PLANET", "ORBIT", "RINGS", "COMET", "SPACE", "LUNAR", "SOLAR", "NOVA"],
+  ["HARBOR", "BOAT", "SAIL", "MAST", "DOCK", "ANCHOR", "BUOY", "PORT"],
+  ["CABIN", "LODGE", "TENT", "TRAIL", "CAMP", "BLAZE", "PINE", "LAKE"],
+  ["MARKET", "STORE", "SHOP", "TRADE", "PRICE", "SALE", "COIN", "GIFT"],
+  ["PILLOW", "BLANKET", "COZY", "REST", "CALM", "SOFT", "NAP", "EASE"],
+  ["CIRCUS", "CLOWN", "MAGIC", "STAGE", "SHOW", "TRICK", "ACT", "RING"],
+];
+
+// ─── ADVANCED WORD LISTS (12×12 grid, 10 words each) ───
+// 24 themed puzzle packs
+export const WORD_LISTS_ADVANCED = [
+  // Original 12
+  ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART", "BLESSING", "WISDOM"],
+  ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE", "MEADOW", "BLOSSOM"],
+  ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM", "MELODY", "RHYTHM"],
+  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE", "ISLAND", "HARBOR"],
+  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET", "PASTRY", "DOUGH"],
+  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY", "AURORA", "COMET"],
+  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD", "DOLPHIN", "PANDA"],
+  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE", "ACORN", "SQUASH"],
+  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP", "JOURNEY", "TICKET"],
+  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK", "KNIGHT", "BISHOP"],
+  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM", "GRIND", "ROAST"],
+  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL", "MITTEN", "BOOTS"],
+  // 12 new packs
+  ["QUILT", "THREAD", "NEEDLE", "PATCH", "FABRIC", "KNIT", "STITCH", "YARN", "BUTTON", "SEWING"],
+  ["PIANO", "GUITAR", "VIOLIN", "FLUTE", "DRUM", "HORN", "HARP", "BELL", "BANJO", "ORGAN"],
+  ["ROBIN", "WREN", "CRANE", "DOVE", "SWAN", "LARK", "FINCH", "OWL", "EAGLE", "FALCON"],
+  ["HONEY", "LEMON", "GINGER", "MINT", "BASIL", "SAGE", "THYME", "DILL", "CLOVE", "FENNEL"],
+  ["CANDLE", "LAMP", "FIRE", "GLOW", "LIGHT", "FLAME", "SPARK", "TORCH", "BEACON", "LANTERN"],
+  ["BRIDGE", "CASTLE", "TOWER", "GATE", "WALL", "FORT", "ARCH", "DOME", "CHAPEL", "PALACE"],
+  ["VIOLET", "DAISY", "TULIP", "LILY", "IRIS", "POPPY", "PANSY", "ORCHID", "CLOVER", "LOTUS"],
+  ["CHERRY", "PEACH", "GRAPE", "MELON", "BERRY", "PLUM", "MANGO", "PEAR", "GUAVA", "PAPAYA"],
+  ["HARBOR", "BOAT", "SAIL", "MAST", "DOCK", "ANCHOR", "BUOY", "PORT", "VOYAGE", "MARINA"],
+  ["CABIN", "LODGE", "TENT", "TRAIL", "CAMP", "BLAZE", "PINE", "LAKE", "STREAM", "SUMMIT"],
+  ["PILLOW", "BLANKET", "COZY", "REST", "CALM", "SOFT", "NAP", "EASE", "PEACE", "GENTLE"],
+  ["MARKET", "STORE", "SHOP", "TRADE", "PRICE", "SALE", "COIN", "GIFT", "RIBBON", "BASKET"],
+];

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
-import { Link } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
@@ -9,45 +9,19 @@ import SparkleEffect from "../../components/SparkleEffect";
 import { Palette } from "lucide-react";
 import { WS_THEMES, DEFAULT_THEME } from "../../components/wordsearch/themes";
 import ThemePanel from "../../components/wordsearch/ThemePanel";
-import useGridReveal, { PATTERN_LIST } from "../../hooks/useGridReveal";
+import useGridReveal from "../../hooks/useGridReveal";
 import { useGameActivity } from "../../hooks/useGameActivity";
-
-const WORD_LISTS_EASY = [
-  ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART"],
-  ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE"],
-  ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM"],
-  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE"],
-  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET"],
-  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY"],
-  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD"],
-  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE"],
-  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP"],
-  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK"],
-  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM"],
-  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL"],
-  ["NATURE", "FOREST", "BROOK", "EAGLE", "DEER", "MOSS", "STONE", "PATH"],
-  ["RECIPE", "SPICE", "SAUCE", "GRILL", "ROAST", "CHOP", "STEW", "HERB"],
-  ["PAINT", "BRUSH", "CANVAS", "COLOR", "FRAME", "DRAW", "SKETCH", "ART"],
-];
-
-const WORD_LISTS_ADVANCED = [
-  ["LOVE", "HOPE", "FAITH", "GRACE", "PEACE", "JOY", "FAMILY", "HEART", "BLESSING", "WISDOM", "PRAYER", "HEAVEN"],
-  ["GARDEN", "FLOWER", "SPRING", "BIRDS", "SUNNY", "RIVER", "TREE", "ROSE", "MEADOW", "BLOSSOM", "PETAL", "CREEK"],
-  ["MUSIC", "DANCE", "LAUGH", "SMILE", "HAPPY", "DREAM", "FRIEND", "WARM", "MELODY", "RHYTHM", "CHORUS", "LYRICS"],
-  ["BEACH", "OCEAN", "SHELL", "WAVES", "SAND", "CORAL", "PALM", "TIDE", "ISLAND", "HARBOR", "ANCHOR", "DRIFT"],
-  ["BAKING", "COOKIE", "SUGAR", "FLOUR", "CAKE", "ICING", "CREAM", "SWEET", "PASTRY", "DOUGH", "MUFFIN", "TART"],
-  ["SUNSET", "STARS", "MOON", "NIGHT", "CLOUD", "WIND", "DAWN", "SKY", "AURORA", "COMET", "GALAXY", "PLANET"],
-  ["PUPPY", "KITTEN", "BUNNY", "PARROT", "FISH", "HORSE", "TURTLE", "BIRD", "DOLPHIN", "PANDA", "OTTER", "HAWK"],
-  ["AUTUMN", "LEAVES", "HARVEST", "APPLE", "PUMPKIN", "CIDER", "CORN", "MAPLE", "ACORN", "SQUASH", "WREATH", "FROST"],
-  ["TRAVEL", "FLIGHT", "HOTEL", "BEACH", "HIKING", "CRUISE", "TRAIN", "MAP", "JOURNEY", "TICKET", "SUNSET", "TRAIL"],
-  ["PUZZLE", "CHESS", "CARDS", "GAMES", "BOARD", "DICE", "QUEEN", "TRICK", "KNIGHT", "BISHOP", "ROOK", "PAWN"],
-  ["COFFEE", "LATTE", "MOCHA", "BREW", "BEANS", "CUP", "CREAM", "STEAM", "GRIND", "ROAST", "FILTER", "DRIP"],
-  ["WINTER", "SNOW", "FROST", "ICE", "SLED", "SCARF", "COCOA", "CHILL", "MITTEN", "BOOTS", "LODGE", "FLURRY"],
-];
+import useConfetti from "../../hooks/useConfetti";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import WordSearchResetDialog from "../../components/wordsearch/WordSearchResetDialog";
+import WordSearchHintButton from "../../components/wordsearch/WordSearchHintButton";
+import WordSearchStatusBar from "../../components/wordsearch/WordSearchStatusBar";
+import { WORD_LISTS_EASY, WORD_LISTS_ADVANCED } from "../../components/wordsearch/wordLists";
 
 const DIFFICULTIES = {
   easy: { label: "Easy", emoji: "😊", gridSize: 10, wordLists: WORD_LISTS_EASY, desc: "10×10 grid · 8 words" },
-  advanced: { label: "Advanced", emoji: "🧠", gridSize: 14, wordLists: WORD_LISTS_ADVANCED, desc: "14×14 grid · 12 words" },
+  advanced: { label: "Advanced", emoji: "🧠", gridSize: 12, wordLists: WORD_LISTS_ADVANCED, desc: "12×12 grid · 10 words" },
 };
 
 function generateGrid(size, words) {
@@ -57,7 +31,7 @@ function generateGrid(size, words) {
 
   for (const word of words) {
     let tries = 0;
-    while (tries < 100) {
+    while (tries < 200) {
       tries++;
       const dir = directions[Math.floor(Math.random() * directions.length)];
       const row = Math.floor(Math.random() * size);
@@ -84,20 +58,29 @@ function generateGrid(size, words) {
     for (let c = 0; c < size; c++)
       if (!grid[r][c]) grid[r][c] = letters[Math.floor(Math.random() * 26)];
 
-  // FIX (bug): return only the words that were actually placed so the win
-  // condition (foundWords.length === placedWords.length) is always reachable.
-  // Previously, if a word failed to fit after 100 tries it was silently dropped
-  // from `placed` but still present in the original `words` array, making the
-  // game impossible to win.
   const placedWords = placed.map(p => p.word);
   return { grid, placed, placedWords };
 }
 
+// Find one unfound word and return its first + last cell for hint highlighting
+function findHint(gridData, foundWords) {
+  if (!gridData) return null;
+  for (const { word, cells } of gridData.placed) {
+    if (!foundWords.includes(word)) {
+      return { word, cells, firstCell: cells[0], lastCell: cells[cells.length - 1] };
+    }
+  }
+  return null;
+}
+
 export default function WordSearch() {
   useGameTimer();
+  const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { uiClickSound, matchSound, winSound } = useGameAudio();
   const { reportWin } = useGameActivity();
+  const { fireworks, emojiRain, spark } = useConfetti();
+
   const [started, setStarted] = useState(false);
   const [difficulty, setDifficulty] = useState(null);
   const size = difficulty ? DIFFICULTIES[difficulty].gridSize : 10;
@@ -105,39 +88,45 @@ export default function WordSearch() {
   const [words, setWords] = useState([]);
   const [selected, setSelected] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
-  // FIX (perf): store found cells as a Set instead of an array so per-cell
-  // lookups are O(1) instead of O(n). With a 10×10 grid this eliminates
-  // 100 linear scans on every render.
   const [foundCellsSet, setFoundCellsSet] = useState(new Set());
-  const [lineMode, setLineMode] = useState(true);
-  const [justFoundCells, setJustFoundCells] = useState([]);
+  const [justFoundCells, setJustFoundCells] = useState(new Set());
   const [justFoundWord, setJustFoundWord] = useState(null);
   const glowTimerRef = useRef(null);
   const [themeKey, setThemeKey] = useState(DEFAULT_THEME);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
   const theme = WS_THEMES[themeKey];
-  const [revealPattern, setRevealPattern] = useState("spiral");
-  const [revealPanelOpen, setRevealPanelOpen] = useState(false);
   const { gridRef, reveal } = useGridReveal(size, size);
   const [revealKey, setRevealKey] = useState(0);
 
+  // New: reset confirmation, hint, timer, GameScore
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [hintCells, setHintCells] = useState(new Set());
+  const hintTimerRef = useRef(null);
+  const gameStartRef = useRef(null);
+  const statsRecordedRef = useRef(false);
+  const [winTime, setWinTime] = useState(null);
+
   const won = foundWords.length === words.length && words.length > 0;
 
-  // FIX (bug): added `reveal` and `won` to the dependency array so the effect
-  // always sees the current values. Also added cleanup so the timeout doesn't
-  // leak if the component unmounts between the delay and the reveal call.
   useEffect(() => {
     if (started && gridData && !won) {
-      const t = setTimeout(() => reveal(revealPattern), 50);
+      const t = setTimeout(() => reveal("spiral"), 50);
       return () => clearTimeout(t);
     }
   }, [revealKey, started, won, reveal]);
 
-  // FIX (bug): clean up the glow timer on unmount to prevent a setState call
-  // on an unmounted component if the user navigates away mid-glow.
   useEffect(() => {
-    return () => { clearTimeout(glowTimerRef.current); };
+    return () => {
+      clearTimeout(glowTimerRef.current);
+      clearTimeout(hintTimerRef.current);
+    };
   }, []);
+
+  // Clear hint on any game state change
+  useEffect(() => {
+    setHintCells(new Set());
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+  }, [foundWords, selected]);
 
   function startGame(diff) {
     const d = diff || difficulty || "easy";
@@ -150,10 +139,53 @@ export default function WordSearch() {
     setSelected([]);
     setFoundWords([]);
     setFoundCellsSet(new Set());
-    setJustFoundCells([]);
+    setJustFoundCells(new Set());
     setJustFoundWord(null);
+    setHintCells(new Set());
+    setShowResetConfirm(false);
+    setWinTime(null);
+    statsRecordedRef.current = false;
+    gameStartRef.current = Date.now();
     setStarted(true);
     setRevealKey(prev => prev + 1);
+  }
+
+  function handleResetClick() {
+    if (foundWords.length > 0 && !won) {
+      setShowResetConfirm(true);
+    } else {
+      startGame(difficulty);
+    }
+  }
+
+  function handleHint() {
+    const hint = findHint(gridData, foundWords);
+    if (!hint) return;
+    tapVibrate();
+    // Highlight all cells of the unfound word
+    const keys = new Set(hint.cells.map(([r, c]) => cellKey(r, c)));
+    setHintCells(keys);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => setHintCells(new Set()), 2500);
+  }
+
+  // Record stats on win
+  async function recordStats() {
+    if (!user?.email || statsRecordedRef.current) return;
+    statsRecordedRef.current = true;
+    reportWin("Word Search");
+    const elapsed = gameStartRef.current
+      ? Math.round((Date.now() - gameStartRef.current) / 1000)
+      : 0;
+    setWinTime(elapsed);
+    await base44.entities.GameScore.create({
+      user_email: user.email,
+      game_name: "Word Search",
+      score: words.length,
+      duration_seconds: elapsed,
+      difficulty: difficulty,
+      completed: true,
+    });
   }
 
   function cellKey(r, c) { return `${r},${c}`; }
@@ -174,32 +206,28 @@ export default function WordSearch() {
   }
 
   function markFound(word, wCells, isWinning) {
-    const cellKeys = wCells.map(([cr, cc]) => cellKey(cr, cc));
+    const keys = wCells.map(([cr, cc]) => cellKey(cr, cc));
     setFoundWords(prev => [...prev, word]);
-    setFoundCellsSet(prev => new Set([...prev, ...cellKeys]));
+    setFoundCellsSet(prev => new Set([...prev, ...keys]));
     setSelected([]);
-    setJustFoundCells(cellKeys);
+    setJustFoundCells(new Set(keys));
     setJustFoundWord(word);
-    if (isWinning) { winSound(); winVibrate(); reportWin("Word Search"); } else { matchSound(); successVibrate(); }
+    spark();
+    if (isWinning) {
+      winSound();
+      winVibrate();
+      fireworks();
+      emojiRain(["🔤", "⭐", "🎉"]);
+      recordStats();
+    } else {
+      matchSound();
+      successVibrate();
+    }
     clearTimeout(glowTimerRef.current);
     glowTimerRef.current = setTimeout(() => {
-      setJustFoundCells([]);
+      setJustFoundCells(new Set());
       setJustFoundWord(null);
     }, 800);
-  }
-
-  function checkAndMarkWord(cells) {
-    const selStr = cells.map(([sr, sc]) => gridData.grid[sr][sc]).join("");
-    const selRev = selStr.split("").reverse().join("");
-    for (const { word, cells: wCells } of gridData.placed) {
-      if (foundWords.includes(word)) continue;
-      if (word === selStr || word === selRev) {
-        const isWinning = foundWords.length + 1 === words.length;
-        markFound(word, wCells, isWinning);
-        return true;
-      }
-    }
-    return false;
   }
 
   function handleCellTap(r, c) {
@@ -207,65 +235,58 @@ export default function WordSearch() {
     tapVibrate();
     const key = cellKey(r, c);
 
-    if (lineMode) {
-      if (selected.length === 0) {
-        setSelected([[r, c]]);
-        return;
-      }
-      if (selected.length === 1) {
-        if (cellKey(selected[0][0], selected[0][1]) === key) {
-          setSelected([]);
-          return;
-        }
-        const [r1, c1] = selected[0];
-        const lineCells = getLineCells(r1, c1, r, c);
-        if (!lineCells) {
-          setSelected([[r, c]]);
-          return;
-        }
-        setSelected(lineCells);
-        const selStr = lineCells.map(([sr, sc]) => gridData.grid[sr][sc]).join("");
-        const selRev = selStr.split("").reverse().join("");
-        let matched = false;
-        for (const { word, cells } of gridData.placed) {
-          if (foundWords.includes(word)) continue;
-          if (word === selStr || word === selRev) {
-            const isWinning = foundWords.length + 1 === words.length;
-            markFound(word, cells, isWinning);
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          setTimeout(() => setSelected([]), 1200);
-        }
-        return;
-      }
+    if (selected.length === 0) {
       setSelected([[r, c]]);
       return;
     }
-
-    // Manual tap mode
-    const alreadyIdx = selected.findIndex(([sr, sc]) => cellKey(sr, sc) === key);
-    if (alreadyIdx === selected.length - 1 && alreadyIdx >= 0) {
-      setSelected(prev => prev.slice(0, -1));
+    if (selected.length === 1) {
+      if (cellKey(selected[0][0], selected[0][1]) === key) {
+        setSelected([]);
+        return;
+      }
+      const [r1, c1] = selected[0];
+      const lineCells = getLineCells(r1, c1, r, c);
+      if (!lineCells) {
+        setSelected([[r, c]]);
+        return;
+      }
+      setSelected(lineCells);
+      const selStr = lineCells.map(([sr, sc]) => gridData.grid[sr][sc]).join("");
+      const selRev = selStr.split("").reverse().join("");
+      let matched = false;
+      for (const { word, cells } of gridData.placed) {
+        if (foundWords.includes(word)) continue;
+        if (word === selStr || word === selRev) {
+          const isWinning = foundWords.length + 1 === words.length;
+          markFound(word, cells, isWinning);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        setTimeout(() => setSelected([]), 1200);
+      }
       return;
     }
-    if (alreadyIdx >= 0) return;
-    const newSelected = [...selected, [r, c]];
-    setSelected(newSelected);
-    checkAndMarkWord(newSelected);
+    setSelected([[r, c]]);
   }
 
   function clearSelection() {
     setSelected([]);
   }
 
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  // ── START SCREEN ──
   if (!started) return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24" style={{ background: theme.bg }}>
       <div className="text-8xl mb-4">🔤</div>
       <h1 className="text-4xl font-black text-primary mb-4 text-center">Word Search</h1>
-      <p className="text-xl text-muted-foreground text-center mb-6">Tap letters to spell out hidden words!</p>
+      <p className="text-xl text-muted-foreground text-center mb-6">Tap the first letter, then the last — find all the hidden words!</p>
 
       {/* Theme picker */}
       <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -294,72 +315,82 @@ export default function WordSearch() {
           </button>
         ))}
       </div>
+      <GameBackButton />
     </div>
   );
 
+  // ── WIN SCREEN ──
   if (won) return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center" style={{ background: theme.bg }}>
       <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black mb-4" style={{ color: theme.selected }}>All Words Found!</h1>
+      <h1 className="text-4xl font-black mb-2" style={{ color: theme.selected }}>All Words Found!</h1>
+      {winTime != null && (
+        <p className="text-2xl font-bold mb-1" style={{ color: theme.cellText }}>
+          ⏱️ Time: {formatTime(winTime)}
+        </p>
+      )}
+      <p className="text-lg mb-6" style={{ color: theme.cellText, opacity: 0.7 }}>
+        Found {words.length} words in the {DIFFICULTIES[difficulty]?.label} puzzle
+      </p>
       <button onClick={() => startGame(difficulty)} className="text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
         🔄 New Puzzle
       </button>
       <button onClick={() => { setStarted(false); setDifficulty(null); }} className="text-lg font-bold px-6 py-3 rounded-xl mb-4" style={{ background: theme.cell, color: theme.cellText }}>
         Change Difficulty
       </button>
+      <GameBackButton />
     </div>
   );
 
+  // ── GAME BOARD ──
   return (
     <div className="min-h-screen px-2 py-4 pb-24 select-none" style={{ background: theme.bg }}>
       <ThemePanel open={themePanelOpen} onClose={() => setThemePanelOpen(false)} currentTheme={themeKey} onSelectTheme={setThemeKey} />
-      <div className="flex items-center justify-between px-2 mb-3">
+
+      {/* Header — simplified: Help, Hint, Theme, Clear, Reset */}
+      <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
-        <div className="text-2xl font-black" style={{ color: theme.selected }}>🔤 Word Search</div>
-        <div className="flex gap-2">
+        <div className="text-xl sm:text-2xl font-black" style={{ color: theme.selected }}>🔤 Word Search</div>
+        <div className="flex gap-1.5">
           <GameInstructions
             title="Word Search"
             emoji="🔤"
             steps={[
-              "Look at the word list at the top — those are the words to find.",
-              "Words are hidden in the grid in any direction (horizontal, vertical, diagonal, even backwards!).",
-              "LINE MODE (default): Tap the first letter, then tap the last letter — the app draws a straight line between them!",
-              "MANUAL MODE: Tap letters one by one to spell out a word.",
-              "If the letters match a word, it turns green! Tap ✕ to clear your selection.",
-              "Toggle between modes with the 📏/✏️ button.",
-              "Find all the words to win the puzzle."
+              "Look at the word list below — those are the words hidden in the grid.",
+              "Words can go in any direction: across, down, diagonal, even backwards!",
+              "Tap the FIRST letter of a word, then tap the LAST letter.",
+              "The app draws a straight line between them — if it matches a word, it turns green!",
+              "Use the 💡 Hint button if you get stuck — it highlights a hidden word.",
+              "Find all the words to win! 🎉",
             ]}
           />
+          <WordSearchHintButton onHint={handleHint} disabled={won} theme={theme} />
           <button onClick={() => setThemePanelOpen(true)}
             className="px-3 py-2 rounded-xl font-bold"
             style={{ background: theme.cell, color: theme.cellText }}
             title="Change theme">
-            <Palette size={20} />
-          </button>
-
-          <button onClick={() => setLineMode(!lineMode)}
-            className="px-3 py-2 rounded-xl font-bold"
-            style={{ background: lineMode ? theme.selected : theme.cell, color: lineMode ? theme.selectedText : theme.cellText }}
-            title={lineMode ? "Line mode" : "Manual mode"}>
-            {lineMode ? "📏" : "✏️"}
-          </button>
-          <button onClick={() => setRevealPanelOpen(!revealPanelOpen)}
-            className="px-3 py-2 rounded-xl font-bold text-sm"
-            style={{ background: theme.cell, color: theme.cellText }}
-            title="Grid reveal pattern">
-            {PATTERN_LIST.find(p => p.key === revealPattern)?.emoji || "🌀"}
+            <Palette size={18} />
           </button>
           <button onClick={clearSelection} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>✕</button>
-          <button onClick={() => startGame(difficulty)} className="px-4 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
+          <button onClick={handleResetClick} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
         </div>
       </div>
 
+      {/* Status bar: found count + timer */}
+      <WordSearchStatusBar
+        foundCount={foundWords.length}
+        totalCount={words.length}
+        gameStartTime={gameStartRef.current}
+        gameOver={won}
+        theme={theme}
+      />
+
       {/* Words to find */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-4 px-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-3 px-2">
         {words.map(w => (
           <SparkleEffect key={w} active={justFoundWord === w} sparkleColor={theme.sparkleColor}>
             <span className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-sm sm:text-lg font-black border-2 inline-block transition-all duration-300 ${
-              justFoundWord === w ? "scale-110" : foundWords.includes(w) ? "line-through" : ""
+              justFoundWord === w ? "scale-110" : foundWords.includes(w) ? "line-through opacity-60" : ""
             }`}
             style={{
               background: justFoundWord === w ? theme.justFound : foundWords.includes(w) ? theme.wordFoundBg : theme.wordBg,
@@ -373,43 +404,33 @@ export default function WordSearch() {
         ))}
       </div>
 
-      {/* Reveal pattern selector */}
-      {revealPanelOpen && (
-        <div className="flex flex-wrap gap-1.5 justify-center mb-3 px-2">
-          {PATTERN_LIST.map(p => (
-            <button key={p.key}
-              onClick={() => { setRevealPattern(p.key); setRevealPanelOpen(false); reveal(p.key); }}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${p.key === revealPattern ? "scale-105" : "opacity-70"}`}
-              style={{
-                background: p.key === revealPattern ? theme.selected : theme.cell,
-                color: p.key === revealPattern ? theme.selectedText : theme.cellText,
-                borderColor: p.key === revealPattern ? theme.selected : theme.wordBorder,
-              }}>
-              {p.emoji} {p.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Grid */}
+      {/* Grid — increased max-w for better touch targets */}
       <div className="flex justify-center px-1">
-        <div ref={gridRef} className="w-full max-w-md" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}>
+        <div ref={gridRef} className="w-full max-w-lg" style={{ display: "grid", gridTemplateColumns: `repeat(${size}, 1fr)`, gap: "2px" }}>
           {gridData.grid.map((row, r) =>
             row.map((letter, c) => {
               const key = cellKey(r, c);
-              const isSelected = selected.find(([sr, sc]) => cellKey(sr, sc) === key);
-              // FIX (perf): O(1) Set lookup replaces O(n) array includes
+              const isSelected = selected.some(([sr, sc]) => cellKey(sr, sc) === key);
               const isFound = foundCellsSet.has(key);
-              const isJustFound = justFoundCells.includes(key);
+              const isJustFound = justFoundCells.has(key);
+              const isHint = hintCells.has(key);
               return (
                 <div key={key}
                   onClick={() => handleCellTap(r, c)}
-                  className={`aspect-square flex items-center justify-center text-sm sm:text-lg font-black rounded cursor-pointer transition-colors ${
+                  className={`aspect-square flex items-center justify-center text-base sm:text-xl font-black rounded-sm cursor-pointer transition-colors ${
                     isJustFound ? "cell-found-glow" : ""
-                  }`}
+                  } ${isHint ? "animate-pulse" : ""}`}
                   style={{
-                    background: isJustFound ? theme.justFound : isFound ? theme.found : isSelected ? theme.selected : theme.cell,
-                    color: isJustFound ? theme.foundText : isFound ? theme.foundText : isSelected ? theme.selectedText : theme.cellText,
+                    background: isJustFound ? theme.justFound
+                      : isFound ? theme.found
+                      : isHint ? (theme.selected + "80")
+                      : isSelected ? theme.selected
+                      : theme.cell,
+                    color: isJustFound ? theme.foundText
+                      : isFound ? theme.foundText
+                      : isSelected ? theme.selectedText
+                      : isHint ? theme.selectedText
+                      : theme.cellText,
                     "--glow-color": theme.justFoundGlow,
                   }}>
                   {letter}
@@ -419,17 +440,30 @@ export default function WordSearch() {
           )}
         </div>
       </div>
+
+      {/* Selected letters preview */}
       {selected.length > 0 && (
         <div className="text-center mt-3">
-          <span className="px-4 py-2 rounded-xl text-lg font-black tracking-widest" style={{ background: theme.selected, color: theme.selectedText }}>
+          <span className="px-4 py-2 rounded-xl text-lg font-black tracking-wider" style={{ background: theme.selected, color: theme.selectedText }}>
             {selected.map(([sr, sc]) => gridData.grid[sr][sc]).join("")}
           </span>
         </div>
       )}
-      <p className="text-center text-sm mt-2" style={{ color: theme.cellText, opacity: 0.6 }}>
-        Mode: {lineMode ? "📏 Line (tap first & last letter)" : "✏️ Manual (tap each letter)"}
+
+      {/* Mode hint */}
+      <p className="text-center text-sm mt-2" style={{ color: theme.cellText, opacity: 0.5 }}>
+        Tap first letter → tap last letter
       </p>
-      <p className="text-center text-lg mt-1" style={{ color: theme.cellText, opacity: 0.7 }}>Found: {foundWords.length} / {words.length}</p>
+
+      {/* Reset Confirmation */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <WordSearchResetDialog
+            onConfirm={() => { setShowResetConfirm(false); startGame(difficulty); }}
+            onCancel={() => setShowResetConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
