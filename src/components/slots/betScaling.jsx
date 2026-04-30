@@ -10,12 +10,12 @@
 // Machine tier order (index = tier)
 const MACHINE_TIER = { classic: 0, ocean: 1, candy: 1, pharaoh: 2, space: 3 };
 
-// How many bet levels a player can access based on level
-// Level 1-2: first 3 tiers, Level 3-4: first 4, Level 5-7: first 5, Level 8+: all 6
+// How many bet levels a player can access based on level (25-level scale)
+// Level 1-4: first 3 tiers, Level 5-9: first 4, Level 10-16: first 5, Level 17+: all 6
 function getAccessibleBetCount(playerLevel) {
-  if (playerLevel >= 8) return 6;
-  if (playerLevel >= 5) return 5;
-  if (playerLevel >= 3) return 4;
+  if (playerLevel >= 17) return 6;
+  if (playerLevel >= 10) return 5;
+  if (playerLevel >= 5) return 4;
   return 3;
 }
 

@@ -2,39 +2,47 @@ import { useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 
 /**
- * XP & Level System
+ * XP & Level System (25 levels, exponential curve)
  *
  * XP awards:
  *   Win  = 50 XP
  *   Loss = 10 XP (participation)
  *
- * Level thresholds (cumulative XP required):
- *   Level 1: 0       — Beginner
- *   Level 2: 100     — Rookie
- *   Level 3: 300     — Player
- *   Level 4: 600     — Skilled
- *   Level 5: 1000    — Expert
- *   Level 6: 1500    — Veteran
- *   Level 7: 2200    — Master
- *   Level 8: 3000    — Champion
- *   Level 9: 4000    — Legend
- *   Level 10: 5500   — Grand Master
+ * Curve: Each level requires progressively more XP.
+ *   Early levels (1-8)   : Quick, rewarding — keeps new players engaged
+ *   Mid levels (9-16)    : Moderate grind — core gameplay loop
+ *   Late levels (17-25)  : Exponential — prestige / dedication territory
  */
 
 const XP_WIN = 50;
 const XP_LOSS = 10;
 
 export const LEVEL_TABLE = [
-  { level: 1,  xp: 0,    title: "Beginner",     emoji: "🌱" },
-  { level: 2,  xp: 100,  title: "Rookie",       emoji: "🌿" },
-  { level: 3,  xp: 300,  title: "Player",       emoji: "⭐" },
-  { level: 4,  xp: 600,  title: "Skilled",      emoji: "🔥" },
-  { level: 5,  xp: 1000, title: "Expert",       emoji: "💎" },
-  { level: 6,  xp: 1500, title: "Veteran",      emoji: "🛡️" },
-  { level: 7,  xp: 2200, title: "Master",       emoji: "👑" },
-  { level: 8,  xp: 3000, title: "Champion",     emoji: "🏆" },
-  { level: 9,  xp: 4000, title: "Legend",        emoji: "🌟" },
-  { level: 10, xp: 5500, title: "Grand Master",  emoji: "💫" },
+  { level: 1,  xp: 0,       title: "Beginner",        emoji: "🌱" },
+  { level: 2,  xp: 100,     title: "Newcomer",        emoji: "🌿" },
+  { level: 3,  xp: 250,     title: "Rookie",          emoji: "🍃" },
+  { level: 4,  xp: 500,     title: "Apprentice",      emoji: "⭐" },
+  { level: 5,  xp: 850,     title: "Player",          emoji: "🎯" },
+  { level: 6,  xp: 1300,    title: "Skilled",         emoji: "🔥" },
+  { level: 7,  xp: 1900,    title: "Competitor",      emoji: "⚡" },
+  { level: 8,  xp: 2700,    title: "Expert",          emoji: "💎" },
+  { level: 9,  xp: 3700,    title: "Veteran",         emoji: "🛡️" },
+  { level: 10, xp: 5000,    title: "Elite",           emoji: "🎖️" },
+  { level: 11, xp: 6600,    title: "Master",          emoji: "👑" },
+  { level: 12, xp: 8500,    title: "Champion",        emoji: "🏆" },
+  { level: 13, xp: 10800,   title: "Hero",            emoji: "🦅" },
+  { level: 14, xp: 13500,   title: "Ace",             emoji: "🃏" },
+  { level: 15, xp: 16800,   title: "Virtuoso",        emoji: "🎵" },
+  { level: 16, xp: 20500,   title: "Legend",          emoji: "🌟" },
+  { level: 17, xp: 25000,   title: "Mythic",          emoji: "🐉" },
+  { level: 18, xp: 30500,   title: "Titan",           emoji: "🗿" },
+  { level: 19, xp: 37000,   title: "Overlord",        emoji: "👁️" },
+  { level: 20, xp: 45000,   title: "Immortal",        emoji: "🔮" },
+  { level: 21, xp: 55000,   title: "Ascendant",       emoji: "✨" },
+  { level: 22, xp: 67000,   title: "Celestial",       emoji: "🌌" },
+  { level: 23, xp: 82000,   title: "Transcendent",    emoji: "💠" },
+  { level: 24, xp: 100000,  title: "Eternal",         emoji: "♾️" },
+  { level: 25, xp: 125000,  title: "Grand Master",    emoji: "💫" },
 ];
 
 export function getLevelInfo(totalXP) {
