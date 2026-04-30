@@ -378,8 +378,15 @@ export default function SlotMachine() {
     if (spinningRef.current || !machine) return;
     const currentBet = betRef.current;
 
+    // Lock synchronously so no second call can sneak in
+    spinningRef.current = true;
+
     setBalance(prev => {
-      if (prev < currentBet) return prev; // insufficient — don't trigger side effects
+      if (prev < currentBet) {
+        // Insufficient balance — unlock and abort
+        spinningRef.current = false;
+        return prev;
+      }
 
       // Side effects are safe here since we only reach this when balance >= bet
       leverPull(); tapVibrate();
