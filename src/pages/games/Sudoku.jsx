@@ -1,260 +1,418 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import useConfetti from "../../hooks/useConfetti";
+import { useGameActivity } from "../../hooks/useGameActivity";
+import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
+import SudokuResetDialog from "../../components/sudoku/SudokuResetDialog";
+import SudokuHintButton from "../../components/sudoku/SudokuHintButton";
+import SudokuStatusBar from "../../components/sudoku/SudokuStatusBar";
+import { getPuzzlesByDifficulty } from "../../components/sudoku/sudokuPuzzles";
 
-// FIX (bug): Puzzles 4, 8, 9 and 10 had invalid solutions (duplicate numbers
-// in rows, columns, or boxes). All four have been corrected/replaced using a
-// backtracking solver and independently validated. Puzzle 9 (original) had no
-// valid solution at all and has been replaced with a verified puzzle.
-const PUZZLES = [
-  {
-    puzzle: [
-      [5,3,0,0,7,0,0,0,0],[6,0,0,1,9,5,0,0,0],[0,9,8,0,0,0,0,6,0],
-      [8,0,0,0,6,0,0,0,3],[4,0,0,8,0,3,0,0,1],[7,0,0,0,2,0,0,0,6],
-      [0,6,0,0,0,0,2,8,0],[0,0,0,4,1,9,0,0,5],[0,0,0,0,8,0,0,7,9],
-    ],
-    solution: [
-      [5,3,4,6,7,8,9,1,2],[6,7,2,1,9,5,3,4,8],[1,9,8,3,4,2,5,6,7],
-      [8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],
-      [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9],
-    ],
-  },
-  {
-    puzzle: [
-      [0,0,0,2,6,0,7,0,1],[6,8,0,0,7,0,0,9,0],[1,9,0,0,0,4,5,0,0],
-      [8,2,0,1,0,0,0,4,0],[0,0,4,6,0,2,9,0,0],[0,5,0,0,0,3,0,2,8],
-      [0,0,9,3,0,0,0,7,4],[0,4,0,0,5,0,0,3,6],[7,0,3,0,1,8,0,0,0],
-    ],
-    solution: [
-      [4,3,5,2,6,9,7,8,1],[6,8,2,5,7,1,4,9,3],[1,9,7,8,3,4,5,6,2],
-      [8,2,6,1,9,5,3,4,7],[3,7,4,6,8,2,9,1,5],[9,5,1,7,4,3,6,2,8],
-      [5,1,9,3,2,6,8,7,4],[2,4,8,9,5,7,1,3,6],[7,6,3,4,1,8,2,5,9],
-    ],
-  },
-  {
-    puzzle: [
-      [0,0,0,6,0,0,4,0,0],[7,0,0,0,0,3,6,0,0],[0,0,0,0,9,1,0,8,0],
-      [0,0,0,0,0,0,0,0,0],[0,5,0,1,8,0,0,0,3],[0,0,0,3,0,6,0,4,5],
-      [0,4,0,2,0,0,0,6,0],[9,0,3,0,0,0,0,0,0],[0,2,0,0,0,0,1,0,0],
-    ],
-    solution: [
-      [5,8,1,6,7,2,4,3,9],[7,9,2,8,4,3,6,5,1],[3,6,4,5,9,1,7,8,2],
-      [4,3,8,9,5,7,2,1,6],[2,5,6,1,8,4,9,7,3],[1,7,9,3,2,6,8,4,5],
-      [8,4,5,2,1,9,3,6,7],[9,1,3,7,6,8,5,2,4],[6,2,7,4,3,5,1,9,8],
-    ],
-  },
-  // FIX (bug): puzzle 4 solution was invalid (multiple duplicate rows/cols/boxes).
-  // Corrected using a backtracking solver and validated.
-  {
-    puzzle: [
-      [2,0,0,3,0,0,0,0,0],[8,0,4,0,6,2,0,0,3],[0,1,3,8,0,0,2,0,0],
-      [0,0,0,0,2,0,3,9,0],[5,0,7,0,0,0,6,2,1],[0,3,2,0,0,6,0,0,0],
-      [0,2,0,0,0,9,1,4,0],[6,0,1,2,5,0,8,0,9],[0,0,0,0,0,1,0,0,2],
-    ],
-    solution: [
-      [2,7,6,3,1,4,9,5,8],[8,5,4,9,6,2,7,1,3],[9,1,3,8,7,5,2,6,4],
-      [4,6,8,1,2,7,3,9,5],[5,9,7,4,3,8,6,2,1],[1,3,2,5,9,6,4,8,7],
-      [3,2,5,7,8,9,1,4,6],[6,4,1,2,5,3,8,7,9],[7,8,9,6,4,1,5,3,2],
-    ],
-  },
-  {
-    puzzle: [
-      [0,0,5,3,0,0,0,0,0],[8,0,0,0,0,0,0,2,0],[0,7,0,0,1,0,5,0,0],
-      [4,0,0,0,0,5,3,0,0],[0,1,0,0,7,0,0,0,6],[0,0,3,2,0,0,0,8,0],
-      [0,6,0,5,0,0,0,0,9],[0,0,4,0,0,0,0,3,0],[0,0,0,0,0,9,7,0,0],
-    ],
-    solution: [
-      [1,4,5,3,2,7,6,9,8],[8,3,9,6,5,4,1,2,7],[6,7,2,9,1,8,5,4,3],
-      [4,9,6,1,8,5,3,7,2],[2,1,8,4,7,3,9,5,6],[7,5,3,2,9,6,4,8,1],
-      [3,6,7,5,4,2,8,1,9],[9,8,4,7,6,1,2,3,5],[5,2,1,8,3,9,7,6,4],
-    ],
-  },
-  {
-    puzzle: [
-      [0,2,0,6,0,8,0,0,0],[5,8,0,0,0,9,7,0,0],[0,0,0,0,4,0,0,0,0],
-      [3,7,0,0,0,0,5,0,0],[6,0,0,0,0,0,0,0,4],[0,0,8,0,0,0,0,1,3],
-      [0,0,0,0,2,0,0,0,0],[0,0,9,8,0,0,0,3,6],[0,0,0,3,0,6,0,9,0],
-    ],
-    solution: [
-      [1,2,3,6,7,8,9,4,5],[5,8,4,2,3,9,7,6,1],[9,6,7,1,4,5,3,2,8],
-      [3,7,2,4,6,1,5,8,9],[6,9,1,5,8,3,2,7,4],[4,5,8,7,9,2,6,1,3],
-      [8,3,6,9,2,4,1,5,7],[2,1,9,8,5,7,4,3,6],[7,4,5,3,1,6,8,9,2],
-    ],
-  },
-  {
-    puzzle: [
-      [0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,8,5],[0,0,1,0,2,0,0,0,0],
-      [0,0,0,5,0,7,0,0,0],[0,0,4,0,0,0,1,0,0],[0,9,0,0,0,0,0,0,0],
-      [5,0,0,0,0,0,0,7,3],[0,0,2,0,1,0,0,0,0],[0,0,0,0,4,0,0,0,9],
-    ],
-    solution: [
-      [9,8,7,6,5,4,3,2,1],[2,4,6,1,7,3,9,8,5],[3,5,1,9,2,8,7,4,6],
-      [1,2,8,5,3,7,6,9,4],[6,3,4,8,9,2,1,5,7],[7,9,5,4,6,1,8,3,2],
-      [5,1,9,2,8,6,4,7,3],[4,7,2,3,1,9,5,6,8],[8,6,3,7,4,5,2,1,9],
-    ],
-  },
-  // FIX (bug): puzzle 8 solution was invalid (cell[5][8] contradicted the given,
-  // plus duplicate values in multiple rows/cols/boxes).
-  // Corrected using a backtracking solver and validated.
-  {
-    puzzle: [
-      [0,0,0,0,0,6,0,0,0],[0,5,9,0,0,0,0,0,8],[2,0,0,0,0,8,0,0,0],
-      [0,4,5,0,0,0,0,0,0],[0,0,3,0,0,0,0,0,0],[0,0,6,0,0,3,0,5,4],
-      [0,0,0,3,2,5,0,0,6],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
-    ],
-    solution: [
-      [1,3,8,2,4,6,5,7,9],[6,5,9,1,3,7,2,4,8],[2,7,4,5,9,8,1,6,3],
-      [7,4,5,6,8,2,3,9,1],[8,1,3,4,5,9,6,2,7],[9,2,6,7,1,3,8,5,4],
-      [4,8,7,3,2,5,9,1,6],[3,6,2,9,7,1,4,8,5],[5,9,1,8,6,4,7,3,2],
-    ],
-  },
-  // FIX (bug): puzzle 9 (original) had no valid solution whatsoever — the given
-  // clues were contradictory. Replaced with a verified puzzle (same difficulty).
-  {
-    puzzle: [
-      [0,0,0,2,6,0,7,0,1],[6,8,0,0,7,0,0,9,0],[1,9,0,0,0,4,5,0,0],
-      [8,2,0,1,0,0,0,4,0],[0,0,4,6,0,2,9,0,0],[0,5,0,0,0,3,0,2,8],
-      [0,0,9,3,0,0,0,7,4],[0,4,0,0,5,0,0,3,6],[7,0,3,0,1,8,0,0,0],
-    ],
-    solution: [
-      [4,3,5,2,6,9,7,8,1],[6,8,2,5,7,1,4,9,3],[1,9,7,8,3,4,5,6,2],
-      [8,2,6,1,9,5,3,4,7],[3,7,4,6,8,2,9,1,5],[9,5,1,7,4,3,6,2,8],
-      [5,1,9,3,2,6,8,7,4],[2,4,8,9,5,7,1,3,6],[7,6,3,4,1,8,2,5,9],
-    ],
-  },
-  // FIX (bug): puzzle 10 solution was invalid (cell values contradicted given clues,
-  // duplicate values in multiple rows/cols/boxes).
-  // Corrected using a backtracking solver and validated.
-  {
-    puzzle: [
-      [0,0,0,0,0,0,9,0,7],[0,0,0,4,2,0,1,8,0],[0,0,0,7,0,5,0,2,6],
-      [1,0,0,9,0,4,0,0,0],[0,5,0,0,0,0,0,4,0],[0,0,0,5,0,7,0,0,9],
-      [9,2,0,1,0,8,0,0,0],[0,3,4,0,5,9,0,0,0],[5,0,7,0,0,0,0,0,0],
-    ],
-    solution: [
-      [4,6,2,8,3,1,9,5,7],[7,9,5,4,2,6,1,8,3],[3,8,1,7,9,5,4,2,6],
-      [1,7,3,9,8,4,2,6,5],[6,5,9,3,1,2,7,4,8],[2,4,8,5,6,7,3,1,9],
-      [9,2,6,1,7,8,5,3,4],[8,3,4,2,5,9,6,7,1],[5,1,7,6,4,3,8,9,2],
-    ],
-  },
-];
+function getBox(r, c) { return Math.floor(r / 3) * 3 + Math.floor(c / 3); }
 
 export default function Sudoku() {
   useGameTimer();
+  const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { uiClickSound, matchSound, winSound } = useGameAudio();
-  const { fireworks, emojiRain } = useConfetti();
+  const { fireworks, emojiRain, spark } = useConfetti();
+  const { reportWin } = useGameActivity();
 
-  // FIX (bug): use a separate index state so "New Puzzle" can pick a different
-  // puzzle instead of always resetting to the same one. The original code used
-  // useState(Math.floor(...)) which locked the index for the component's lifetime.
-  const [puzzleIdx, setPuzzleIdx] = useState(() => Math.floor(Math.random() * PUZZLES.length));
-  const puzzle = PUZZLES[puzzleIdx];
-  const [grid, setGrid] = useState(() => puzzle.puzzle.map(r => [...r]));
+  const [difficulty, setDifficulty] = useState(null);
+  const [started, setStarted] = useState(false);
+  const [puzzle, setPuzzle] = useState(null);
+  const [grid, setGrid] = useState([]);
   const [selected, setSelected] = useState(null);
-  // FIX (perf): store errors as a plain array instead of a Set. React can't
-  // compare Set instances by value, so a Set in state prevents bail-out
-  // optimizations. An array of "r,c" strings is serializable and diff-able.
   const [errorList, setErrorList] = useState([]);
   const [won, setWon] = useState(false);
+  const [moves, setMoves] = useState(0);
+  const [totalErrors, setTotalErrors] = useState(0);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [winTime, setWinTime] = useState(null);
 
-  // FIX (perf): derive the error Set from the array for O(1) lookups in the
-  // render pass without storing a Set in state.
+  // Undo stack
+  const [undoStack, setUndoStack] = useState([]);
+  const MAX_UNDO = 10;
+
+  // Timer
+  const gameStartRef = useRef(null);
+  const statsRecordedRef = useRef(false);
+
+  // Hint animation
+  const [hintCell, setHintCell] = useState(null);
+  const hintTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  }, []);
+
   const errorSet = useMemo(() => new Set(errorList), [errorList]);
 
-  function isFixed(r, c) { return puzzle.puzzle[r][c] !== 0; }
+  function isFixed(r, c) { return puzzle?.puzzle[r][c] !== 0; }
+
+  // Count how many of each number are correctly placed
+  const numberCounts = useMemo(() => {
+    if (!puzzle) return {};
+    const counts = {};
+    for (let n = 1; n <= 9; n++) counts[n] = 0;
+    grid.forEach((row, r) => row.forEach((val, c) => {
+      if (val !== 0 && val === puzzle.solution[r][c]) counts[val]++;
+    }));
+    return counts;
+  }, [grid, puzzle]);
+
+  // Highlight helpers for selected cell
+  const selectedRow = selected ? selected[0] : -1;
+  const selectedCol = selected ? selected[1] : -1;
+  const selectedBox = selected ? getBox(selected[0], selected[1]) : -1;
+  const selectedVal = selected && grid[selected[0]]?.[selected[1]] !== 0 ? grid[selected[0]][selected[1]] : null;
+
+  function startGame(diff) {
+    const puzzles = getPuzzlesByDifficulty(diff);
+    const idx = Math.floor(Math.random() * puzzles.length);
+    const p = puzzles[idx];
+    setDifficulty(diff);
+    setPuzzle(p);
+    setGrid(p.puzzle.map(r => [...r]));
+    setSelected(null);
+    setErrorList([]);
+    setWon(false);
+    setMoves(0);
+    setTotalErrors(0);
+    setUndoStack([]);
+    setHintCell(null);
+    setWinTime(null);
+    setShowResetConfirm(false);
+    statsRecordedRef.current = false;
+    gameStartRef.current = Date.now();
+    setStarted(true);
+  }
+
+  function handleResetClick() {
+    if (moves > 0 && !won) {
+      setShowResetConfirm(true);
+    } else {
+      startGame(difficulty);
+    }
+  }
 
   function handleSelect(r, c) {
-    if (!isFixed(r, c)) { tapVibrate(); uiClickSound(); setSelected([r, c]); }
+    if (!isFixed(r, c)) {
+      tapVibrate();
+      uiClickSound();
+      setSelected([r, c]);
+    } else {
+      // Allow selecting fixed cells for highlighting
+      tapVibrate();
+      setSelected([r, c]);
+    }
+  }
+
+  function pushUndo(currentGrid, currentMoves) {
+    setUndoStack(prev => {
+      const next = [...prev, { grid: currentGrid.map(r => [...r]), moves: currentMoves }];
+      if (next.length > MAX_UNDO) next.shift();
+      return next;
+    });
+  }
+
+  function handleUndo() {
+    if (undoStack.length === 0) return;
+    tapVibrate();
+    uiClickSound();
+    const prev = undoStack[undoStack.length - 1];
+    setGrid(prev.grid);
+    setMoves(prev.moves);
+    setSelected(null);
+    setHintCell(null);
+    // Recalculate errors
+    const errs = [];
+    prev.grid.forEach((row, ri) => row.forEach((val, ci) => {
+      if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.push(`${ri},${ci}`);
+    }));
+    setErrorList(errs);
+    setUndoStack(stack => stack.slice(0, -1));
   }
 
   function handleNumber(n) {
     if (!selected) return;
     const [r, c] = selected;
     if (isFixed(r, c)) return;
+
+    pushUndo(grid, moves);
+
     const newGrid = grid.map(row => [...row]);
     newGrid[r][c] = n;
     setGrid(newGrid);
-    // FIX (perf): build error list as an array, not a Set
+    setMoves(m => m + 1);
+
     const errs = [];
     newGrid.forEach((row, ri) => row.forEach((val, ci) => {
       if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.push(`${ri},${ci}`);
     }));
     setErrorList(errs);
+
+    if (n !== 0 && puzzle.solution[r][c] !== n) {
+      setTotalErrors(e => e + 1);
+      tapVibrate();
+    }
+
     const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
-    if (complete) { winVibrate(); winSound(); fireworks(); emojiRain(["🔢", "🎉", "⭐"]); setWon(true); }
-    else if (n !== 0 && puzzle.solution[r][c] === n) { successVibrate(); matchSound(); }
-    else if (n !== 0) { tapVibrate(); uiClickSound(); }
+    if (complete) {
+      winVibrate();
+      winSound();
+      fireworks();
+      emojiRain(["🔢", "🎉", "⭐"]);
+      const elapsed = gameStartRef.current ? Math.round((Date.now() - gameStartRef.current) / 1000) : 0;
+      setWinTime(elapsed);
+      setWon(true);
+      recordStats(elapsed);
+    } else if (n !== 0 && puzzle.solution[r][c] === n) {
+      successVibrate();
+      matchSound();
+      spark();
+    }
   }
 
-  // FIX (bug): reset now picks a new random puzzle instead of replaying the same one.
-  // The "New Puzzle" label on the win screen now accurately reflects what happens.
-  function reset() {
-    uiClickSound(); tapVibrate();
-    const nextIdx = Math.floor(Math.random() * PUZZLES.length);
-    const nextPuzzle = PUZZLES[nextIdx];
-    setPuzzleIdx(nextIdx);
-    setGrid(nextPuzzle.puzzle.map(r => [...r]));
-    setSelected(null);
-    setErrorList([]);
-    setWon(false);
+  function handleHint() {
+    if (!puzzle) return;
+    // If a cell is selected and it's empty or wrong, fill it
+    if (selected) {
+      const [r, c] = selected;
+      if (!isFixed(r, c) && grid[r][c] !== puzzle.solution[r][c]) {
+        tapVibrate();
+        pushUndo(grid, moves);
+        const newGrid = grid.map(row => [...row]);
+        newGrid[r][c] = puzzle.solution[r][c];
+        setGrid(newGrid);
+        setMoves(m => m + 1);
+        spark();
+        setHintCell(`${r},${c}`);
+        if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = setTimeout(() => setHintCell(null), 1500);
+
+        // Recalc errors
+        const errs = [];
+        newGrid.forEach((row, ri) => row.forEach((val, ci) => {
+          if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.push(`${ri},${ci}`);
+        }));
+        setErrorList(errs);
+
+        const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
+        if (complete) {
+          winVibrate(); winSound(); fireworks(); emojiRain(["🔢", "🎉", "⭐"]);
+          const elapsed = gameStartRef.current ? Math.round((Date.now() - gameStartRef.current) / 1000) : 0;
+          setWinTime(elapsed);
+          setWon(true);
+          recordStats(elapsed);
+        }
+        return;
+      }
+    }
+
+    // Otherwise find any empty cell and fill it
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (grid[r][c] !== puzzle.solution[r][c]) {
+          tapVibrate();
+          pushUndo(grid, moves);
+          const newGrid = grid.map(row => [...row]);
+          newGrid[r][c] = puzzle.solution[r][c];
+          setGrid(newGrid);
+          setMoves(m => m + 1);
+          setSelected([r, c]);
+          spark();
+          setHintCell(`${r},${c}`);
+          if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+          hintTimerRef.current = setTimeout(() => setHintCell(null), 1500);
+
+          const errs = [];
+          newGrid.forEach((row, ri) => row.forEach((val, ci) => {
+            if (val !== 0 && val !== puzzle.solution[ri][ci]) errs.push(`${ri},${ci}`);
+          }));
+          setErrorList(errs);
+
+          const complete = newGrid.every((row, ri) => row.every((val, ci) => val === puzzle.solution[ri][ci]));
+          if (complete) {
+            winVibrate(); winSound(); fireworks(); emojiRain(["🔢", "🎉", "⭐"]);
+            const elapsed = gameStartRef.current ? Math.round((Date.now() - gameStartRef.current) / 1000) : 0;
+            setWinTime(elapsed);
+            setWon(true);
+            recordStats(elapsed);
+          }
+          return;
+        }
+      }
+    }
   }
 
+  async function recordStats(elapsed) {
+    if (!user?.email || statsRecordedRef.current) return;
+    statsRecordedRef.current = true;
+    reportWin("Sudoku");
+    await base44.entities.GameScore.create({
+      user_email: user.email,
+      game_name: "Sudoku",
+      score: moves,
+      duration_seconds: elapsed,
+      difficulty: difficulty,
+      completed: true,
+    });
+  }
+
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  // ── DIFFICULTY SELECT ──
+  if (!started) return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
+      <div className="text-8xl mb-4">🔢</div>
+      <h1 className="text-4xl font-black text-primary mb-2 text-center">Sudoku</h1>
+      <p className="text-xl text-muted-foreground text-center mb-8">Fill every row, column, and box with 1–9!</p>
+
+      <p className="text-lg font-bold text-muted-foreground mb-4">Choose Difficulty:</p>
+      <div className="flex flex-col gap-4 w-full max-w-xs">
+        {[
+          { key: "easy", label: "Easy", emoji: "😊", desc: "Lots of clues — great for learning" },
+          { key: "medium", label: "Medium", emoji: "🧩", desc: "A fair challenge" },
+          { key: "hard", label: "Hard", emoji: "🧠", desc: "Fewer clues — for experts" },
+        ].map(d => (
+          <button
+            key={d.key}
+            onClick={() => { tapVibrate(); uiClickSound(); startGame(d.key); }}
+            className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left shadow-xl active:scale-95 transition-transform hover:border-primary"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{d.emoji}</span>
+              <div>
+                <p className="text-xl font-black text-foreground">{d.label}</p>
+                <p className="text-sm text-muted-foreground">{d.desc}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="mt-6">
+        <GameBackButton />
+      </div>
+    </div>
+  );
+
+  // ── WIN SCREEN ──
   if (won) return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
       <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-4">Puzzle Solved!</h1>
-      <button onClick={reset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
+      <h1 className="text-4xl font-black text-primary mb-2">Puzzle Solved!</h1>
+      {winTime != null && (
+        <p className="text-2xl font-bold text-muted-foreground mb-1">
+          ⏱️ {formatTime(winTime)}
+        </p>
+      )}
+      <p className="text-lg text-muted-foreground mb-1">
+        {moves} moves · {totalErrors} error{totalErrors !== 1 ? "s" : ""}
+      </p>
+      <p className="text-base text-muted-foreground mb-6">
+        Difficulty: {{ easy: "😊 Easy", medium: "🧩 Medium", hard: "🧠 Hard" }[difficulty]}
+      </p>
+      <button onClick={() => startGame(difficulty)} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-3">
         🔄 New Puzzle
+      </button>
+      <button onClick={() => { setStarted(false); setDifficulty(null); }} className="bg-secondary text-foreground text-lg font-bold px-6 py-3 rounded-xl mb-4">
+        Change Difficulty
       </button>
       <GameBackButton />
     </div>
   );
 
+  // ── GAME BOARD ──
   return (
     <div className="min-h-screen px-2 py-4 pb-24">
-      <div className="flex items-center justify-between px-2 mb-4">
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
-        <div className="text-2xl font-black text-primary">🔢 Sudoku</div>
-        <div className="flex gap-2">
+        <div className="text-xl sm:text-2xl font-black text-primary">🔢 Sudoku</div>
+        <div className="flex gap-1.5">
           <GameInstructions
             title="Sudoku"
             emoji="🔢"
             steps={[
-              "The goal is to fill every empty cell with a number from 1 to 9.",
-              "Tap an empty cell to select it (it turns gold).",
-              "Then tap a number button at the bottom to place it.",
-              "Each row, column, and 3×3 box must contain all numbers 1–9 with no repeats.",
-              "Wrong numbers turn red — try a different one!",
-              "Tap the ✕ button to clear a cell."
+              "Fill every empty cell with a number from 1 to 9.",
+              "Tap an empty cell to select it — it highlights in gold.",
+              "The row, column, and 3×3 box light up to help you see what's taken.",
+              "Tap a number button below to place it.",
+              "Wrong numbers turn red — tap ✕ to clear a cell.",
+              "Use 💡 Hint to reveal a correct number.",
+              "Use ↩ Undo to take back a move.",
+              "Fill the whole grid correctly to win! 🎉"
             ]}
           />
-          <button onClick={reset} className="bg-secondary text-foreground px-4 py-2 rounded-xl font-bold">🔄</button>
+          <SudokuHintButton onHint={handleHint} disabled={won} />
+          <button
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            className={`px-3 py-2 rounded-xl font-bold text-sm ${
+              undoStack.length > 0 ? "bg-secondary text-foreground" : "bg-muted text-muted-foreground opacity-50"
+            }`}
+          >↩</button>
+          <button onClick={handleResetClick} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
 
-      <p className="text-center text-muted-foreground text-lg mb-4">Tap a cell, then tap a number</p>
+      {/* Status bar */}
+      <SudokuStatusBar
+        moves={moves}
+        errorCount={totalErrors}
+        gameStartTime={gameStartRef.current}
+        gameOver={won}
+        difficulty={difficulty}
+      />
 
       {/* Grid */}
-      <div className="flex justify-center mb-6 px-2">
-        <div className="border-4 border-foreground rounded-xl overflow-hidden w-full max-w-sm">
+      <div className="flex justify-center mb-4 px-1">
+        <div className="border-[3px] border-foreground rounded-xl overflow-hidden w-full max-w-sm">
           {grid.map((row, r) => (
-            <div key={r} className={`flex ${r === 2 || r === 5 ? "border-b-4 border-foreground" : ""}`}>
+            <div key={r} className={`flex ${r === 2 || r === 5 ? "border-b-[3px] border-foreground" : ""}`}>
               {row.map((val, c) => {
                 const fix = isFixed(r, c);
                 const sel = selected && selected[0] === r && selected[1] === c;
-                // FIX (perf): O(1) Set lookup via memoized errorSet
                 const err = errorSet.has(`${r},${c}`);
+                const isHint = hintCell === `${r},${c}`;
+
+                // Row/col/box highlighting
+                const inSelectedRow = r === selectedRow;
+                const inSelectedCol = c === selectedCol;
+                const inSelectedBox = getBox(r, c) === selectedBox;
+                const isHighlighted = !sel && (inSelectedRow || inSelectedCol || inSelectedBox);
+
+                // Same-number highlighting
+                const hasSameVal = !sel && val !== 0 && val === selectedVal;
+
+                // User-entered correct number styling
+                const isUserCorrect = !fix && val !== 0 && !err;
+
                 return (
                   <button key={c} onClick={() => handleSelect(r, c)}
-                    className={`flex-1 aspect-square text-base sm:text-xl font-black flex items-center justify-center border border-border
-                      ${c === 2 || c === 5 ? "border-r-4 border-r-foreground" : ""}
-                      ${fix ? "bg-muted text-foreground" : sel ? "bg-primary text-primary-foreground" : err ? "bg-red-800 text-white" : "bg-card text-foreground hover:bg-secondary"}
+                    className={`flex-1 aspect-square text-lg sm:text-2xl font-black flex items-center justify-center border border-border transition-all
+                      ${c === 2 || c === 5 ? "border-r-[3px] border-r-foreground" : ""}
+                      ${sel ? "bg-primary text-primary-foreground"
+                        : err ? "bg-red-800 text-white"
+                        : isHint ? "bg-green-600 text-white"
+                        : hasSameVal ? "bg-primary/30 text-foreground"
+                        : isHighlighted ? "bg-secondary/60"
+                        : fix ? "bg-muted text-foreground"
+                        : isUserCorrect ? "bg-card text-blue-400"
+                        : "bg-card text-foreground"
+                      }
+                      ${isHint ? "animate-pulse" : ""}
                     `}>
                     {val !== 0 ? val : ""}
                   </button>
@@ -265,19 +423,39 @@ export default function Sudoku() {
         </div>
       </div>
 
-      {/* Number pad */}
-      <div className="grid grid-cols-5 gap-2 max-w-xs mx-auto px-2">
-        {[1,2,3,4,5,6,7,8,9].map(n => (
-          <button key={n} onClick={() => handleNumber(n)}
-            className="aspect-square bg-card border-2 border-border rounded-xl text-2xl sm:text-3xl font-black text-foreground hover:bg-primary hover:text-primary-foreground transition-colors shadow-lg">
-            {n}
-          </button>
-        ))}
+      {/* Number pad — 3×3 + clear row */}
+      <div className="max-w-xs mx-auto px-2">
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          {[1,2,3,4,5,6,7,8,9].map(n => {
+            const isComplete = numberCounts[n] >= 9;
+            return (
+              <button key={n} onClick={() => handleNumber(n)}
+                disabled={isComplete}
+                className={`aspect-square rounded-xl text-2xl sm:text-3xl font-black transition-colors shadow-lg border-2 ${
+                  isComplete
+                    ? "bg-muted border-border text-muted-foreground opacity-40 cursor-not-allowed"
+                    : "bg-card border-border text-foreground hover:bg-primary hover:text-primary-foreground active:scale-95"
+                }`}>
+                {n}
+              </button>
+            );
+          })}
+        </div>
         <button onClick={() => handleNumber(0)}
-          className="aspect-square bg-secondary border-2 border-border rounded-xl text-lg sm:text-xl font-black text-foreground hover:bg-destructive hover:text-white transition-colors shadow-lg">
-          ✕
+          className="w-full py-4 bg-secondary border-2 border-border rounded-xl text-lg font-black text-foreground hover:bg-destructive hover:text-white transition-colors shadow-lg active:scale-95">
+          ✕ Clear Cell
         </button>
       </div>
+
+      {/* Reset Confirmation */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <SudokuResetDialog
+            onConfirm={() => { setShowResetConfirm(false); startGame(difficulty); }}
+            onCancel={() => setShowResetConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
