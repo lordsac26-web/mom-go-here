@@ -70,17 +70,17 @@ export default function SolitaireCard({ card, selected, onClick, layoutId, cardB
           }}
         >
           {/* Top-left corner */}
-          <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
-            <span className="text-[9px] sm:text-xs font-black">{card.val}</span>
-            <span className="text-[8px] sm:text-[10px]">{card.suit}</span>
+          <div className="absolute top-0.5 left-0.5 flex flex-col items-center leading-none">
+            <span className="text-[11px] sm:text-sm font-black">{card.val}</span>
+            <span className="text-[10px] sm:text-xs">{card.suit}</span>
           </div>
           {/* Center */}
-          <span className="text-xs sm:text-base font-black leading-none">{card.val}</span>
-          <span className="text-sm sm:text-lg leading-none">{card.suit}</span>
+          <span className="text-sm sm:text-lg font-black leading-none">{card.val}</span>
+          <span className="text-base sm:text-xl leading-none">{card.suit}</span>
           {/* Bottom-right corner (inverted) */}
-          <div className="absolute bottom-0.5 right-1 flex flex-col items-center leading-none rotate-180">
-            <span className="text-[9px] sm:text-xs font-black">{card.val}</span>
-            <span className="text-[8px] sm:text-[10px]">{card.suit}</span>
+          <div className="absolute bottom-0.5 right-0.5 flex flex-col items-center leading-none rotate-180">
+            <span className="text-[11px] sm:text-sm font-black">{card.val}</span>
+            <span className="text-[10px] sm:text-xs">{card.suit}</span>
           </div>
         </div>
       </motion.div>

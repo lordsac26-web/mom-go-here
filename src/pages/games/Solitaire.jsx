@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
-import { Link } from "react-router-dom";
 import GameBackButton from "../../components/GameBackButton";
 import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
@@ -8,6 +7,9 @@ import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import SolitaireCard from "../../components/solitaire/SolitaireCard";
 import StackedCardDeck from "../../components/solitaire/StackedCardDeck";
+import SolitaireResetDialog from "../../components/solitaire/SolitaireResetDialog";
+import SolitaireHintButton from "../../components/solitaire/SolitaireHintButton";
+import SolitaireStatusBar from "../../components/solitaire/SolitaireStatusBar";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import useConfetti from "../../hooks/useConfetti";
@@ -39,10 +41,6 @@ function canPlaceOnFoundation(card, pile) {
   return card.suit === top.suit && cardValue(card.val) === cardValue(top.val) + 1;
 }
 
-// FIX (perf + bug): replaced JSON.parse/JSON.stringify deep-clone with a
-// lightweight structural clone that only copies what we mutate. This avoids
-// cloning the entire game tree on every state update and eliminates the risk
-// of silently dropping non-serializable values.
 function cloneGame(g) {
   return {
     tableau: g.tableau.map(col => col.map(card => ({ ...card }))),
@@ -67,14 +65,16 @@ function checkWin(g) {
   return g.foundations.every(f => f.length === 13);
 }
 
-function hasAnyMoves(g) {
-  // Can draw from stock?
-  if (g.stock.length > 0) return true;
+// Check if all remaining cards are face-up (auto-complete candidate)
+function canAutoComplete(g) {
+  if (g.stock.length > 0 || g.waste.length > 0) return false;
+  return g.tableau.every(col => col.every(c => c.faceUp));
+}
 
-  // Can recycle waste to stock?
+function hasAnyMoves(g) {
+  if (g.stock.length > 0) return true;
   if (g.waste.length > 0 && g.stock.length === 0) return true;
 
-  // Check waste top card
   const wasteCard = g.waste.length ? g.waste[g.waste.length - 1] : null;
   if (wasteCard) {
     for (const col of g.tableau) {
@@ -86,21 +86,16 @@ function hasAnyMoves(g) {
     }
   }
 
-  // Check tableau face-up cards
   for (let ci = 0; ci < g.tableau.length; ci++) {
     const col = g.tableau[ci];
     for (let cardIdx = 0; cardIdx < col.length; cardIdx++) {
       const card = col[cardIdx];
       if (!card.faceUp) continue;
-
-      // Can move to foundation? (only top card)
       if (cardIdx === col.length - 1) {
         for (const f of g.foundations) {
           if (canPlaceOnFoundation(card, f)) return true;
         }
       }
-
-      // Can move stack to another column?
       for (let ti = 0; ti < g.tableau.length; ti++) {
         if (ti === ci) continue;
         const target = g.tableau[ti].length ? g.tableau[ti][g.tableau[ti].length - 1] : null;
@@ -112,12 +107,61 @@ function hasAnyMoves(g) {
   return false;
 }
 
-// CardView replaced by SolitaireCard component with 3D flip
+// Find one valid move for the hint system
+// Returns { type, from, to, card } or null
+function findHint(g) {
+  // 1. Check if any tableau top card can go to a foundation
+  for (let ci = 0; ci < g.tableau.length; ci++) {
+    const col = g.tableau[ci];
+    if (!col.length) continue;
+    const card = col[col.length - 1];
+    if (!card.faceUp) continue;
+    for (let fi = 0; fi < g.foundations.length; fi++) {
+      if (canPlaceOnFoundation(card, g.foundations[fi])) {
+        return { type: "toFoundation", fromCol: ci, toFoundation: fi, card };
+      }
+    }
+  }
 
-// FIX (perf + bug): extracted the move-card-to-tableau logic into a shared
-// helper so the empty-column handler and the normal column handler stay in sync.
-// Previously the empty-column case duplicated the logic inline, meaning any fix
-// to one path wouldn't apply to the other.
+  // 2. Check if waste top can go to a foundation
+  const wasteCard = g.waste.length ? g.waste[g.waste.length - 1] : null;
+  if (wasteCard) {
+    for (let fi = 0; fi < g.foundations.length; fi++) {
+      if (canPlaceOnFoundation(wasteCard, g.foundations[fi])) {
+        return { type: "wasteToFoundation", toFoundation: fi, card: wasteCard };
+      }
+    }
+  }
+
+  // 3. Check if waste top can go to a tableau column
+  if (wasteCard) {
+    for (let ci = 0; ci < g.tableau.length; ci++) {
+      const target = g.tableau[ci].length ? g.tableau[ci][g.tableau[ci].length - 1] : null;
+      if (canPlaceOnTableau(wasteCard, target)) {
+        return { type: "wasteToTableau", toCol: ci, card: wasteCard };
+      }
+    }
+  }
+
+  // 4. Check tableau-to-tableau moves
+  for (let ci = 0; ci < g.tableau.length; ci++) {
+    const col = g.tableau[ci];
+    for (let cardIdx = 0; cardIdx < col.length; cardIdx++) {
+      const card = col[cardIdx];
+      if (!card.faceUp) continue;
+      for (let ti = 0; ti < g.tableau.length; ti++) {
+        if (ti === ci) continue;
+        const target = g.tableau[ti].length ? g.tableau[ti][g.tableau[ti].length - 1] : null;
+        if (canPlaceOnTableau(card, target)) {
+          return { type: "tableauToTableau", fromCol: ci, fromIdx: cardIdx, toCol: ti, card };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 function applyTableauMove(g, selected, targetColIdx) {
   const clone = cloneGame(g);
   let cards;
@@ -137,10 +181,12 @@ export default function Solitaire() {
   const { user } = useAuth();
   const { tapVibrate, successVibrate, winVibrate } = useHaptics();
   const { uiClickSound, matchSound, winSound } = useGameAudio();
-  const { fireworks, emojiRain } = useConfetti();
+  const { fireworks, emojiRain, spark } = useConfetti();
   const { reportWin, reportLoss } = useGameActivity();
   const gameStartRef = useRef(Date.now());
   const statsRecordedRef = useRef(false);
+  const stuckTimeoutRef = useRef(null);
+
   const [game, setGame] = useState(initGame());
   const [selected, setSelected] = useState(null);
   const [won, setWon] = useState(false);
@@ -148,6 +194,17 @@ export default function Solitaire() {
   const [stuck, setStuck] = useState(false);
   const [cardBackKey, setCardBackKey] = useState("classic_blue");
   const [winTime, setWinTime] = useState(null);
+  const [moves, setMoves] = useState(0);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [autoCompleting, setAutoCompleting] = useState(false);
+
+  // Hint state
+  const [hintHighlight, setHintHighlight] = useState(null);
+  const hintTimerRef = useRef(null);
+
+  // Undo state (last 5 moves)
+  const [undoStack, setUndoStack] = useState([]);
+  const MAX_UNDO = 5;
 
   useEffect(() => {
     if (!user?.email) return;
@@ -155,6 +212,43 @@ export default function Solitaire() {
       if (profiles[0]?.card_back_design) setCardBackKey(profiles[0].card_back_design);
     });
   }, [user]);
+
+  // Save a snapshot for undo before making a move
+  function pushUndo(currentGame, currentMoves) {
+    setUndoStack(prev => {
+      const next = [...prev, { game: cloneGame(currentGame), moves: currentMoves }];
+      if (next.length > MAX_UNDO) next.shift();
+      return next;
+    });
+  }
+
+  function handleUndo() {
+    if (undoStack.length === 0) return;
+    tapVibrate();
+    uiClickSound();
+    const prev = undoStack[undoStack.length - 1];
+    setGame(prev.game);
+    setMoves(prev.moves);
+    setSelected(null);
+    setHintHighlight(null);
+    setStuck(false);
+    setUndoStack(stack => stack.slice(0, -1));
+  }
+
+  // Clear hint on state change
+  useEffect(() => {
+    setHintHighlight(null);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+  }, [game, selected]);
+
+  function handleHint() {
+    const hint = findHint(game);
+    if (!hint) return;
+    tapVibrate();
+    setHintHighlight(hint);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => setHintHighlight(null), 2500);
+  }
 
   // Record stats when game ends
   async function recordStats(didWin) {
@@ -166,13 +260,13 @@ export default function Solitaire() {
     const s = rows[0];
     if (s) {
       const played = (s.games_played || 0) + 1;
-      const won = (s.games_won || 0) + (didWin ? 1 : 0);
+      const gamesWon = (s.games_won || 0) + (didWin ? 1 : 0);
       const best = didWin ? Math.min(s.best_time_seconds || Infinity, elapsed) : (s.best_time_seconds || null);
       const streak = didWin ? (s.current_streak || 0) + 1 : 0;
       const bestStreak = Math.max(s.best_streak || 0, streak);
       await base44.entities.SolitaireStats.update(s.id, {
         games_played: played,
-        games_won: won,
+        games_won: gamesWon,
         best_time_seconds: best,
         current_streak: streak,
         best_streak: bestStreak,
@@ -187,13 +281,151 @@ export default function Solitaire() {
         best_streak: didWin ? 1 : 0,
       });
     }
-    if (didWin) setWinTime(elapsed);
+    // Also record to GameScore for Hall of Fame / XP / achievements
+    if (didWin) {
+      setWinTime(elapsed);
+      await base44.entities.GameScore.create({
+        user_email: user.email,
+        game_name: "Solitaire",
+        score: moves,
+        duration_seconds: elapsed,
+        completed: true,
+      });
+    }
+  }
+
+  // Clear any stuck timeout
+  function clearStuckTimeout() {
+    if (stuckTimeoutRef.current) {
+      clearTimeout(stuckTimeoutRef.current);
+      stuckTimeoutRef.current = null;
+    }
+  }
+
+  function scheduleStuckCheck(g) {
+    clearStuckTimeout();
+    stuckTimeoutRef.current = setTimeout(() => {
+      if (!hasAnyMoves(g)) {
+        setStuck(true);
+        recordStats(false);
+      }
+    }, 300);
+  }
+
+  // Auto-complete: repeatedly move cards to foundations
+  function runAutoComplete(g) {
+    setAutoCompleting(true);
+    let current = cloneGame(g);
+    let step = 0;
+
+    function doStep() {
+      let moved = false;
+      for (let ci = 0; ci < current.tableau.length; ci++) {
+        const col = current.tableau[ci];
+        if (!col.length) continue;
+        const card = col[col.length - 1];
+        for (let fi = 0; fi < current.foundations.length; fi++) {
+          if (canPlaceOnFoundation(card, current.foundations[fi])) {
+            current.tableau[ci].pop();
+            current.foundations[fi].push(card);
+            moved = true;
+            step++;
+            spark();
+            setGame(cloneGame(current));
+            setMoves(m => m + 1);
+            break;
+          }
+        }
+        if (moved) break;
+      }
+
+      if (moved && !checkWin(current)) {
+        setTimeout(doStep, 150);
+      } else {
+        setAutoCompleting(false);
+        if (checkWin(current)) {
+          setWon(true);
+          winVibrate();
+          winSound();
+          fireworks();
+          emojiRain(["♠", "♥", "♦", "♣"]);
+          recordStats(true);
+        }
+      }
+    }
+
+    setTimeout(doStep, 200);
+  }
+
+  function handleWin(g) {
+    setTimeout(() => {
+      setWon(true);
+      winVibrate();
+      winSound();
+      fireworks();
+      emojiRain(["♠", "♥", "♦", "♣"]);
+      recordStats(true);
+    }, 0);
+  }
+
+  // Check for foundation completion spark (per suit)
+  function checkFoundationComplete(g) {
+    for (const f of g.foundations) {
+      if (f.length === 13) spark();
+    }
+  }
+
+  // Auto-send card to foundation on double-tap
+  const lastTapRef = useRef({ time: 0, cardKey: "" });
+
+  function tryAutoFoundation(card, source, colIdx) {
+    if (!card) return false;
+    for (let fi = 0; fi < game.foundations.length; fi++) {
+      if (canPlaceOnFoundation(card, game.foundations[fi])) {
+        successVibrate();
+        matchSound();
+        pushUndo(game, moves);
+        setGame(prev => {
+          const g = cloneGame(prev);
+          if (source === "waste") {
+            g.waste.pop();
+          } else {
+            g.tableau[colIdx].pop();
+            const srcCol = g.tableau[colIdx];
+            if (srcCol.length) srcCol[srcCol.length - 1].faceUp = true;
+          }
+          g.foundations[fi].push(card);
+          checkFoundationComplete(g);
+          if (checkWin(g)) handleWin(g);
+          else if (canAutoComplete(g)) setTimeout(() => runAutoComplete(g), 400);
+          return g;
+        });
+        setMoves(m => m + 1);
+        setSelected(null);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function handleDoubleTap(card, source, colIdx) {
+    const cardKey = `${card.val}-${card.suit}`;
+    const now = Date.now();
+    if (lastTapRef.current.cardKey === cardKey && now - lastTapRef.current.time < 400) {
+      // Double-tap detected
+      lastTapRef.current = { time: 0, cardKey: "" };
+      return tryAutoFoundation(card, source, colIdx);
+    }
+    lastTapRef.current = { time: now, cardKey };
+    return false;
   }
 
   function drawCard() {
     tapVibrate();
     uiClickSound();
+    clearStuckTimeout();
     setDrawKey(k => k + 1);
+    pushUndo(game, moves);
     setGame(prev => {
       const g = cloneGame(prev);
       if (!g.stock.length) {
@@ -204,15 +436,22 @@ export default function Solitaire() {
         card.faceUp = true;
         g.waste.push(card);
       }
-      if (!hasAnyMoves(g)) setTimeout(() => { setStuck(true); recordStats(false); }, 300);
+      scheduleStuckCheck(g);
       return g;
     });
+    setMoves(m => m + 1);
     setSelected(null);
   }
 
   function handleTableauClick(colIdx, cardIdx) {
+    if (autoCompleting) return;
     const card = game.tableau[colIdx][cardIdx];
     if (!card.faceUp) return;
+
+    // Double-tap: auto-send top card to foundation
+    if (cardIdx === game.tableau[colIdx].length - 1) {
+      if (handleDoubleTap(card, "tableau", colIdx)) return;
+    }
 
     if (selected) {
       const col = game.tableau[colIdx];
@@ -224,11 +463,15 @@ export default function Solitaire() {
       if (canPlaceOnTableau(movingCard, targetCard)) {
         successVibrate();
         matchSound();
+        clearStuckTimeout();
+        pushUndo(game, moves);
         setGame(prev => {
           const next = applyTableauMove(prev, selected, colIdx);
-          if (checkWin(next)) setTimeout(() => { setWon(true); winVibrate(); winSound(); fireworks(); emojiRain(["♠", "♥", "♦", "♣"]); recordStats(true); }, 0);
+          if (checkWin(next)) handleWin(next);
+          else if (canAutoComplete(next)) setTimeout(() => runAutoComplete(next), 400);
           return next;
         });
+        setMoves(m => m + 1);
         setSelected(null);
         return;
       }
@@ -241,33 +484,38 @@ export default function Solitaire() {
   }
 
   function handleEmptyColumnClick(colIdx) {
-    if (!selected) return;
+    if (autoCompleting || !selected) return;
     const movingCard = selected.source === "waste"
       ? game.waste[game.waste.length - 1]
       : game.tableau[selected.colIdx]?.[selected.cardIdx];
     if (!movingCard || !canPlaceOnTableau(movingCard, null)) return;
 
     successVibrate();
-    // FIX (bug): use the shared helper instead of duplicating move logic inline.
-    // This also fixes the stale-closure issue: the previous inline handler
-    // captured `selected` from the outer render scope directly inside setGame,
-    // which could bake in a stale value if selected changed between renders.
+    clearStuckTimeout();
+    pushUndo(game, moves);
     setGame(prev => {
       const next = applyTableauMove(prev, selected, colIdx);
-      if (checkWin(next)) setTimeout(() => { setWon(true); fireworks(); recordStats(true); }, 0);
+      if (checkWin(next)) handleWin(next);
       return next;
     });
+    setMoves(m => m + 1);
     setSelected(null);
   }
 
   function handleWasteClick() {
+    if (autoCompleting) return;
     if (!game.waste.length) return;
+    const wasteCard = game.waste[game.waste.length - 1];
+
+    // Double-tap: auto-send to foundation
+    if (handleDoubleTap(wasteCard, "waste", null)) return;
+
     if (selected?.source === "waste") { setSelected(null); return; }
     setSelected({ source: "waste" });
   }
 
   function handleFoundationClick(fIdx) {
-    if (!selected) return;
+    if (autoCompleting || !selected) return;
     const movingCard = selected.source === "waste"
       ? game.waste[game.waste.length - 1]
       : game.tableau[selected.colIdx]?.[game.tableau[selected.colIdx].length - 1];
@@ -277,6 +525,8 @@ export default function Solitaire() {
     if (canPlaceOnFoundation(movingCard, game.foundations[fIdx])) {
       successVibrate();
       matchSound();
+      clearStuckTimeout();
+      pushUndo(game, moves);
       setGame(prev => {
         const g = cloneGame(prev);
         let card;
@@ -288,24 +538,69 @@ export default function Solitaire() {
           if (srcCol.length) srcCol[srcCol.length - 1].faceUp = true;
         }
         g.foundations[fIdx].push(card);
-        if (checkWin(g)) { setTimeout(() => { setWon(true); winVibrate(); winSound(); fireworks(); emojiRain(["♠", "♥", "♦", "♣"]); recordStats(true); }, 0); }
+        checkFoundationComplete(g);
+        if (checkWin(g)) handleWin(g);
+        else if (canAutoComplete(g)) setTimeout(() => runAutoComplete(g), 400);
         return g;
       });
+      setMoves(m => m + 1);
       setSelected(null);
     }
   }
 
-  function resetGame() {
+  function doReset() {
     tapVibrate();
     uiClickSound();
+    clearStuckTimeout();
     setGame(initGame());
     setSelected(null);
     setWon(false);
     setStuck(false);
     setDrawKey(0);
     setWinTime(null);
+    setMoves(0);
+    setUndoStack([]);
+    setHintHighlight(null);
+    setAutoCompleting(false);
+    setShowResetConfirm(false);
     gameStartRef.current = Date.now();
     statsRecordedRef.current = false;
+  }
+
+  function handleResetClick() {
+    if (moves > 0 && !won && !stuck) {
+      setShowResetConfirm(true);
+    } else {
+      doReset();
+    }
+  }
+
+  // Hint highlight helpers
+  function isHintSource(source, colIdx, cardIdx) {
+    if (!hintHighlight) return false;
+    const h = hintHighlight;
+    if (h.type === "wasteToFoundation" || h.type === "wasteToTableau") {
+      return source === "waste";
+    }
+    if (h.type === "toFoundation") {
+      return source === "tableau" && colIdx === h.fromCol && cardIdx !== undefined;
+    }
+    if (h.type === "tableauToTableau") {
+      return source === "tableau" && colIdx === h.fromCol && cardIdx >= h.fromIdx;
+    }
+    return false;
+  }
+
+  function isHintTarget(source, colIdx, fIdx) {
+    if (!hintHighlight) return false;
+    const h = hintHighlight;
+    if (h.type === "toFoundation" || h.type === "wasteToFoundation") {
+      return source === "foundation" && fIdx === h.toFoundation;
+    }
+    if (h.type === "wasteToTableau" || h.type === "tableauToTableau") {
+      return source === "tableau" && colIdx === h.toCol;
+    }
+    return false;
   }
 
   if (won) return (
@@ -313,11 +608,14 @@ export default function Solitaire() {
       <div className="text-8xl mb-4">🎉</div>
       <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
       {winTime != null && (
-        <p className="text-2xl font-bold text-muted-foreground mb-4">
+        <p className="text-2xl font-bold text-muted-foreground mb-2">
           ⏱️ Time: {Math.floor(winTime / 60)}:{(winTime % 60).toString().padStart(2, "0")}
         </p>
       )}
-      <button onClick={resetGame}
+      <p className="text-xl text-muted-foreground mb-6">
+        Completed in {moves} moves
+      </p>
+      <button onClick={doReset}
         className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
         🔄 New Game
       </button>
@@ -330,10 +628,11 @@ export default function Solitaire() {
 
   return (
     <div className="min-h-screen bg-green-900 px-1 py-3 pb-[calc(env(safe-area-inset-bottom)+4rem)] select-none">
-      <div className="flex items-center justify-between px-2 mb-3">
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton className="text-yellow-300" />
-        <div className="text-2xl font-black text-yellow-300">♠ Solitaire</div>
-        <div className="flex gap-2">
+        <div className="text-xl sm:text-2xl font-black text-yellow-300">♠ Solitaire</div>
+        <div className="flex gap-1.5">
           <GameInstructions
             title="Solitaire"
             emoji="♠️"
@@ -341,20 +640,46 @@ export default function Solitaire() {
               "Goal: Move all cards to the four foundation piles (top right), sorted by suit from Ace to King.",
               "Tap the deck (top left) to draw a card to the waste pile.",
               "Tap the waste card to select it, then tap a column or foundation to place it.",
+              "Double-tap a card to auto-send it to the foundation if possible.",
               "In columns, stack cards in descending order and alternating colors (red on black).",
               "Only Kings can be placed on empty column spaces.",
-              "Tap a face-up card in a column to select it and its stack, then tap another column to move.",
+              "Use the ↩ Undo button to take back a move if you make a mistake.",
+              "Use the 💡 Hint button if you're stuck — it highlights a valid move!",
               "Keep going until all cards are on the foundations — you win!"
             ]}
           />
-          <button onClick={resetGame} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold">🔄</button>
+          <SolitaireHintButton onHint={handleHint} disabled={autoCompleting || won || stuck} />
+          {/* Undo button */}
+          <button
+            onClick={handleUndo}
+            disabled={undoStack.length === 0 || autoCompleting}
+            className={`px-3 py-2 rounded-xl font-bold text-sm transition-all ${
+              undoStack.length > 0 && !autoCompleting
+                ? "bg-green-700 text-white"
+                : "bg-green-900/50 text-green-700 opacity-60"
+            }`}
+            aria-label="Undo last move"
+          >
+            ↩
+          </button>
+          <button onClick={handleResetClick} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
         </div>
       </div>
 
+      {/* Status bar */}
+      <SolitaireStatusBar moves={moves} gameStartTime={gameStartRef.current} gameOver={won || stuck} />
+
+      {/* Auto-complete banner */}
+      {autoCompleting && (
+        <div className="text-center text-lg font-black text-yellow-300 mb-2 animate-pulse">
+          ✨ Auto-completing...
+        </div>
+      )}
+
       {/* Top row: stock, waste, foundations */}
       <div className="flex gap-1 sm:gap-2 justify-center mb-3 sm:mb-4 px-1">
-        {/* Stock — Stacked Card Deck */}
-        <div className="w-[12%] max-w-14 relative">
+        {/* Stock */}
+        <div className="w-[13%] max-w-16 relative">
           <StackedCardDeck
             stockCount={game.stock.length}
             onDraw={drawCard}
@@ -363,7 +688,10 @@ export default function Solitaire() {
           />
         </div>
         {/* Waste */}
-        <div className="w-[12%] max-w-14" onClick={handleWasteClick}>
+        <div
+          className={`w-[13%] max-w-16 ${isHintSource("waste") ? "ring-2 ring-cyan-400 rounded-xl animate-pulse" : ""}`}
+          onClick={handleWasteClick}
+        >
           <AnimatePresence mode="popLayout">
             {wasteTop ? (
               <motion.div
@@ -384,12 +712,16 @@ export default function Solitaire() {
         {/* Foundations */}
         {game.foundations.map((f, i) => {
           const top = f.length ? f[f.length - 1] : null;
+          const isTarget = isHintTarget("foundation", null, i);
           return (
             <motion.div
               key={i}
               onClick={() => handleFoundationClick(i)}
               whileTap={{ scale: 0.92 }}
-              className="w-[12%] max-w-14 aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer overflow-hidden"
+              className={`w-[13%] max-w-16 aspect-[5/7] border-2 border-dashed rounded-lg sm:rounded-xl flex items-center justify-center cursor-pointer overflow-hidden
+                ${isTarget ? "border-cyan-400 ring-2 ring-cyan-400 animate-pulse" : "border-green-500"}
+                ${f.length === 13 ? "bg-green-800/40" : ""}
+              `}
             >
               <AnimatePresence mode="popLayout">
                 {top ? (
@@ -413,35 +745,44 @@ export default function Solitaire() {
 
       {/* Tableau */}
       <div className="flex gap-0.5 sm:gap-1 justify-center px-1">
-        {game.tableau.map((col, ci) => (
-          <div key={ci} className="flex flex-col flex-1" style={{ maxWidth: "60px" }}>
-            {col.length === 0 ? (
-              <motion.div
-                onClick={() => handleEmptyColumnClick(ci)}
-                whileTap={{ scale: 0.95 }}
-                className="w-full aspect-[5/7] border-2 border-dashed border-green-500 rounded-lg sm:rounded-xl cursor-pointer"
-              />
-            ) : (
-              col.map((card, ci2) => (
+        {game.tableau.map((col, ci) => {
+          const colIsHintTarget = isHintTarget("tableau", ci, null);
+          return (
+            <div key={ci} className="flex flex-col flex-1" style={{ maxWidth: "68px" }}>
+              {col.length === 0 ? (
                 <motion.div
-                  key={`${ci}-${ci2}-${card.val}-${card.suit}`}
-                  initial={false}
-                  animate={{ y: 0, opacity: 1 }}
-                  style={{ marginTop: ci2 > 0 ? "-65%" : 0, zIndex: ci2 }}
-                  className="relative"
-                >
-                  <SolitaireCard
-                    card={card}
-                    selected={selected?.source === "tableau" && selected.colIdx === ci && selected.cardIdx === ci2}
-                    onClick={() => handleTableauClick(ci, ci2)}
-                    cardBackKey={cardBackKey}
-                  />
-                </motion.div>
-              ))
-            )}
-          </div>
-        ))}
+                  onClick={() => handleEmptyColumnClick(ci)}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-full aspect-[5/7] border-2 border-dashed rounded-lg sm:rounded-xl cursor-pointer ${
+                    colIsHintTarget ? "border-cyan-400 ring-2 ring-cyan-400 animate-pulse" : "border-green-500"
+                  }`}
+                />
+              ) : (
+                col.map((card, ci2) => {
+                  const isSource = isHintSource("tableau", ci, ci2);
+                  return (
+                    <motion.div
+                      key={`${ci}-${ci2}-${card.val}-${card.suit}`}
+                      initial={false}
+                      animate={{ y: 0, opacity: 1 }}
+                      style={{ marginTop: ci2 > 0 ? "-58%" : 0, zIndex: ci2 }}
+                      className={`relative ${isSource ? "ring-2 ring-cyan-400 rounded-lg animate-pulse z-20" : ""}`}
+                    >
+                      <SolitaireCard
+                        card={card}
+                        selected={selected?.source === "tableau" && selected.colIdx === ci && selected.cardIdx === ci2}
+                        onClick={() => handleTableauClick(ci, ci2)}
+                        cardBackKey={cardBackKey}
+                      />
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+          );
+        })}
       </div>
+
       {/* No Moves Alert */}
       <AnimatePresence>
         {stuck && (
@@ -462,7 +803,7 @@ export default function Solitaire() {
             >
               <div className="text-6xl mb-3">😔</div>
               <h2 className="text-2xl font-black text-foreground mb-2">No Moves Left!</h2>
-              <p className="text-muted-foreground text-lg mb-6">There are no more available moves. Start a new game?</p>
+              <p className="text-muted-foreground text-lg mb-6">Don't worry — it happens! Try a new game?</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setStuck(false)}
@@ -471,7 +812,7 @@ export default function Solitaire() {
                   Keep Looking
                 </button>
                 <button
-                  onClick={resetGame}
+                  onClick={doReset}
                   className="flex-1 bg-primary text-primary-foreground text-lg font-black py-3 rounded-2xl"
                 >
                   🔄 New Game
@@ -479,6 +820,13 @@ export default function Solitaire() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reset Confirmation */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <SolitaireResetDialog onConfirm={doReset} onCancel={() => setShowResetConfirm(false)} />
         )}
       </AnimatePresence>
     </div>
