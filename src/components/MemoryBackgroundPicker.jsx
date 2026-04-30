@@ -1,5 +1,5 @@
 const MEMORY_BACKGROUNDS = [
-  { key: "classic", label: "Classic Purple", emoji: "🟣", gradient: "from-purple-700 to-purple-900", border: "border-purple-500" },
+  { key: "classic", label: "Classic Purple", emoji: "🌸", gradient: "from-purple-700 to-purple-900", border: "border-purple-500" },
   { key: "ocean", label: "Ocean Blue", emoji: "🌊", gradient: "from-blue-700 to-cyan-900", border: "border-blue-500" },
   { key: "forest", label: "Forest Green", emoji: "🌲", gradient: "from-green-700 to-emerald-900", border: "border-green-500" },
   { key: "sunset", label: "Sunset Orange", emoji: "🌅", gradient: "from-orange-600 to-red-900", border: "border-orange-500" },
