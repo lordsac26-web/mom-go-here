@@ -182,8 +182,12 @@ export default function MachineSelectScreen({ onSelect }) {
         })}
       </div>
 
-      {/* Bottom hint */}
-      <div className="text-center px-6 py-4">
+      {/* Play Money notice + Bottom hint */}
+      <div className="text-center px-6 py-4 space-y-2">
+        <div className="bg-green-900/30 border border-green-600/40 rounded-2xl px-4 py-3 max-w-md mx-auto">
+          <p className="text-sm text-green-300 font-bold">🎲 All coins are Play Money — no real money involved!</p>
+          <p className="text-xs text-green-400/70 mt-1">Your coin jar gets refilled automatically so you can always keep playing.</p>
+        </div>
         <p className="text-xs text-gray-500">
           <TrendingUp size={12} className="inline mr-1" />
           Keep playing to unlock new machines with bigger prizes!

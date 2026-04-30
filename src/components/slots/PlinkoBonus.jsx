@@ -263,7 +263,9 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete, accentC
     if (phase !== "choose") return;
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
+    // Support both mouse and touch events reliably
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_W;
 
     // Clamp to playable area
     const dropX = Math.max(30, Math.min(CANVAS_W - 30, x));
@@ -304,7 +306,8 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete, accentC
             width={CANVAS_W}
             height={CANVAS_H}
             onClick={handleCanvasTap}
-            className="rounded-2xl border-2 border-yellow-600/50 shadow-lg cursor-pointer"
+            onTouchStart={handleCanvasTap}
+            className="rounded-2xl border-2 border-yellow-600/50 shadow-lg cursor-pointer touch-none"
             style={{ width: "100%", maxWidth: CANVAS_W, aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}
           />
         </div>

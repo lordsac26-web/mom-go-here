@@ -1,9 +1,14 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-export default function WinDisplay({ wins, totalWin, visible }) {
+/**
+ * Win overlay with tiered celebrations and a SKIP button for big wins.
+ * Tapping skip instantly finishes the count-up and dismisses faster.
+ */
+export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
   const containerRef = useRef(null);
   const countRef = useRef(null);
+  const tweenRef = useRef(null);
 
   useEffect(() => {
     if (!visible || totalWin === 0 || !containerRef.current) return;
@@ -19,11 +24,11 @@ export default function WinDisplay({ wins, totalWin, visible }) {
       duration: 0.5, ease: "back.out(2)",
     });
 
-    // Count-up effect for the number
+    // Count-up effect
     const counter = { val: 0 };
-    gsap.to(counter, {
+    tweenRef.current = gsap.to(counter, {
       val: totalWin,
-      duration: 1.2,
+      duration: totalWin >= 25000 ? 2.5 : totalWin >= 5000 ? 1.8 : 1.2,
       ease: "power2.out",
       delay: 0.3,
       onUpdate: () => {
@@ -45,8 +50,23 @@ export default function WinDisplay({ wins, totalWin, visible }) {
       delay: 0.5,
     });
 
-    return () => gsap.killTweensOf([el, counter]);
+    return () => {
+      gsap.killTweensOf([el, counter]);
+      tweenRef.current = null;
+    };
   }, [visible, totalWin]);
+
+  function handleSkip() {
+    // Instantly finish the count-up
+    if (tweenRef.current) {
+      tweenRef.current.progress(1);
+      tweenRef.current = null;
+    }
+    if (countRef.current) {
+      countRef.current.textContent = `+${totalWin.toLocaleString()}`;
+    }
+    onSkip?.();
+  }
 
   if (!visible || totalWin === 0) return null;
 
@@ -54,10 +74,10 @@ export default function WinDisplay({ wins, totalWin, visible }) {
   const isMegaWin = totalWin >= 25000;
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+    <div className="absolute inset-0 z-30 flex items-center justify-center">
       <div
         ref={containerRef}
-        className={`text-center px-8 py-6 rounded-3xl border-4 ${
+        className={`text-center px-8 py-6 rounded-3xl border-4 relative ${
           isMegaWin
             ? "bg-gradient-to-br from-yellow-500 via-red-500 to-purple-600 border-yellow-300"
             : isBigWin
@@ -67,13 +87,13 @@ export default function WinDisplay({ wins, totalWin, visible }) {
         style={{ opacity: 0 }}
       >
         {isMegaWin && (
-          <div className="text-4xl font-black text-white mb-1">🎆 MEGA WIN! 🎆</div>
+          <div className="text-3xl sm:text-4xl font-black text-white mb-1">🎆 MEGA WIN! 🎆</div>
         )}
         {isBigWin && !isMegaWin && (
-          <div className="text-3xl font-black text-white mb-1">🌟 BIG WIN! 🌟</div>
+          <div className="text-2xl sm:text-3xl font-black text-white mb-1">🌟 BIG WIN! 🌟</div>
         )}
         {!isBigWin && (
-          <div className="text-2xl font-black text-white mb-1">✨ WIN! ✨</div>
+          <div className="text-xl sm:text-2xl font-black text-white mb-1">✨ WIN! ✨</div>
         )}
         <div
           ref={countRef}
@@ -85,6 +105,15 @@ export default function WinDisplay({ wins, totalWin, visible }) {
           <div className="text-sm text-white/80 mt-2 font-bold">
             {wins.length} winning lines!
           </div>
+        )}
+        {/* Skip / Fast-forward button */}
+        {(isBigWin || isMegaWin) && (
+          <button
+            onClick={handleSkip}
+            className="mt-3 px-5 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 active:scale-95 transition-all pointer-events-auto"
+          >
+            ⏩ Skip
+          </button>
         )}
       </div>
     </div>

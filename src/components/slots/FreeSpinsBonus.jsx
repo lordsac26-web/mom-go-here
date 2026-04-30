@@ -26,12 +26,22 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
     return strip;
   };
 
+  // Build weighted pool so rare symbols stay rare during free spins
+  function buildWeightedPool() {
+    const pool = [];
+    allSymbols.forEach(sym => {
+      for (let i = 0; i < sym.weight; i++) pool.push(sym);
+    });
+    return pool;
+  }
+  const weightedPool = buildWeightedPool();
+
   function generateGrid() {
     const g = [];
     for (let r = 0; r < 5; r++) {
       const col = [];
       for (let row = 0; row < 3; row++) {
-        col.push(allSymbols[Math.floor(Math.random() * allSymbols.length)]);
+        col.push(weightedPool[Math.floor(Math.random() * weightedPool.length)]);
       }
       g.push(col);
     }

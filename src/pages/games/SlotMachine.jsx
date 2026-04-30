@@ -154,7 +154,8 @@ export default function SlotMachine() {
 
   // Low balance state
   const isLowBalance = balance > 0 && balance < machineBetLevels[0] * 15;
-  const [activePaylines, setActivePaylines] = useState(20);
+  // Paylines locked at 20 for simplicity (audit recommendation)
+  const activePaylines = 20;
   const [grid, setGrid] = useState([]);
   const [spinning, setSpinning] = useState(false);
   const [reelsStopped, setReelsStopped] = useState(0);
@@ -166,8 +167,7 @@ export default function SlotMachine() {
   const [autoSpin, setAutoSpin] = useState(false);
   const [topOffMessage, setTopOffMessage] = useState(false);
   const [reelStrip, setReelStrip] = useState([]);
-  const [previewLines, setPreviewLines] = useState(null);
-  const previewTimerRef = useRef(null);
+  const [showMenu, setShowMenu] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [bonusRound, setBonusRound] = useState(null);
@@ -208,6 +208,10 @@ export default function SlotMachine() {
   const autoSpinRef = useRef(false);
   const betRef = useRef(bet);
   const activePaylinesRef = useRef(activePaylines);
+  const sessionStartRef = useRef(Date.now());
+  const sessionSpinsRef = useRef(0);
+  const sessionWinsRef = useRef(0);
+  const sessionEarnedRef = useRef(0);
   useEffect(() => { betRef.current = bet; }, [bet]);
   useEffect(() => { activePaylinesRef.current = activePaylines; }, [activePaylines]);
 
@@ -310,6 +314,8 @@ export default function SlotMachine() {
             const hasScatter = result.wins.some(w => w.type === "scatter");
             recordWin(result.totalWin, lineWinCount, hasScatter);
             reportActivityWin("Lucky Slots");
+            sessionWinsRef.current += 1;
+            sessionEarnedRef.current += result.totalWin;
 
             if (result.totalWin >= 25000) {
               winVibrate(); bigWinSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
@@ -366,10 +372,12 @@ export default function SlotMachine() {
     const currentBet = betRef.current;
 
     setBalance(prev => {
-      if (prev < currentBet) { tapVibrate(); return prev; }
+      if (prev < currentBet) return prev; // insufficient — don't trigger side effects
 
+      // Side effects are safe here since we only reach this when balance >= bet
       leverPull(); tapVibrate();
       setTimeout(() => reelSpinStart(), 150);
+      sessionSpinsRef.current += 1;
 
       setWins([]); setTotalWin(0); setShowWin(false);
       setWinningLines([]); setReelsStopped(0);
@@ -430,8 +438,29 @@ export default function SlotMachine() {
     if (autoSpinRef.current) setTimeout(() => handleSpin(), 800);
   }
 
+  // Record session to GameScore when leaving
+  async function recordSessionScore() {
+    const user = await base44.auth.me();
+    if (!user?.email || sessionSpinsRef.current === 0) return;
+    const elapsed = Math.round((Date.now() - sessionStartRef.current) / 1000);
+    await base44.entities.GameScore.create({
+      user_email: user.email,
+      game_name: "Lucky Slots",
+      score: sessionEarnedRef.current,
+      duration_seconds: elapsed,
+      difficulty: machine?.id || "classic",
+      completed: true,
+    });
+  }
+
   function handleBackToLobby() {
     setAutoSpin(false);
+    recordSessionScore();
+    // Reset session trackers
+    sessionStartRef.current = Date.now();
+    sessionSpinsRef.current = 0;
+    sessionWinsRef.current = 0;
+    sessionEarnedRef.current = 0;
     setSelectedMachineId(null);
   }
 
@@ -441,7 +470,7 @@ export default function SlotMachine() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-b ${machine.bgGradient} flex flex-col pb-24`}>
-      {/* Header */}
+      {/* Header — simplified: Lobby, title, menu */}
       <div className={`bg-gradient-to-r ${machine.frameGradient} px-3 py-3 flex items-center justify-between shadow-lg border-b-2 ${machine.borderColor}/50`}>
         <button onClick={handleBackToLobby} className="text-yellow-400 text-lg font-bold">← Lobby</button>
         <NeonSign text={machine.name.toUpperCase()} spinning={spinning} />
@@ -451,18 +480,46 @@ export default function SlotMachine() {
             emoji={machine.emoji}
             steps={[
               "Set your bet amount using the controls at the bottom.",
-              "Tap SPIN to spin the reels!",
+              "Tap SPIN to spin the reels! All coins are play money — no real money involved.",
               `Match 3+ symbols on a payline to win! ${machine.name} has ${machine.volatility} volatility.`,
               `${machine.scatter.emoji} 3+ Scatters trigger the ${machine.bonusType === "boxes" ? "Mystery Box" : machine.bonusType === "plinko" ? "Plinko Drop" : "Free Spins"} bonus!`,
               machine.hasRandomPlinko ? "Any win has a 10% chance to trigger a bonus Plinko round!" : "Use Auto-Spin for hands-free play.",
-              "Tap a reel to nudge it one position for a free re-spin!",
+              "Tap a reel to nudge it one position for a free peek!",
+              "On big wins, tap ⏩ Skip to fast-forward the celebration.",
             ]}
           />
-          <button onClick={() => setShowAudioSettings(true)} className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold border border-gray-600 text-sm">🎚️</button>
-          <button onClick={() => setShowStats(true)} className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold border border-gray-600 text-sm">🏆</button>
-          <MachinePayTable machine={machine} />
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="bg-gray-800 text-yellow-300 p-2 rounded-xl font-bold border border-gray-600 text-sm"
+          >
+            ⚙️
+          </button>
         </div>
       </div>
+
+      {/* Dropdown menu for Audio / Stats / Pay Table */}
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute right-3 top-14 z-40 bg-gray-800 border-2 border-yellow-600/50 rounded-2xl p-2 shadow-2xl space-y-1 min-w-[160px]"
+          >
+            <button onClick={() => { setShowAudioSettings(true); setShowMenu(false); }}
+              className="w-full text-left px-4 py-3 rounded-xl text-white font-bold text-sm hover:bg-gray-700 active:bg-gray-600 transition-colors">
+              🎚️ Sound Settings
+            </button>
+            <button onClick={() => { setShowStats(true); setShowMenu(false); }}
+              className="w-full text-left px-4 py-3 rounded-xl text-white font-bold text-sm hover:bg-gray-700 active:bg-gray-600 transition-colors">
+              🏆 Stats & Badges
+            </button>
+            <div onClick={() => setShowMenu(false)}>
+              <MachinePayTable machine={machine} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="px-3 pt-2">
         <JackpotTicker amount={jackpotAmount} spinning={spinning} />
@@ -478,7 +535,7 @@ export default function SlotMachine() {
             }`}>
             {emergencyDripShown
               ? `🚨 Emergency Fund! +${EMERGENCY_DRIP_AMOUNT.toLocaleString()} coins rescued!`
-              : `🎁 Lucky Top-Off! +${machineTopOff.toLocaleString()} points added!`}
+              : `🎁 Don't worry — we topped up your coins! +${machineTopOff.toLocaleString()} added so you can keep playing!`}
           </motion.div>
         )}
       </AnimatePresence>
@@ -496,7 +553,7 @@ export default function SlotMachine() {
             <div className={`bg-gradient-to-b from-gray-800 to-gray-900 border-4 ${machine.borderColor} rounded-2xl p-3 shadow-[0_0_30px_rgba(234,179,8,0.15),inset_0_2px_10px_rgba(0,0,0,0.5)] relative overflow-hidden`}>
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none rounded-2xl z-10" />
               <div className="relative" ref={gridRef}>
-                <PaylineOverlay activePaylines={activePaylines} winningLines={winningLines} gridRect={gridRect} previewLines={previewLines} />
+                <PaylineOverlay activePaylines={activePaylines} winningLines={winningLines} gridRect={gridRect} previewLines={null} />
                 <div className="flex justify-center gap-1.5 sm:gap-2">
                   {grid.length > 0 && reelStrip.length > 0 && Array.from({ length: REELS }).map((_, reelIdx) => (
                     <div key={reelIdx} onClick={() => handleNudge(reelIdx)} className="cursor-pointer">
@@ -511,12 +568,14 @@ export default function SlotMachine() {
               <div className="absolute right-0 top-3 bottom-3 w-2 flex flex-col justify-around">
                 {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
               </div>
-              <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} />
+              <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} onSkip={() => {
+                setShowWin(false); setWinningLines([]); setSpinning(false);
+              }} />
             </div>
           </CasinoFrame>
         </div>
         <div className="text-center mt-2">
-          <span className="text-xs text-gray-500">{activePaylines} paylines active • {machine.volatility} volatility</span>
+          <span className="text-xs text-gray-500">20 paylines • {machine.volatility} volatility</span>
         </div>
         {lastWin > 0 && !showWin && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-1">
@@ -540,13 +599,6 @@ export default function SlotMachine() {
       <SlotControls
         balance={balance} bet={bet} onBetChange={setBet}
         betLevels={machineBetLevels}
-        activePaylines={activePaylines}
-        onPaylinesChange={(newVal) => {
-          setActivePaylines(newVal);
-          if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-          setPreviewLines(Array.from({ length: newVal }, (_, i) => i));
-          previewTimerRef.current = setTimeout(() => setPreviewLines(null), 2000);
-        }}
         onSpin={handleSpin} spinning={spinning} autoSpin={autoSpin}
         onAutoSpinToggle={handleAutoSpinToggle} lastWin={lastWin}
       />
