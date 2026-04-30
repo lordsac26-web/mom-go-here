@@ -13,8 +13,22 @@ export default function HistoryFact({ birthday, location }) {
 
   async function loadFacts() {
     const today = new Date();
-    const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
     const todayISO = today.toISOString().split("T")[0];
+    const cacheKey = `history_facts_${todayISO}`;
+
+    // Check localStorage cache first
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.todayFact) setTodayFact(parsed.todayFact);
+        if (parsed.birthdayFact) setBirthdayFact(parsed.birthdayFact);
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
     const locationContext = location?.city ? ` in or near ${location.city} (use the full location including state to find the correct place)` : '';
 
     const [todayRes, bdayRes] = await Promise.allSettled([
@@ -47,8 +61,17 @@ export default function HistoryFact({ birthday, location }) {
       })() : Promise.reject()
     ]);
 
-    if (todayRes.status === "fulfilled") setTodayFact(todayRes.value);
-    if (bdayRes.status === "fulfilled") setBirthdayFact(bdayRes.value);
+    const newTodayFact = todayRes.status === "fulfilled" ? todayRes.value : null;
+    const newBdayFact = bdayRes.status === "fulfilled" ? bdayRes.value : null;
+
+    if (newTodayFact) setTodayFact(newTodayFact);
+    if (newBdayFact) setBirthdayFact(newBdayFact);
+
+    // Cache for the rest of the day
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ todayFact: newTodayFact, birthdayFact: newBdayFact }));
+    } catch {}
+
     setLoading(false);
   }
 
