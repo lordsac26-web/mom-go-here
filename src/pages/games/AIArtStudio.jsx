@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import GameInstructions from "../../components/GameInstructions";
 import PromptImprover from "../../components/artstudio/PromptImprover";
+import ReferenceImageUploader from "../../components/artstudio/ReferenceImageUploader";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -41,6 +42,7 @@ export default function AIArtStudio() {
   const [generating, setGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [publishing, setPublishing] = useState(false);
+  const [referenceUrl, setReferenceUrl] = useState(null);
   const navigate = useNavigate();
   const { reportMissionProgress } = useDailyMissions();
 
@@ -55,7 +57,11 @@ export default function AIArtStudio() {
     setGenerating(true);
     // FIX (bug): use try/finally so generating is always cleared, even on API error
     try {
-      const result = await base44.integrations.Core.GenerateImage({ prompt: fullPrompt });
+      const genParams = { prompt: fullPrompt };
+      if (referenceUrl) {
+        genParams.existing_image_urls = [referenceUrl];
+      }
+      const result = await base44.integrations.Core.GenerateImage(genParams);
       successVibrate();
       matchSound();
       setImageUrl(result.url);
@@ -184,6 +190,12 @@ export default function AIArtStudio() {
               {prompt.length}/{MAX_PROMPT_LENGTH}
             </p>
           </div>
+
+          {/* Reference Image Upload */}
+          <div className="mt-3 pt-3 border-t border-border">
+            <label className="block text-base font-black text-foreground mb-2">📷 Remix from a photo <span className="text-muted-foreground font-bold text-sm">(optional)</span></label>
+            <ReferenceImageUploader referenceUrl={referenceUrl} onUrlChange={setReferenceUrl} />
+          </div>
         </div>
 
         {/* Style Picker */}
@@ -248,7 +260,7 @@ export default function AIArtStudio() {
                 <Globe size={18} /> {publishing ? "..." : "Publish"}
               </button>
               <button
-                onClick={() => { setPrompt(""); setImageUrl(null); }}
+                onClick={() => { setPrompt(""); setImageUrl(null); setReferenceUrl(null); }}
                 className="flex items-center justify-center gap-1.5 bg-primary text-primary-foreground text-base font-bold py-3 rounded-xl"
               >
                 ✨ New
