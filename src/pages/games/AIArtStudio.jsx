@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import GameInstructions from "../../components/GameInstructions";
 import PromptImprover from "../../components/artstudio/PromptImprover";
 import ReferenceImageUploader from "../../components/artstudio/ReferenceImageUploader";
+import VariationsGrid from "../../components/artstudio/VariationsGrid";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -266,6 +267,18 @@ export default function AIArtStudio() {
                 ✨ New
               </button>
             </div>
+
+            {/* Variations */}
+            <VariationsGrid
+              sourceUrl={imageUrl}
+              prompt={sanitizePrompt(prompt.trim()).slice(0, MAX_PROMPT_LENGTH)}
+              style={selectedStyle}
+              onSelectVariation={(url) => {
+                setImageUrl(url);
+                setHistory(prev => [{ prompt: prompt.trim(), style: STYLES.find(s => s.value === selectedStyle)?.label, url }, ...prev].slice(0, 10));
+                toast.success("Variation selected as main image!");
+              }}
+            />
 
             {/* Share buttons */}
             <div className="mt-3">
