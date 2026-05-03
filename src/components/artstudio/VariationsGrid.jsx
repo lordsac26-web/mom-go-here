@@ -15,7 +15,7 @@ export default function VariationsGrid({ sourceUrl, prompt, style, onSelectVaria
   const [generating, setGenerating] = useState(false);
 
   async function handleGenerate() {
-    if (generating) return;
+    if (generating || !prompt.trim()) return;
     setGenerating(true);
     setVariations([]);
 
@@ -41,21 +41,21 @@ export default function VariationsGrid({ sourceUrl, prompt, style, onSelectVaria
     <div className="mt-3 pt-3 border-t border-border">
       <button
         onClick={handleGenerate}
-        disabled={generating}
-        className={`w-full flex items-center justify-center gap-2 text-base font-bold py-3 rounded-xl transition-all ${
-          generating
+        disabled={generating || !prompt.trim()}
+        className={`w-full flex items-center justify-center gap-2 text-lg font-bold py-4 rounded-xl transition-all ${
+          generating || !prompt.trim()
             ? "bg-muted text-muted-foreground"
-            : "bg-violet-600 text-white active:scale-95"
+            : "bg-secondary text-foreground border-2 border-border active:scale-95"
         }`}
       >
         {generating ? (
           <>
-            <Loader2 size={18} className="animate-spin" />
-            Generating 4 variations...
+            <Loader2 size={20} className="animate-spin" />
+            Creating 4 variations...
           </>
         ) : (
           <>
-            <Copy size={18} />
+            <Copy size={20} />
             🎲 Create Variations
           </>
         )}
@@ -63,7 +63,7 @@ export default function VariationsGrid({ sourceUrl, prompt, style, onSelectVaria
 
       {variations.length > 0 && (
         <div className="mt-3">
-          <p className="text-sm font-bold text-muted-foreground mb-2">Tap a variation to use it as your main image:</p>
+          <p className="text-base font-bold text-foreground mb-2">Tap a variation to use it:</p>
           <div className="grid grid-cols-2 gap-2">
             {variations.map((url, i) => (
               <button
@@ -72,8 +72,8 @@ export default function VariationsGrid({ sourceUrl, prompt, style, onSelectVaria
                 className="rounded-xl overflow-hidden border-2 border-border hover:border-primary active:scale-95 transition-all"
               >
                 <img src={url} alt={`Variation ${i + 1}`} className="w-full aspect-square object-cover" />
-                <div className="bg-secondary py-1.5 text-center">
-                  <span className="text-xs font-bold text-foreground">Variation {i + 1}</span>
+                <div className="bg-secondary py-2 text-center">
+                  <span className="text-sm font-bold text-foreground">Variation {i + 1}</span>
                 </div>
               </button>
             ))}

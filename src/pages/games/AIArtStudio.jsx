@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
-import { Link } from "react-router-dom";
 import GameBackButton from "../../components/GameBackButton";
 import { base44 } from "@/api/base44Client";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useDailyMissions } from "../../hooks/useDailyMissions";
 import { Download, Share2, Mail, Facebook, Twitter, Globe } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
 import PromptImprover from "../../components/artstudio/PromptImprover";
 import ReferenceImageUploader from "../../components/artstudio/ReferenceImageUploader";
 import VariationsGrid from "../../components/artstudio/VariationsGrid";
+import PromptStarters from "../../components/artstudio/PromptStarters";
+import GeneratingMessages from "../../components/artstudio/GeneratingMessages";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -25,10 +26,8 @@ const STYLES = [
   { label: "Pop Art", value: "pop art style, bold colors, comic book aesthetic, Andy Warhol inspired" },
 ];
 
-// FIX (security): max prompt length to prevent prompt injection / runaway inputs
 const MAX_PROMPT_LENGTH = 500;
 
-// FIX (security): strip control characters and newlines from user prompt
 function sanitizePrompt(str) {
   return str.replace(/[\x00-\x1F\x7F]/g, " ").trim();
 }
@@ -44,7 +43,7 @@ export default function AIArtStudio() {
   const [history, setHistory] = useState([]);
   const [publishing, setPublishing] = useState(false);
   const [referenceUrl, setReferenceUrl] = useState(null);
-  const navigate = useNavigate();
+  const [confirmNew, setConfirmNew] = useState(false);
   const { reportMissionProgress } = useDailyMissions();
 
   async function handleGenerate() {
@@ -56,7 +55,6 @@ export default function AIArtStudio() {
     const fullPrompt = `${safePrompt}. Style: ${selectedStyle}`;
 
     setGenerating(true);
-    // FIX (bug): use try/finally so generating is always cleared, even on API error
     try {
       const genParams = { prompt: fullPrompt };
       if (referenceUrl) {
@@ -80,12 +78,10 @@ export default function AIArtStudio() {
       console.error("Image generation failed:", err);
       toast.error("Image generation failed. Please try again.");
     } finally {
-      // FIX (bug): always re-enable the button regardless of success/failure
       setGenerating(false);
     }
   }
 
-  // FIX (perf): extracted download handler so it isn't recreated on every render
   async function handleDownload() {
     try {
       const res = await fetch(imageUrl);
@@ -97,9 +93,9 @@ export default function AIArtStudio() {
       a.download = `ai-art-${Date.now()}.png`;
       a.click();
       URL.revokeObjectURL(url);
+      uiClickSound();
       toast.success("Image downloaded!");
     } catch (err) {
-      // FIX (security): handle CORS / network failure gracefully instead of silent crash
       console.error("Download error:", err);
       toast.error("Could not download image. Try right-clicking and saving instead.");
     }
@@ -127,6 +123,7 @@ export default function AIArtStudio() {
         comment_count: 0,
       });
       reportMissionProgress("gallery_post");
+      matchSound();
       toast.success("Published to Gallery! 🎉");
     } catch (err) {
       console.error("Publish failed:", err);
@@ -156,6 +153,17 @@ export default function AIArtStudio() {
     }
   }
 
+  function handleNewImage() {
+    if (!confirmNew) {
+      setConfirmNew(true);
+      return;
+    }
+    setPrompt("");
+    setImageUrl(null);
+    setReferenceUrl(null);
+    setConfirmNew(false);
+  }
+
   return (
     <div className="min-h-screen px-4 py-4 pb-24">
       <div className="flex items-center justify-between mb-4">
@@ -165,10 +173,12 @@ export default function AIArtStudio() {
           title="AI Art Studio"
           emoji="🎨"
           steps={[
-            "Type a description of what you'd like to see in the text box (be as detailed as you like!).",
+            "Type a description of what you'd like to see — or tap an idea below for inspiration!",
             "Choose an art style — Realistic, Watercolor, Cartoon, and more.",
+            "Optionally upload a photo to remix it in your chosen style.",
             "Tap 'Generate Image' and wait a few seconds for AI to create your artwork.",
-            "Download your image, or share it via social media or email!",
+            "Download your image, publish it to the Gallery, or share it!",
+            "Tap 'Create Variations' to get 4 different versions of your artwork.",
             "Tap 'New Image' to start fresh with a new creation."
           ]}
         />
@@ -186,11 +196,17 @@ export default function AIArtStudio() {
             className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary resize-none"
           />
           <div className="flex items-center justify-between mt-1">
-            <PromptImprover currentPrompt={prompt} onSelect={setPrompt} />
-            <p className="text-sm text-muted-foreground">
+            <div className="flex-1" />
+            <p className="text-base text-muted-foreground font-bold">
               {prompt.length}/{MAX_PROMPT_LENGTH}
             </p>
           </div>
+
+          {/* Prompt Starters — only show when prompt is empty */}
+          {!prompt.trim() && <PromptStarters onSelect={setPrompt} />}
+
+          {/* Prompt Improver — only show when prompt has text */}
+          {prompt.trim() && <PromptImprover currentPrompt={prompt} onSelect={setPrompt} />}
 
           {/* Reference Image Upload */}
           <div className="mt-3 pt-3 border-t border-border">
@@ -220,102 +236,119 @@ export default function AIArtStudio() {
         </div>
 
         {/* Generate Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={generating || !prompt.trim()}
-          className={`w-full text-2xl font-black py-5 rounded-2xl shadow-xl mb-5 transition-all ${
-            generating || !prompt.trim()
-              ? "bg-muted text-muted-foreground"
-              : "bg-primary text-primary-foreground active:scale-95"
-          }`}
-        >
-          {generating ? (
-            <span className="flex items-center justify-center gap-3">
-              <span className="w-6 h-6 border-3 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              Creating your art...
-            </span>
-          ) : "🪄 Generate Image"}
-        </button>
+        {!generating && (
+          <button
+            onClick={handleGenerate}
+            disabled={!prompt.trim()}
+            className={`w-full text-2xl font-black py-5 rounded-2xl shadow-xl mb-5 transition-all ${
+              !prompt.trim()
+                ? "bg-muted text-muted-foreground"
+                : "bg-primary text-primary-foreground active:scale-95"
+            }`}
+          >
+            🪄 Generate Image
+          </button>
+        )}
 
-        {/* Generated Image */}
-        {imageUrl && (
-          <div className="bg-card border-2 border-primary rounded-2xl p-4 mb-5 shadow-2xl">
-            <img
-              src={imageUrl}
-              alt={prompt}
-              className="w-full rounded-xl border-2 border-border"
-            />
-            <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
-            <div className="grid grid-cols-3 gap-2 mt-3">
-              <button
-                onClick={handleDownload}
-                className="flex items-center justify-center gap-1.5 bg-secondary text-foreground text-base font-bold py-3 rounded-xl border-2 border-border"
-              >
-                <Download size={18} /> Save
-              </button>
-              <button
-                onClick={handlePublishToGallery}
-                disabled={publishing}
-                className="flex items-center justify-center gap-1.5 bg-green-600 text-white text-base font-bold py-3 rounded-xl active:scale-95 disabled:opacity-50"
-              >
-                <Globe size={18} /> {publishing ? "..." : "Publish"}
-              </button>
-              <button
-                onClick={() => { setPrompt(""); setImageUrl(null); setReferenceUrl(null); }}
-                className="flex items-center justify-center gap-1.5 bg-primary text-primary-foreground text-base font-bold py-3 rounded-xl"
-              >
-                ✨ New
-              </button>
-            </div>
-
-            {/* Variations */}
-            <VariationsGrid
-              sourceUrl={imageUrl}
-              prompt={sanitizePrompt(prompt.trim()).slice(0, MAX_PROMPT_LENGTH)}
-              style={selectedStyle}
-              onSelectVariation={(url) => {
-                setImageUrl(url);
-                setHistory(prev => [{ prompt: prompt.trim(), style: STYLES.find(s => s.value === selectedStyle)?.label, url }, ...prev].slice(0, 10));
-                toast.success("Variation selected as main image!");
-              }}
-            />
-
-            {/* Share buttons */}
-            <div className="mt-3">
-              <p className="text-base font-black text-foreground mb-2">📤 Share your creation</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-2 bg-card border-2 border-border text-foreground font-bold py-3 rounded-xl text-base"
-                >
-                  <Share2 size={18} /> Share
-                </button>
-                <a
-                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(imageUrl)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl text-base"
-                >
-                  <Facebook size={18} />
-                </a>
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this AI art I made! "${prompt}"`)}&url=${encodeURIComponent(imageUrl)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1 bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-base"
-                >
-                  <Twitter size={18} />
-                </a>
-                <a
-                  href={`mailto:?subject=${encodeURIComponent("Check out my AI Art!")}&body=${encodeURIComponent(`I created this with AI Art Studio: "${prompt}"\n\n${imageUrl}`)}`}
-                  className="flex items-center justify-center gap-1 bg-green-600 text-white font-bold py-3 px-4 rounded-xl text-base"
-                >
-                  <Mail size={18} />
-                </a>
-              </div>
-            </div>
+        {/* Generating Progress */}
+        {generating && (
+          <div className="bg-card border-2 border-primary rounded-2xl mb-5 shadow-xl">
+            <GeneratingMessages />
           </div>
         )}
+
+        {/* Generated Image with reveal animation */}
+        <AnimatePresence>
+          {imageUrl && !generating && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="bg-card border-2 border-primary rounded-2xl p-4 mb-5 shadow-2xl"
+            >
+              <img
+                src={imageUrl}
+                alt={prompt}
+                className="w-full rounded-xl border-2 border-border"
+              />
+              <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
+
+              {/* Action buttons */}
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center justify-center gap-1.5 bg-secondary text-foreground text-base font-bold py-3.5 rounded-xl border-2 border-border active:scale-95 transition-all"
+                >
+                  <Download size={18} /> Save
+                </button>
+                <button
+                  onClick={handlePublishToGallery}
+                  disabled={publishing}
+                  className="flex items-center justify-center gap-1.5 bg-green-600 text-white text-base font-bold py-3.5 rounded-xl active:scale-95 disabled:opacity-50 transition-all"
+                >
+                  <Globe size={18} /> {publishing ? "..." : "Publish"}
+                </button>
+                <button
+                  onClick={handleNewImage}
+                  className={`flex items-center justify-center gap-1.5 text-base font-bold py-3.5 rounded-xl transition-all active:scale-95 ${
+                    confirmNew
+                      ? "bg-destructive text-destructive-foreground"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {confirmNew ? "Sure?" : "✨ New"}
+                </button>
+              </div>
+
+              {/* Variations */}
+              <VariationsGrid
+                sourceUrl={imageUrl}
+                prompt={sanitizePrompt(prompt.trim()).slice(0, MAX_PROMPT_LENGTH)}
+                style={selectedStyle}
+                onSelectVariation={(url) => {
+                  setImageUrl(url);
+                  setHistory(prev => [{ prompt: prompt.trim(), style: STYLES.find(s => s.value === selectedStyle)?.label, url }, ...prev].slice(0, 10));
+                  toast.success("Variation selected as main image!");
+                }}
+              />
+
+              {/* Share buttons — labeled for seniors */}
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-base font-black text-foreground mb-2">📤 Share your creation</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center justify-center gap-2 bg-secondary border-2 border-border text-foreground font-bold py-3.5 rounded-xl text-base active:scale-95 transition-all"
+                  >
+                    <Share2 size={18} /> Share Link
+                  </button>
+                  <a
+                    href={`mailto:?subject=${encodeURIComponent("Check out my AI Art!")}&body=${encodeURIComponent(`I created this with AI Art Studio!\n\n${imageUrl}`)}`}
+                    className="flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3.5 rounded-xl text-base active:scale-95 transition-all"
+                  >
+                    <Mail size={18} /> Email
+                  </a>
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(imageUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-base active:scale-95 transition-all"
+                  >
+                    <Facebook size={18} /> Facebook
+                  </a>
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this AI art I made!`)}&url=${encodeURIComponent(imageUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-sky-500 text-white font-bold py-3.5 rounded-xl text-base active:scale-95 transition-all"
+                  >
+                    <Twitter size={18} /> Twitter
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* History */}
         {history.length > 1 && (
@@ -326,8 +359,8 @@ export default function AIArtStudio() {
                 <div key={i} className="rounded-xl overflow-hidden border-2 border-border">
                   <img src={item.url} alt={item.prompt} className="w-full aspect-square object-cover" />
                   <div className="p-2 bg-secondary">
-                    <p className="text-xs text-muted-foreground truncate">{item.prompt}</p>
-                    <p className="text-xs text-primary font-bold">{item.style}</p>
+                    <p className="text-sm text-muted-foreground truncate">{item.prompt}</p>
+                    <p className="text-sm text-primary font-bold">{item.style}</p>
                   </div>
                 </div>
               ))}

@@ -11,7 +11,6 @@ export default function ReferenceImageUploader({ referenceUrl, onUrlChange }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Basic validation
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file.");
       return;
@@ -49,34 +48,38 @@ export default function ReferenceImageUploader({ referenceUrl, onUrlChange }) {
       />
 
       {referenceUrl ? (
-        <div className="relative inline-block">
-          <img
-            src={referenceUrl}
-            alt="Reference"
-            className="w-20 h-20 rounded-xl object-cover border-2 border-primary"
-          />
-          <button
-            onClick={handleRemove}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-lg"
-          >
-            <X size={14} />
-          </button>
-          <p className="text-[10px] text-primary font-bold mt-1 text-center">Reference</p>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img
+              src={referenceUrl}
+              alt="Reference"
+              className="w-20 h-20 rounded-xl object-cover border-2 border-primary"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-primary font-bold">📷 Reference uploaded!</p>
+            <button
+              onClick={handleRemove}
+              className="flex items-center gap-2 text-base font-bold text-destructive bg-destructive/10 px-4 py-2.5 rounded-xl border-2 border-destructive/30 active:scale-95 transition-all"
+            >
+              <X size={16} /> Remove Photo
+            </button>
+          </div>
         </div>
       ) : (
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-2 px-4 py-2.5 bg-secondary border-2 border-dashed border-border rounded-xl text-sm font-bold text-foreground hover:border-primary active:scale-95 transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-3 bg-secondary border-2 border-dashed border-border rounded-xl text-base font-bold text-foreground hover:border-primary active:scale-95 transition-all disabled:opacity-50"
         >
           {uploading ? (
             <>
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
               Uploading...
             </>
           ) : (
             <>
-              <Upload size={16} />
+              <Upload size={18} />
               📷 Upload Reference Image
             </>
           )}
