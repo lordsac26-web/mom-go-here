@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useDailyMissions } from "../hooks/useDailyMissions";
-import { RefreshCw, BookmarkPlus, Check } from "lucide-react";
+import { RefreshCw, BookmarkPlus, Check, WifiOff } from "lucide-react";
 import WarmLoader from "../components/WarmLoader";
 import useStreakTracker from "../hooks/useStreakTracker";
 import StreakBanner from "../components/StreakBanner";
+import offlineCache from "../lib/offlineCache";
 
 const RELIGION_CONFIG = {
   Christianity: { label: "Daily Scripture", emoji: "✝️" },
@@ -38,20 +39,53 @@ export default function Daily() {
   }, [user]);
 
   async function loadProfile() {
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const prof = profiles[0] || null;
-    setProfile(prof);
-    if (prof?.religion && prof.religion !== "None") {
-      await fetchVerse(prof.religion);
-    } else {
-      setLoading(false);
+    try {
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const prof = profiles[0] || null;
+      setProfile(prof);
+      if (prof) {
+        offlineCache.set(offlineCache.STORES.userProfile, user.email, prof);
+      }
+      if (prof?.religion && prof.religion !== "None") {
+        await fetchVerse(prof.religion);
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      // Offline — try cached profile
+      const cached = await offlineCache.get(offlineCache.STORES.userProfile, user.email);
+      setProfile(cached);
+      if (cached?.religion && cached.religion !== "None") {
+        await fetchVerse(cached.religion);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
+  const [isOffline, setIsOffline] = useState(false);
+
   async function fetchVerse(religion) {
     setRefreshing(true);
-    const res = await base44.functions.invoke("getDailyVerse", { religion });
-    setVerse(res.data.verse);
+    setIsOffline(false);
+
+    try {
+      const res = await base44.functions.invoke("getDailyVerse", { religion });
+      setVerse(res.data.verse);
+      // Cache today's verse to IndexedDB
+      const today = new Date().toISOString().split("T")[0];
+      offlineCache.set(offlineCache.STORES.dailyVerse, `verse_${religion}_${today}`, res.data.verse);
+      offlineCache.set(offlineCache.STORES.dailyVerse, `verse_${religion}_latest`, res.data.verse);
+    } catch (err) {
+      // Network failed — try IndexedDB cache
+      const today = new Date().toISOString().split("T")[0];
+      const cached = await offlineCache.get(offlineCache.STORES.dailyVerse, `verse_${religion}_${today}`)
+        || await offlineCache.get(offlineCache.STORES.dailyVerse, `verse_${religion}_latest`);
+      if (cached) {
+        setVerse(cached);
+        setIsOffline(true);
+      }
+    }
     setLoading(false);
     setRefreshing(false);
   }
@@ -99,6 +133,12 @@ export default function Daily() {
       </div>
 
       <StreakBanner streakData={streakData} pageType="daily" newBadges={newBadges} />
+
+      {isOffline && (
+        <div className="flex items-center justify-center gap-2 mb-4 bg-amber-600/20 text-amber-400 rounded-xl px-4 py-2 text-sm font-bold">
+          <WifiOff size={14} /> Showing cached verse
+        </div>
+      )}
 
       {verse ? (
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl space-y-4">

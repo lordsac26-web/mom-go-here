@@ -62,21 +62,27 @@ export default function WeatherWidget({ latitude, longitude, city, refreshKey })
   async function fetchWeather() {
     setError(false);
     // Check cache first
-    const cached = getCachedWeather(latitude, longitude);
+    const cached = await getCachedWeather(latitude, longitude);
     if (cached && !refreshKey) {
       setWeather(cached);
       setLoading(false);
       return;
     }
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&forecast_days=3&timezone=auto`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      setCachedWeather(latitude, longitude, data);
-      setWeather(data);
-    } else {
-      // Use cache as fallback
-      if (cached) { setWeather(cached); }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&forecast_days=3&timezone=auto`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setCachedWeather(latitude, longitude, data);
+        setWeather(data);
+      } else {
+        if (cached) { setWeather(cached); }
+        else { setError(true); }
+      }
+    } catch {
+      // Network error — use stale cache
+      const stale = await getCachedWeather(latitude, longitude);
+      if (stale) { setWeather(stale); }
       else { setError(true); }
     }
     setLoading(false);

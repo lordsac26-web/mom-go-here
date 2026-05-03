@@ -1,23 +1,23 @@
+import offlineCache from "../lib/offlineCache";
+
 const CACHE_KEY = "weather_cache";
 const CACHE_TTL = 60 * 60 * 1000; // 60 minutes
 
-export function getCachedWeather(lat, lon) {
+export async function getCachedWeather(lat, lon) {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
+    const cached = await offlineCache.get(offlineCache.STORES.generic, CACHE_KEY);
+    if (!cached) return null;
     if (cached.lat !== lat || cached.lon !== lon) return null;
-    if (Date.now() - cached.timestamp > CACHE_TTL) return null;
+    // When offline, ignore TTL so we always show something
+    if (navigator.onLine && Date.now() - cached.timestamp > CACHE_TTL) return null;
     return cached.data;
   } catch {
     return null;
   }
 }
 
-export function setCachedWeather(lat, lon, data) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      lat, lon, data, timestamp: Date.now(),
-    }));
-  } catch {}
+export async function setCachedWeather(lat, lon, data) {
+  offlineCache.set(offlineCache.STORES.generic, CACHE_KEY, {
+    lat, lon, data, timestamp: Date.now(),
+  });
 }

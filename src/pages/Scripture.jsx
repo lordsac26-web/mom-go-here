@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { RefreshCw, BookOpen } from "lucide-react";
+import { RefreshCw, BookOpen, WifiOff } from "lucide-react";
 import SubPageHeader from "../components/SubPageHeader";
+import offlineCache from "../lib/offlineCache";
 
 const RELIGION_META = {
   Christianity: { emoji: "✝️", label: "Holy Bible", color: "text-blue-400" },
@@ -29,28 +30,64 @@ export default function Scripture() {
   }, [user]);
 
   async function loadProfile() {
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const prof = profiles[0];
-    if (!prof?.religion || prof.religion === "None") {
-      navigate("/settings");
-      return;
+    try {
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const prof = profiles[0];
+      if (prof) {
+        offlineCache.set(offlineCache.STORES.userProfile, user.email, prof);
+      }
+      if (!prof?.religion || prof.religion === "None") {
+        navigate("/settings");
+        return;
+      }
+      setReligion(prof.religion);
+      fetchScripture(prof.religion);
+    } catch {
+      // Offline — try cached profile
+      const cached = await offlineCache.get(offlineCache.STORES.userProfile, user.email);
+      if (cached?.religion && cached.religion !== "None") {
+        setReligion(cached.religion);
+        fetchScripture(cached.religion);
+      } else {
+        setError("You're offline and no cached profile is available.");
+        setLoading(false);
+      }
     }
-    setReligion(prof.religion);
-    fetchScripture(prof.religion);
   }
+
+  const [isOffline, setIsOffline] = useState(false);
 
   async function fetchScripture(rel, forceRandom = false) {
     setLoading(true);
     setError(null);
-    const response = await base44.functions.invoke("getScripture", {
-      religion: rel,
-      action: "random_chapter",
-      forceRandom,
-    });
-    if (response.data?.error) {
-      setError(response.data.error);
-    } else {
-      setScripture(response.data);
+    setIsOffline(false);
+
+    try {
+      const response = await base44.functions.invoke("getScripture", {
+        religion: rel,
+        action: "random_chapter",
+        forceRandom,
+      });
+      if (response.data?.error) {
+        setError(response.data.error);
+      } else {
+        setScripture(response.data);
+        // Cache to IndexedDB for offline use
+        const cacheKey = `scripture_${rel}_latest`;
+        offlineCache.set(offlineCache.STORES.scripture, cacheKey, response.data);
+        // Also keep a small history of recent chapters
+        const histKey = `scripture_${rel}_${Date.now()}`;
+        offlineCache.set(offlineCache.STORES.scripture, histKey, response.data);
+      }
+    } catch (err) {
+      // Network failed — try IndexedDB cache
+      const cached = await offlineCache.get(offlineCache.STORES.scripture, `scripture_${rel}_latest`);
+      if (cached) {
+        setScripture(cached);
+        setIsOffline(true);
+      } else {
+        setError("You're offline and no cached scripture is available. Connect to the internet and try again.");
+      }
     }
     setLoading(false);
   }
@@ -105,6 +142,11 @@ export default function Scripture() {
         <div className="text-center mb-6">
           <span className="text-5xl block mb-2">{meta.emoji}</span>
           <h1 className={`text-3xl font-black ${meta.color}`}>{meta.label}</h1>
+          {isOffline && (
+            <div className="flex items-center justify-center gap-2 mt-2 bg-amber-600/20 text-amber-400 rounded-xl px-3 py-1.5 text-sm font-bold mx-auto w-fit">
+              <WifiOff size={14} /> Showing cached scripture
+            </div>
+          )}
           {scripture && (
             <>
               <p className="text-xl font-bold text-foreground mt-2">{scripture.source}</p>

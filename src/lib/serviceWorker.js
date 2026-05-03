@@ -4,84 +4,91 @@
  */
 
 const SW_CODE = `
-const CACHE_NAME = 'momgohere-v1';
-const STATIC_CACHE = 'momgohere-static-v1';
-const API_CACHE = 'momgohere-api-v1';
+const CACHE_VERSION = 'v2';
+const STATIC_CACHE = 'momgohere-static-' + CACHE_VERSION;
+const API_CACHE = 'momgohere-api-' + CACHE_VERSION;
+const IMAGE_CACHE = 'momgohere-images-' + CACHE_VERSION;
 
-// Core static assets to precache on install
-const PRECACHE_URLS = [
-  '/',
-];
+const PRECACHE_URLS = ['/'];
 
-// Install: precache core shell
+// Install: precache app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    }).then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate: clean old caches
+// Activate: purge old versioned caches
 self.addEventListener('activate', (event) => {
-  const currentCaches = [STATIC_CACHE, API_CACHE];
+  const keep = [STATIC_CACHE, API_CACHE, IMAGE_CACHE];
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => !currentCaches.includes(name))
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => !keep.includes(n)).map((n) => caches.delete(n)))
+    ).then(() => self.clients.claim())
   );
 });
 
-// Fetch strategy
+// ─── Fetch handler ────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Strategy for scripture API calls: network-first with cache fallback
-  if (url.pathname.includes('/getScripture') || url.pathname.includes('/getDailyVerse')) {
-    event.respondWith(networkFirstWithCache(event.request, API_CACHE));
+  // 1. Backend functions (scripture, verses, leaderboards): network-first
+  if (url.pathname.includes('/getScripture') ||
+      url.pathname.includes('/getDailyVerse') ||
+      url.pathname.includes('/getLeaderboardScores') ||
+      url.pathname.includes('/progressiveJackpot')) {
+    event.respondWith(networkFirst(event.request, API_CACHE));
     return;
   }
 
-  // Strategy for leaderboard/scores: network-first with cache fallback  
-  if (url.pathname.includes('/getLeaderboardScores')) {
-    event.respondWith(networkFirstWithCache(event.request, API_CACHE));
+  // 2. Entity API calls (list, filter): network-first with cache
+  if (url.pathname.includes('/entities/') && event.request.method === 'GET') {
+    event.respondWith(networkFirst(event.request, API_CACHE));
     return;
   }
 
-  // Strategy for static assets (JS, CSS, images, fonts): cache-first
+  // 3. External images (Unsplash, media.base44, OpenStreetMap tiles): cache-first
+  if (isImageAsset(url)) {
+    event.respondWith(cacheFirst(event.request, IMAGE_CACHE));
+    return;
+  }
+
+  // 4. Static assets (JS, CSS, fonts): cache-first
   if (isStaticAsset(url)) {
-    event.respondWith(cacheFirstWithNetwork(event.request, STATIC_CACHE));
+    event.respondWith(cacheFirst(event.request, STATIC_CACHE));
     return;
   }
 
-  // Strategy for navigation requests: network-first with cache fallback
+  // 5. Navigation: network-first, fall back to cached app shell
   if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirstWithCache(event.request, STATIC_CACHE));
+    event.respondWith(networkFirst(event.request, STATIC_CACHE));
     return;
   }
 
-  // Default: network-first
-  event.respondWith(networkFirstWithCache(event.request, STATIC_CACHE));
+  // 6. Everything else: network-first
+  event.respondWith(networkFirst(event.request, STATIC_CACHE));
 });
 
+// ─── Helpers ──────────────────────────────────────────────────
 function isStaticAsset(url) {
-  return /\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)$/.test(url.pathname) ||
-    url.hostname === 'media.base44.com' ||
+  return /\\.(js|css|woff2?|ttf|eot)$/.test(url.pathname) ||
     url.hostname === 'fonts.googleapis.com' ||
     url.hostname === 'fonts.gstatic.com';
 }
 
-async function cacheFirstWithNetwork(request, cacheName) {
+function isImageAsset(url) {
+  return /\\.(png|jpg|jpeg|gif|svg|ico|webp)$/.test(url.pathname) ||
+    url.hostname === 'media.base44.com' ||
+    url.hostname === 'images.unsplash.com' ||
+    url.hostname.includes('tile.openstreetmap.org');
+}
+
+async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
-  
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -89,15 +96,12 @@ async function cacheFirstWithNetwork(request, cacheName) {
       cache.put(request, response.clone());
     }
     return response;
-  } catch (err) {
-    // Return cached root as fallback for navigation
-    const fallback = await caches.match('/');
-    if (fallback) return fallback;
-    return new Response('Offline', { status: 503, statusText: 'Offline' });
+  } catch {
+    return new Response('', { status: 503, statusText: 'Offline' });
   }
 }
 
-async function networkFirstWithCache(request, cacheName) {
+async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -105,17 +109,15 @@ async function networkFirstWithCache(request, cacheName) {
       cache.put(request, response.clone());
     }
     return response;
-  } catch (err) {
+  } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
-    
-    // For navigation, return cached root
     if (request.mode === 'navigate') {
-      const fallback = await caches.match('/');
-      if (fallback) return fallback;
+      const shell = await caches.match('/');
+      if (shell) return shell;
     }
     return new Response(
-      JSON.stringify({ error: 'You are offline. Cached content may be available.' }),
+      JSON.stringify({ error: 'Offline' }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
   }

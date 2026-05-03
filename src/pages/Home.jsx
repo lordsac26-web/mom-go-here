@@ -19,6 +19,7 @@ import LevelProgressBar from "../components/LevelProgressBar";
 import AchievementsWidget from "../components/AchievementsWidget";
 import DailyWheel from "../components/DailyWheel";
 import DailyMissionsWidget from "../components/missions/DailyMissionsWidget";
+import offlineCache from "../lib/offlineCache";
 
 const NAV_CARDS = [
   { path: "/games", label: "Games", emoji: "🎮", desc: "Play fun brain games", gradient: "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800", glare: "#a855f7", iconBg: "bg-purple-400/30" },
@@ -113,11 +114,24 @@ export default function Home() {
 
   const loadData = useCallback(async () => {
     if (!user) return;
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const prof = profiles[0] || null;
+
+    let prof = null;
+    try {
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      prof = profiles[0] || null;
+      if (prof) {
+        offlineCache.set(offlineCache.STORES.userProfile, user.email, prof);
+      }
+    } catch {
+      // Offline — use cached profile
+      prof = await offlineCache.get(offlineCache.STORES.userProfile, user.email);
+    }
 
     if (!prof?.display_name) {
-      navigate("/onboarding");
+      if (navigator.onLine) {
+        navigate("/onboarding");
+      }
+      setLoading(false);
       return;
     }
 
@@ -127,7 +141,9 @@ export default function Home() {
     let idx = prof?.last_quote_index ?? 0;
     if (prof?.last_quote_date !== today) {
       idx = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
-      await base44.entities.UserProfile.update(prof.id, { last_quote_date: today, last_quote_index: idx });
+      try {
+        await base44.entities.UserProfile.update(prof.id, { last_quote_date: today, last_quote_index: idx });
+      } catch {}
     }
     setQuote(MOTIVATIONAL_QUOTES[idx]);
     setLoading(false);

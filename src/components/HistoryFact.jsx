@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import offlineCache from "../lib/offlineCache";
 
 export default function HistoryFact({ birthday, location }) {
   const [todayFact, setTodayFact] = useState(null);
@@ -16,17 +17,14 @@ export default function HistoryFact({ birthday, location }) {
     const todayISO = today.toISOString().split("T")[0];
     const cacheKey = `history_facts_${todayISO}`;
 
-    // Check localStorage cache first
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.todayFact) setTodayFact(parsed.todayFact);
-        if (parsed.birthdayFact) setBirthdayFact(parsed.birthdayFact);
-        setLoading(false);
-        return;
-      }
-    } catch {}
+    // Check IndexedDB cache first
+    const cached = await offlineCache.get(offlineCache.STORES.generic, cacheKey);
+    if (cached) {
+      if (cached.todayFact) setTodayFact(cached.todayFact);
+      if (cached.birthdayFact) setBirthdayFact(cached.birthdayFact);
+      setLoading(false);
+      return;
+    }
 
     const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
     const locationContext = location?.city ? ` in or near ${location.city} (use the full location including state to find the correct place)` : '';
@@ -67,10 +65,11 @@ export default function HistoryFact({ birthday, location }) {
     if (newTodayFact) setTodayFact(newTodayFact);
     if (newBdayFact) setBirthdayFact(newBdayFact);
 
-    // Cache for the rest of the day
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify({ todayFact: newTodayFact, birthdayFact: newBdayFact }));
-    } catch {}
+    // Cache to IndexedDB for the rest of the day
+    offlineCache.set(offlineCache.STORES.generic, cacheKey, {
+      todayFact: newTodayFact,
+      birthdayFact: newBdayFact,
+    });
 
     setLoading(false);
   }
