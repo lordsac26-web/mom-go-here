@@ -1,9 +1,20 @@
 /**
- * Invisible audio element that persists in Layout, reading stream URL
- * and volume from Zustand. The MusicPlayerFull component controls what plays.
+ * Persistent audio stream that survives page navigations.
+ * Uses a module-level Audio singleton so the stream never interrupts,
+ * even if the component remounts during route transitions.
  */
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAudioStore } from "@/stores/audioStore";
+
+// Module-level singleton — survives component mount/unmount cycles
+let _audio = null;
+function getAudio() {
+  if (!_audio) {
+    _audio = new Audio();
+    _audio.preload = "none";
+  }
+  return _audio;
+}
 
 export default function PersistentAudioStream() {
   const musicVolume = useAudioStore(s => s.musicVolume);
@@ -12,24 +23,27 @@ export default function PersistentAudioStream() {
   const currentStreamUrl = useAudioStore(s => s.currentStreamUrl);
   const isPlayerActive = useAudioStore(s => s.isPlayerActive);
 
-  const audioRef = useRef(null);
   const isMuted = muteAll || muteMusic;
 
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
+    const el = getAudio();
 
     el.volume = isMuted ? 0 : musicVolume;
 
     if (isPlayerActive && currentStreamUrl && !isMuted) {
       if (el.src !== currentStreamUrl) {
         el.src = currentStreamUrl;
+        el.load();
       }
-      el.play().catch(() => {});
-    } else {
+      // Only call play if actually paused to avoid redundant play() promises
+      if (el.paused) {
+        el.play().catch(() => {});
+      }
+    } else if (!isPlayerActive || isMuted) {
       el.pause();
     }
   }, [currentStreamUrl, musicVolume, isMuted, isPlayerActive]);
 
-  return <audio ref={audioRef} style={{ display: "none" }} />;
+  // Do NOT pause on unmount — that's the whole point of persistence
+  return null;
 }

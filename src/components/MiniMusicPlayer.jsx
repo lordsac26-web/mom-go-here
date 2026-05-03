@@ -31,9 +31,14 @@ export default function MiniMusicPlayer() {
   const [stationNames, setStationNames] = useState([]);
   const [showPicker, setShowPicker] = useState(false);
   const fetchRef = useRef(null);
+  // Track whether this is the initial mount so we don't flash loading state
+  const initialMountRef = useRef(true);
 
   const isMuted = muteAll || muteMusic;
   const genreConfig = MUSIC_GENRES.find(g => g.key === musicGenre) || MUSIC_GENRES[0];
+
+  // Track the last genre we loaded so we only reset playback on real genre changes
+  const lastGenreRef = useRef(musicGenre);
 
   // Load streams when genre changes
   useEffect(() => {
@@ -42,9 +47,18 @@ export default function MiniMusicPlayer() {
     if (fetchRef.current) fetchRef.current.abort();
     fetchRef.current = new AbortController();
 
-    setLoading(true);
-    setPlayerActive(false);
-    setStreamIndex(0);
+    const genreActuallyChanged = lastGenreRef.current !== musicGenre;
+    lastGenreRef.current = musicGenre;
+
+    // Only show loading and reset playback if the genre truly changed, not on remount
+    if (genreActuallyChanged) {
+      setLoading(true);
+      setPlayerActive(false);
+      setStreamIndex(0);
+    } else if (streams.length === 0) {
+      // First load (no streams yet)
+      setLoading(true);
+    }
 
     const fallbackStreams = [...genreConfig.fallbacks, ...DEFAULT_FALLBACKS];
     const fallbackNames = fallbackStreams.map(() => `${genreConfig.label} Radio`);
@@ -84,8 +98,12 @@ export default function MiniMusicPlayer() {
 
   useEffect(() => {
     if (streams.length > 0) {
-      setCurrentStreamUrl(streams[streamIndex]);
-      setCurrentStationName(stationNames[streamIndex] || `${genreConfig.label} Radio`);
+      const url = streams[streamIndex];
+      const name = stationNames[streamIndex] || `${genreConfig.label} Radio`;
+      // Only update store if values actually changed to avoid re-triggering the audio element
+      const store = useAudioStore.getState();
+      if (store.currentStreamUrl !== url) setCurrentStreamUrl(url);
+      if (store.currentStationName !== name) setCurrentStationName(name);
     }
   }, [streamIndex, streams, stationNames]);
 
