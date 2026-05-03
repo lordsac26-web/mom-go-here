@@ -48,11 +48,6 @@ export default function GalleryPostCard({ post, currentUserEmail, onLikeToggle, 
           <span className="text-xs text-muted-foreground">{timeAgo}</span>
         </div>
 
-        {/* Prompt */}
-        <p className="text-sm text-muted-foreground leading-snug mb-3 line-clamp-2 italic">
-          "{post.prompt}"
-        </p>
-
         {/* Actions */}
         <div className="flex items-center gap-4">
           <button

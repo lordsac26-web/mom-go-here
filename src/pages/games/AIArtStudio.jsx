@@ -112,7 +112,7 @@ export default function AIArtStudio() {
         user_email: user.email,
         artist_name: displayName,
         image_url: imageUrl,
-        prompt: prompt.trim(),
+        prompt: "",
         style: STYLES.find(s => s.value === selectedStyle)?.label || "",
         likes: [],
         like_count: 0,
