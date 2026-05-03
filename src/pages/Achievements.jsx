@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import WarmLoader from "../components/WarmLoader";
 import ACHIEVEMENTS, { CATEGORIES } from "../components/achievementDefinitions";
 import { motion } from "framer-motion";
@@ -48,6 +49,11 @@ export default function Achievements() {
   const [earned, setEarned] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState(null);
+  const { reportMissionProgress } = useDailyMissions();
+
+  useEffect(() => {
+    reportMissionProgress("visit_page", "/achievements");
+  }, []);
 
   useEffect(() => {
     if (!user?.email) return;

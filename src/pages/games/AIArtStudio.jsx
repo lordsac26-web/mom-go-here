@@ -5,6 +5,7 @@ import GameBackButton from "../../components/GameBackButton";
 import { base44 } from "@/api/base44Client";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
+import { useDailyMissions } from "../../hooks/useDailyMissions";
 import { Download, Share2, Mail, Facebook, Twitter, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export default function AIArtStudio() {
   const [history, setHistory] = useState([]);
   const [publishing, setPublishing] = useState(false);
   const navigate = useNavigate();
+  const { reportMissionProgress } = useDailyMissions();
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
@@ -116,6 +118,7 @@ export default function AIArtStudio() {
         comments: [],
         comment_count: 0,
       });
+      reportMissionProgress("gallery_post");
       toast.success("Published to Gallery! 🎉");
     } catch (err) {
       console.error("Publish failed:", err);

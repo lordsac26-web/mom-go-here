@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { base44 } from "@/api/base44Client";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 
 // 7-day reward cycle — repeats after day 7
 const DAILY_REWARDS = [
@@ -32,6 +33,7 @@ export default function DailyLoginBonus({ userEmail }) {
   const overlayRef = useRef(null);
   const cardRefs = useRef([]);
   const claimRef = useRef(null);
+  const { reportMissionProgress } = useDailyMissions();
 
   useEffect(() => {
     if (!userEmail) return;
@@ -110,6 +112,9 @@ export default function DailyLoginBonus({ userEmail }) {
       const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
       localStorage.setItem("slots_balance", (current + reward.credits).toString());
     } catch {}
+
+    // Report to daily missions
+    reportMissionProgress("daily_login");
 
     // Celebrate animation
     if (claimRef.current) {

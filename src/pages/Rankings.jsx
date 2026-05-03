@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import WarmLoader from "../components/WarmLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy } from "lucide-react";
@@ -27,8 +28,10 @@ export default function Rankings() {
   const [loading, setLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const { reportMissionProgress } = useDailyMissions();
 
   useEffect(() => {
+    reportMissionProgress("visit_page", "/rankings");
     loadScores();
   }, []);
 

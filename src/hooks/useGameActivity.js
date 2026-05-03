@@ -24,13 +24,16 @@ export function useGameActivity() {
     busyRef.current = true;
     recordWin(gameName || "Game");
     awardXP("win");
-    // Report to daily missions
-    reportMissionProgress("win_any");
-    reportMissionProgress("play_any");
+    // Report to daily missions as a single batch
+    const batch = [
+      { type: "win_any" },
+      { type: "play_any" },
+    ];
     if (gameName) {
-      reportMissionProgress("win_specific", gameName);
-      reportMissionProgress("play_specific", gameName);
+      batch.push({ type: "win_specific", extra: gameName });
+      batch.push({ type: "play_specific", extra: gameName });
     }
+    reportMissionProgress(batch);
     // Read streak at call-time, not at render-time
     setTimeout(() => {
       checkAchievements(getStreak());
@@ -43,9 +46,10 @@ export function useGameActivity() {
     busyRef.current = true;
     recordLoss();
     awardXP("loss");
-    // Losses still count as "play"
-    reportMissionProgress("play_any");
-    if (gameName) reportMissionProgress("play_specific", gameName);
+    // Losses still count as "play" — batch call
+    const batch = [{ type: "play_any" }];
+    if (gameName) batch.push({ type: "play_specific", extra: gameName });
+    reportMissionProgress(batch);
     setTimeout(() => {
       checkAchievements(0);
       busyRef.current = false;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { getLevelInfo } from "../hooks/usePlayerXP";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SEGMENTS = [
@@ -30,6 +31,7 @@ export default function DailyWheel({ userEmail }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const totalRotationRef = useRef(0);
+  const { reportMissionProgress } = useDailyMissions();
 
   useEffect(() => {
     if (!userEmail) return;
@@ -111,6 +113,9 @@ export default function DailyWheel({ userEmail }) {
 
       await base44.entities.DailyWheelSpin.update(record.id, updates);
       setRecord(prev => ({ ...prev, ...updates }));
+
+      // Report to daily missions
+      reportMissionProgress("spin_wheel");
     }, 4000);
   }, [canSpin, spinning, record, userEmail]);
 

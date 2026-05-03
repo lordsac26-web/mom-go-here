@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { ArrowLeft, TrendingUp, Clock, Palette } from "lucide-react";
 import GalleryPostCard from "../components/gallery/GalleryPostCard";
 import GalleryCommentSheet from "../components/gallery/GalleryCommentSheet";
@@ -17,6 +18,7 @@ export default function Gallery() {
   const [currentUser, setCurrentUser] = useState(null);
   const [commentPost, setCommentPost] = useState(null);
   const queryClient = useQueryClient();
+  const { reportMissionProgress } = useDailyMissions();
 
   useEffect(() => {
     base44.auth.me().then(u => setCurrentUser(u));
@@ -42,6 +44,8 @@ export default function Gallery() {
       likes: newLikes,
       like_count: newLikes.length,
     });
+    // Report gallery like mission (only on new likes, not unlikes)
+    if (!isLiked) reportMissionProgress("gallery_like");
     queryClient.invalidateQueries({ queryKey: ["gallery_posts"] });
   }
 

@@ -7,16 +7,31 @@ import { getLevelInfo } from "./usePlayerXP";
  *
  * Usage:
  *   const { reportMissionProgress } = useDailyMissions();
- *   reportMissionProgress("play_any");           // increment any "play_any" mission
- *   reportMissionProgress("win_specific", "Checkers");  // increment win for Checkers
+ *   reportMissionProgress("play_any");                     // increment play_any
+ *   reportMissionProgress("win_specific", "Checkers");     // increment win for Checkers
  *   reportMissionProgress("visit_page", "/progress");
+ *
+ * Batch usage (preferred — avoids dropping calls):
+ *   reportMissionProgress(["win_any", "play_any"]);
+ *   reportMissionProgress([
+ *     { type: "win_specific", extra: "Checkers" },
+ *     { type: "play_specific", extra: "Checkers" },
+ *     { type: "win_any" },
+ *     { type: "play_any" },
+ *   ]);
  */
 export function useDailyMissions() {
-  const busyRef = useRef(false);
+  const queueRef = useRef([]);
+  const processingRef = useRef(false);
 
-  const reportMissionProgress = useCallback(async (type, extra = null) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
+  const processQueue = useCallback(async () => {
+    if (processingRef.current) return;
+    if (queueRef.current.length === 0) return;
+    processingRef.current = true;
+
+    // Drain all pending events into a local batch
+    const batch = [...queueRef.current];
+    queueRef.current = [];
 
     try {
       const user = await base44.auth.me();
@@ -28,43 +43,97 @@ export function useDailyMissions() {
       if (!record) return;
 
       let updated = false;
-      const missions = record.missions.map(m => {
-        if (m.completed) return m;
+      let missions = record.missions.map(m => ({ ...m }));
 
-        let match = false;
+      // Apply every event in the batch
+      for (const event of batch) {
+        const { type, extra } = event;
 
-        // Match by type
-        if (m.type === type) {
-          // For specific types, also check the game/page field
-          if (type === "play_specific" || type === "win_specific") {
-            match = m.game === extra;
-          } else if (type === "visit_page") {
-            match = m.page === extra;
-          } else {
-            match = true;
+        missions = missions.map(m => {
+          if (m.completed) return m;
+
+          let match = false;
+
+          // Direct type match
+          if (m.type === type) {
+            if (type === "play_specific" || type === "win_specific") {
+              match = m.game === extra;
+            } else if (type === "visit_page") {
+              match = m.page === extra;
+            } else {
+              match = true;
+            }
+          }
+
+          // play_any matches any play_specific mission too
+          if (type === "play_specific" && m.type === "play_any") match = true;
+          if (type === "win_specific" && m.type === "win_any") match = true;
+          if (type === "win_any" && m.type === "win_any") match = true;
+          if (type === "play_any" && m.type === "play_any") match = true;
+
+          // Wins also count as plays
+          if ((type === "win_any" || type === "win_specific") && m.type === "play_any") match = true;
+          if (type === "win_specific" && m.type === "play_specific" && m.game === extra) match = true;
+
+          // Variety: count unique games played today — each play_specific or win_specific with a unique game name counts
+          if (m.type === "variety" && (type === "play_specific" || type === "win_specific" || type === "play_any")) {
+            // We track variety by counting unique game names from the batch + already-counted
+            // We'll handle variety in a second pass below
+          }
+
+          if (match) {
+            const newProgress = Math.min((m.progress || 0) + 1, m.target);
+            const nowCompleted = newProgress >= m.target;
+            if (newProgress !== m.progress || nowCompleted !== m.completed) {
+              updated = true;
+            }
+            return { ...m, progress: newProgress, completed: nowCompleted };
+          }
+          return m;
+        });
+      }
+
+      // --- Variety mission handling ---
+      // For variety missions, we need to count unique games played today
+      // We do this by looking at all play_specific / win_specific events
+      const varietyMissions = missions.filter(m => m.type === "variety" && !m.completed);
+      if (varietyMissions.length > 0) {
+        // Gather unique game names from this batch
+        const batchGames = new Set();
+        for (const event of batch) {
+          if ((event.type === "play_specific" || event.type === "win_specific") && event.extra) {
+            batchGames.add(event.extra);
           }
         }
 
-        // play_any matches any play_specific too
-        if (type === "play_specific" && m.type === "play_any") match = true;
-        if (type === "win_specific" && m.type === "win_any") match = true;
-        if (type === "win_any" && m.type === "win_any") match = true;
-        if (type === "play_any" && m.type === "play_any") match = true;
-
-        // Wins also count as plays
-        if ((type === "win_any" || type === "win_specific") && m.type === "play_any") match = true;
-        if (type === "win_specific" && m.type === "play_specific" && m.game === extra) match = true;
-
-        if (match) {
-          const newProgress = Math.min((m.progress || 0) + 1, m.target);
-          const nowCompleted = newProgress >= m.target;
-          if (newProgress !== m.progress || nowCompleted !== m.completed) {
-            updated = true;
-          }
-          return { ...m, progress: newProgress, completed: nowCompleted };
+        // We store the tracked unique games in localStorage for the day
+        const varietyKey = `variety_games_${today}_${user.email}`;
+        let existingGames;
+        try {
+          existingGames = new Set(JSON.parse(localStorage.getItem(varietyKey) || "[]"));
+        } catch {
+          existingGames = new Set();
         }
-        return m;
-      });
+
+        const prevSize = existingGames.size;
+        batchGames.forEach(g => existingGames.add(g));
+        localStorage.setItem(varietyKey, JSON.stringify([...existingGames]));
+        const newSize = existingGames.size;
+
+        if (newSize > prevSize) {
+          missions = missions.map(m => {
+            if (m.type === "variety" && !m.completed) {
+              const newProgress = Math.min(newSize, m.target);
+              const nowCompleted = newProgress >= m.target;
+              if (newProgress !== (m.progress || 0) || nowCompleted !== m.completed) {
+                updated = true;
+              }
+              return { ...m, progress: newProgress, completed: nowCompleted };
+            }
+            return m;
+          });
+        }
+      }
 
       if (!updated) return;
 
@@ -92,9 +161,31 @@ export function useDailyMissions() {
     } catch (err) {
       console.error("Mission progress error:", err);
     } finally {
-      busyRef.current = false;
+      processingRef.current = false;
+      // If new events queued while we were processing, run again
+      if (queueRef.current.length > 0) {
+        processQueue();
+      }
     }
   }, []);
+
+  const reportMissionProgress = useCallback((typeOrBatch, extra = null) => {
+    // Normalize input to array of { type, extra } objects
+    if (Array.isArray(typeOrBatch)) {
+      for (const item of typeOrBatch) {
+        if (typeof item === "string") {
+          queueRef.current.push({ type: item, extra: null });
+        } else {
+          queueRef.current.push({ type: item.type, extra: item.extra || null });
+        }
+      }
+    } else {
+      queueRef.current.push({ type: typeOrBatch, extra });
+    }
+
+    // Debounce: process on next microtask so rapid calls batch together
+    Promise.resolve().then(processQueue);
+  }, [processQueue]);
 
   return { reportMissionProgress };
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { Camera, Sparkles, Send, X, Image, Upload } from "lucide-react";
 import { toast } from "sonner";
 import CameraCapture from "./CameraCapture";
@@ -22,6 +23,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const { reportMissionProgress } = useDailyMissions();
 
   async function handlePhoto(e) {
     const file = e.target.files?.[0];
@@ -53,6 +55,7 @@ export default function JournalEntryForm({ onSaved, onCancel }) {
     });
 
     setSaving(false);
+    reportMissionProgress("journal");
     toast.success("Memory saved! 💛");
     onSaved(newEntry);
   }

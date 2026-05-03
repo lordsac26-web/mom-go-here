@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { Zap, Check } from "lucide-react";
 import SubPageHeader from "../components/SubPageHeader";
 import WarmLoader from "../components/WarmLoader";
@@ -69,8 +70,12 @@ export default function DailyChallenge() {
     navigate(dailyGame.path);
   }
 
+  const { reportMissionProgress } = useDailyMissions();
+
   async function handleMarkComplete() {
     setMarking(true);
+    // Report daily challenge mission
+    reportMissionProgress("daily_challenge");
     if (todayRecord && !todayRecord.completed) {
       await base44.entities.ZenPoints.update(todayRecord.id, {
         completed: true,

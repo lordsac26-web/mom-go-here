@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import { RefreshCw, BookmarkPlus, Check } from "lucide-react";
 import WarmLoader from "../components/WarmLoader";
 import useStreakTracker from "../hooks/useStreakTracker";
@@ -25,6 +26,12 @@ export default function Daily() {
   const [refreshing, setRefreshing] = useState(false);
   const [saved, setSaved] = useState(false);
   const { streakData, newBadges } = useStreakTracker(user?.email, "daily");
+  const { reportMissionProgress } = useDailyMissions();
+
+  useEffect(() => {
+    // This page doubles as the scripture/daily reading page
+    reportMissionProgress("visit_page", "/daily");
+  }, []);
 
   useEffect(() => {
     if (user?.email) loadProfile();

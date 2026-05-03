@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useDailyMissions } from "../hooks/useDailyMissions";
 import AchievementGrid from "../components/AchievementGrid";
 import StreakDashboard from "../components/StreakDashboard";
 import WarmLoader from "../components/WarmLoader";
@@ -28,6 +29,11 @@ export default function Progress() {
   const [records, setRecords] = useState([]);
   const [zenRecords, setZenRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { reportMissionProgress } = useDailyMissions();
+
+  useEffect(() => {
+    reportMissionProgress("visit_page", "/progress");
+  }, []);
 
   useEffect(() => {
     if (!user) return;
