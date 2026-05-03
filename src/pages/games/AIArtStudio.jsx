@@ -10,6 +10,7 @@ import { Download, Share2, Mail, Facebook, Twitter, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import GameInstructions from "../../components/GameInstructions";
+import PromptImprover from "../../components/artstudio/PromptImprover";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -177,10 +178,12 @@ export default function AIArtStudio() {
             rows={3}
             className="w-full bg-secondary border-2 border-border rounded-xl px-4 py-3 text-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary resize-none"
           />
-          {/* FIX (security/UX): show character count so user knows the limit */}
-          <p className="text-right text-sm text-muted-foreground mt-1">
-            {prompt.length}/{MAX_PROMPT_LENGTH}
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <PromptImprover currentPrompt={prompt} onSelect={setPrompt} />
+            <p className="text-sm text-muted-foreground">
+              {prompt.length}/{MAX_PROMPT_LENGTH}
+            </p>
+          </div>
         </div>
 
         {/* Style Picker */}
