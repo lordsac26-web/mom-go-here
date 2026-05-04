@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { getLevelInfo } from "../hooks/usePlayerXP";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import { motion, AnimatePresence } from "framer-motion";
+import { playRichTone } from "../lib/SoundEngine";
+import { useAudioStore } from "../stores/audioStore";
 
 const SEGMENTS = [
   { label: "500", value: 500, type: "coins", color: "#3b82f6", emoji: "🪙" },
@@ -31,7 +33,57 @@ export default function DailyWheel({ userEmail }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const totalRotationRef = useRef(0);
+  const tickIntervalRef = useRef(null);
   const { reportMissionProgress } = useDailyMissions();
+
+  // Tick sound during spin
+  function playTick(pitch) {
+    if (useAudioStore.getState().muteAll) return;
+    const vol = useAudioStore.getState().sfxVolume * 0.12;
+    playRichTone({ frequency: pitch, duration: 0.04, volume: vol, type: "triangle" });
+  }
+
+  function startTickSound() {
+    // Clear any existing interval
+    if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
+    
+    const startTime = Date.now();
+    const totalDuration = 4000; // matches spin transition duration
+    let tickCount = 0;
+    
+    function scheduleTick() {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= totalDuration) {
+        clearInterval(tickIntervalRef.current);
+        tickIntervalRef.current = null;
+        return;
+      }
+      // Cubic ease-out to match CSS cubic-bezier deceleration
+      const progress = elapsed / totalDuration;
+      // Tick pitch alternates slightly for realism
+      const pitch = tickCount % 2 === 0 ? 1800 : 2200;
+      playTick(pitch);
+      tickCount++;
+      
+      // Dynamically adjust interval: fast at start, slow at end
+      // Start ~40ms (25 ticks/sec), end ~300ms (3 ticks/sec)
+      const nextInterval = 40 + progress * progress * 260;
+      clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = setTimeout(scheduleTick, nextInterval);
+    }
+    
+    scheduleTick();
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (tickIntervalRef.current) {
+        clearTimeout(tickIntervalRef.current);
+        clearInterval(tickIntervalRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -75,6 +127,7 @@ export default function DailyWheel({ userEmail }) {
     const targetRotation = totalRotationRef.current + extraSpins + (360 - segmentCenter);
     totalRotationRef.current = targetRotation;
     setRotation(targetRotation);
+    startTickSound();
 
     // Wait for spin to finish (4s)
     setTimeout(async () => {
