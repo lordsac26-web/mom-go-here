@@ -5,13 +5,14 @@ import { useAuth } from "@/lib/AuthContext";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import WarmLoader from "../components/WarmLoader";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy } from "lucide-react";
+import { Trophy, RefreshCw } from "lucide-react";
 import SubPageHeader from "../components/SubPageHeader";
 import { ALL_GAMES } from "../components/GameTileManager";
 import MarqueeBanner from "../components/rankings/MarqueeBanner";
 import RankRow from "../components/rankings/RankRow";
 import GameFilter from "../components/rankings/GameFilter";
 import PlayerRankCard from "../components/rankings/PlayerRankCard";
+import GameLeaderboard from "../components/rankings/GameLeaderboard";
 
 const MARQUEE_ITEMS = [
   "🏆 TOP PLAYERS",
@@ -22,12 +23,18 @@ const MARQUEE_ITEMS = [
   "🚀 BEST OF THE BEST",
 ];
 
+// Map game names to emojis from ALL_GAMES
+function getGameEmoji(gameName) {
+  const game = ALL_GAMES.find(g => g.name === gameName);
+  return game?.emoji || "🎮";
+}
+
 export default function Rankings() {
   const { user } = useAuth();
-  const [scores, setScores] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
-  const [showAll, setShowAll] = useState(false);
   const { reportMissionProgress } = useDailyMissions();
 
   useEffect(() => {
@@ -37,70 +44,41 @@ export default function Rankings() {
 
   async function loadScores() {
     const res = await base44.functions.invoke('getLeaderboardScores', {});
-    setScores(res.data.scores || []);
+    setData(res.data);
     setLoading(false);
+    setRefreshing(false);
   }
 
-  // Build top scores: group by user+game, keep each player's best per game
-  const topScores = useMemo(() => {
-    const bestMap = new Map();
-    const filtered = selectedGame
-      ? scores.filter((s) => s.game_name === selectedGame)
-      : scores;
+  function handleRefresh() {
+    setRefreshing(true);
+    loadScores();
+  }
 
-    filtered.forEach((s) => {
-      const key = `${s.display_name}__${s.game_name}`;
-      const existing = bestMap.get(key);
-      if (!existing || s.score > existing.score) {
-        bestMap.set(key, s);
-      }
-    });
-
-    // Now get each player's overall best score (highest across games for "All" view)
-    const playerBest = new Map();
-    bestMap.forEach((s) => {
-      const existing = playerBest.get(s.display_name);
-      if (!existing || s.score > existing.score) {
-        playerBest.set(s.display_name, s);
-      }
-    });
-
-    return Array.from(playerBest.values()).sort((a, b) => b.score - a.score);
-  }, [scores, selectedGame]);
-
-  const displayList = showAll ? topScores : topScores.slice(0, 10);
-
-  // Current player stats
-  const currentPlayerRank = useMemo(() => {
-    if (!user?.email) return null;
-    const idx = topScores.findIndex((s) => s.is_current_user);
-    return idx >= 0 ? idx + 1 : null;
-  }, [topScores, user]);
-
-  const currentPlayerBest = useMemo(() => {
-    if (!user?.email) return { score: 0, game: "" };
-    const mine = scores.filter((s) => s.is_current_user);
-    if (mine.length === 0) return { score: 0, game: "" };
-    const best = mine.reduce((a, b) => (a.score > b.score ? a : b));
-    return { score: best.score, game: best.game_name };
-  }, [scores, user]);
-
-  // Unique players count
-  const totalPlayers = useMemo(() => {
-    return new Set(scores.map((s) => s.display_name)).size;
-  }, [scores]);
-
-  // Available games that have scores
+  // Build game filter chips from server data
   const gamesWithScores = useMemo(() => {
-    const names = new Set(scores.map((s) => s.game_name));
-    return ALL_GAMES.filter((g) => names.has(g.name));
-  }, [scores]);
+    if (!data?.game_names) return [];
+    return data.game_names.map(name => ({
+      name,
+      emoji: getGameEmoji(name),
+    }));
+  }, [data]);
+
+  // Which leaderboard data to show
+  const activeLeaderboard = useMemo(() => {
+    if (!data) return [];
+    if (selectedGame && data.leaderboards[selectedGame]) {
+      return data.leaderboards[selectedGame];
+    }
+    return data.overall || [];
+  }, [data, selectedGame]);
 
   if (loading) return <WarmLoader message="Loading rankings..." />;
 
+  const player = data?.player || {};
+
   return (
     <div className="min-h-screen pb-24">
-      <SubPageHeader backTo="/games" title="Rankings" icon={Trophy} />
+      <SubPageHeader backTo="/games" title="Global Leaderboard" icon={Trophy} />
 
       {/* Marquee Banner */}
       <MarqueeBanner speed={20} className="bg-primary/10 border-y border-primary/30 py-3 mb-5">
@@ -115,12 +93,24 @@ export default function Rankings() {
         {/* Player Rank Card */}
         {user && (
           <PlayerRankCard
-            rank={currentPlayerRank}
-            totalPlayers={totalPlayers}
-            bestScore={currentPlayerBest.score}
-            bestGame={currentPlayerBest.game}
+            rank={player.rank}
+            totalPlayers={player.total_players || 0}
+            bestScore={player.best_score || 0}
+            bestGame={player.best_game || ""}
           />
         )}
+
+        {/* Refresh button */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-bold text-foreground active:scale-95 transition-transform disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
 
         {/* Game Filter */}
         {gamesWithScores.length > 1 && (
@@ -131,73 +121,98 @@ export default function Rankings() {
           />
         )}
 
-        {/* Leaderboard */}
-        <div>
-          <h2 className="text-xl font-black text-foreground mb-3">
-            {selectedGame ? `${selectedGame} Leaderboard` : "🏆 Top 10 Overall"}
-          </h2>
+        {/* Selected game or overall leaderboard */}
+        {selectedGame ? (
+          <div>
+            <h2 className="text-xl font-black text-foreground mb-3 flex items-center gap-2">
+              <span className="text-2xl">{getGameEmoji(selectedGame)}</span>
+              {selectedGame} — Top 10
+            </h2>
+            {activeLeaderboard.length === 0 ? (
+              <EmptyLeaderboard />
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedGame}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-2"
+                >
+                  {activeLeaderboard.map((s, i) => (
+                    <RankRow
+                      key={`${s.display_name}-${i}`}
+                      rank={s.rank}
+                      name={s.display_name}
+                      score={s.score}
+                      game={s.game_name}
+                      isCurrentUser={s.is_current_user}
+                      index={i}
+                    />
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Overall Top 10 */}
+            <div>
+              <h2 className="text-xl font-black text-foreground mb-3">🏆 Overall Top 10</h2>
+              {activeLeaderboard.length === 0 ? (
+                <EmptyLeaderboard />
+              ) : (
+                <div className="space-y-2">
+                  {activeLeaderboard.map((s, i) => (
+                    <RankRow
+                      key={`${s.display_name}-${i}`}
+                      rank={s.rank}
+                      name={s.display_name}
+                      score={s.score}
+                      game={s.game_name}
+                      isCurrentUser={s.is_current_user}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {displayList.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12"
-            >
-              <span className="text-5xl block mb-3">🎮</span>
-              <p className="text-xl font-bold text-muted-foreground">No scores yet!</p>
-              <p className="text-muted-foreground">Play some games to get on the leaderboard.</p>
-              <Link
-                to="/games"
-                className="inline-block mt-4 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold"
-              >
-                Play Now →
-              </Link>
-            </motion.div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={selectedGame || "all"}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-2"
-              >
-                {displayList.map((s, i) => (
-                  <RankRow
-                    key={`${s.display_name}-${s.game_name}`}
-                    rank={i + 1}
-                    name={s.display_name || "Anonymous"}
-                    score={s.score}
-                    game={s.game_name}
-                    isCurrentUser={s.is_current_user}
-                    index={i}
-                  />
-                ))}
-              </motion.div>
-            </AnimatePresence>
-          )}
-
-          {/* View All */}
-          {!showAll && topScores.length > 10 && (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowAll(true)}
-              className="w-full mt-4 bg-secondary border-2 border-border text-foreground text-lg font-bold py-4 rounded-2xl"
-            >
-              View All ({topScores.length} players) →
-            </motion.button>
-          )}
-          {showAll && topScores.length > 10 && (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowAll(false)}
-              className="w-full mt-4 bg-secondary border-2 border-border text-foreground text-lg font-bold py-4 rounded-2xl"
-            >
-              Show Top 10 Only
-            </motion.button>
-          )}
-        </div>
+            {/* Per-Game Leaderboards */}
+            {data?.game_names?.length > 0 && (
+              <div>
+                <h2 className="text-xl font-black text-foreground mb-3">📊 Per-Game Rankings</h2>
+                <div className="space-y-4">
+                  {data.game_names.map(gameName => (
+                    <GameLeaderboard
+                      key={gameName}
+                      gameName={gameName}
+                      emoji={getGameEmoji(gameName)}
+                      scores={data.leaderboards[gameName] || []}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function EmptyLeaderboard() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+      <span className="text-5xl block mb-3">🎮</span>
+      <p className="text-xl font-bold text-muted-foreground">No scores yet!</p>
+      <p className="text-muted-foreground">Play some games to get on the leaderboard.</p>
+      <Link
+        to="/games"
+        className="inline-block mt-4 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold"
+      >
+        Play Now →
+      </Link>
+    </motion.div>
   );
 }
