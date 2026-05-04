@@ -81,6 +81,13 @@ export default function useDartSounds() {
     playNoiseBurst({ duration: 0.12, volume: 0.08, filterType: "lowpass", filterFreq: 500, filterQ: 0.5 });
   }, [muteAll]);
 
+  const playRicochet = useCallback(() => {
+    if (muteAll) return;
+    // Metallic ping bounce
+    playRichTone({ frequency: 1800, freqEnd: 900, duration: 0.08, volume: 0.15, type: "square" });
+    playNoiseBurst({ duration: 0.04, volume: 0.1, filterType: "highpass", filterFreq: 4000, filterQ: 1.5 });
+  }, [muteAll]);
+
   const playWin = useCallback(() => {
     if (muteAll) return;
     // Triumphant ascending scale with harmonics
@@ -97,5 +104,5 @@ export default function useDartSounds() {
     playRichTone({ frequency: 262, duration: 0.8, volume: 0.08, type: "sine", harmonic: 2 });
   }, [muteAll]);
 
-  return { playShoot, playPop, playExplosion, playSniper, playMultishot, playStreakChime, playMiss, playWin };
+  return { playShoot, playPop, playExplosion, playSniper, playMultishot, playStreakChime, playMiss, playWin, playRicochet };
 }

@@ -1,9 +1,9 @@
-import { POWERUPS } from "./gameConfig";
+import { POWERUPS, WIND_MAX_STRENGTH } from "./gameConfig";
 
 export default function GameUI({
   score, dartsRemaining, totalPopped, totalBalloons, streak,
   activePowerup, setActivePowerup, powerupInventory, setPowerupInventory,
-  endless,
+  endless, wind = 0,
 }) {
   function equipPowerup(key) {
     if (activePowerup === key) {
@@ -29,6 +29,23 @@ export default function GameUI({
         {!endless && <span className="text-foreground">🎯 {dartsRemaining}</span>}
         {endless && <span className="text-purple-400 font-black">♾️ Endless</span>}
       </div>
+
+      {/* Wind indicator */}
+      {Math.abs(wind) > 0.005 && (
+        <div className="flex items-center justify-center gap-2 text-xs font-bold text-blue-400">
+          <span>{wind < 0 ? "←" : ""} 🌬️ Wind {wind > 0 ? "→" : ""}</span>
+          <div className="w-20 h-2 bg-card rounded-full overflow-hidden relative">
+            <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
+            <div
+              className="absolute inset-y-0 bg-blue-400/60 rounded-full transition-all"
+              style={{
+                left: wind < 0 ? `${50 + (wind / WIND_MAX_STRENGTH) * 50}%` : "50%",
+                width: `${Math.abs(wind / WIND_MAX_STRENGTH) * 50}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Streak */}
       {streak >= 2 && (

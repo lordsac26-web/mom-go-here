@@ -57,6 +57,28 @@ export const DART_SPEED = 14;
 export const GRAVITY = 0.12;
 export const SNIPER_PIERCE = 5;
 
+// Ricochet — darts bounce off side walls and top wall
+export const RICOCHET_ENABLED = true;
+export const RICOCHET_DAMPING = 0.75; // velocity kept after bounce
+export const MAX_RICOCHETS = 3;       // max bounces per dart
+
+// Wind — horizontal force on darts in flight
+export const WIND_ENABLED = true;
+export const WIND_MAX_STRENGTH = 0.06; // max horizontal accel per frame
+export const WIND_CHANGE_INTERVAL = 300; // frames between wind shifts (~5s)
+
+// Slingshot aiming
+export const SLINGSHOT_MAX_PULL = 120;    // max drag distance in canvas px
+export const TRAJECTORY_DOTS = 25;        // number of preview dots
+
+// Screen shake
+export const SHAKE_INTENSITY = 6;         // max px offset
+export const SHAKE_DECAY = 0.85;          // per-frame decay
+
+// Slow-motion on last balloon
+export const SLOW_MO_DURATION = 90;       // frames of slow-mo (~1.5s)
+export const SLOW_MO_FACTOR = 0.3;        // time scale during slow-mo
+
 // Canvas sizing
 export const GAME_WIDTH = 400;
 export const GAME_HEIGHT = 600;

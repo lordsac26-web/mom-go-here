@@ -2,7 +2,12 @@ import { useRef, useEffect, useCallback } from "react";
 import {
   BALLOON_TYPES, POWERUPS, DART_SPEED, GRAVITY,
   SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP,
-  ENDLESS_SPAWN_INTERVAL, ENDLESS_MAX_BALLOONS
+  ENDLESS_SPAWN_INTERVAL, ENDLESS_MAX_BALLOONS,
+  RICOCHET_DAMPING, MAX_RICOCHETS,
+  WIND_MAX_STRENGTH, WIND_CHANGE_INTERVAL,
+  SLINGSHOT_MAX_PULL, TRAJECTORY_DOTS,
+  SHAKE_INTENSITY, SHAKE_DECAY,
+  SLOW_MO_DURATION, SLOW_MO_FACTOR,
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
@@ -55,13 +60,11 @@ function drawBalloon(ctx, b) {
   const s = b.hp / b.maxHp * 0.3 + 0.7;
   ctx.scale(s, s);
 
-  // Shadow
   ctx.beginPath();
   ctx.ellipse(0, b.radius + 3, b.radius * 0.5, 3, 0, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(0,0,0,0.12)";
   ctx.fill();
 
-  // Body
   ctx.beginPath();
   ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
   ctx.fillStyle = b.color;
@@ -70,13 +73,11 @@ function drawBalloon(ctx, b) {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Shine
   ctx.beginPath();
   ctx.arc(-b.radius * 0.3, -b.radius * 0.3, b.radius * 0.2, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(255,255,255,0.45)";
   ctx.fill();
 
-  // Knot
   ctx.beginPath();
   ctx.moveTo(-2, b.radius);
   ctx.lineTo(0, b.radius + 5);
@@ -84,13 +85,11 @@ function drawBalloon(ctx, b) {
   ctx.fillStyle = b.color;
   ctx.fill();
 
-  // Emoji
   ctx.font = `${Math.max(b.radius * 0.8, 8)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(b.emoji, 0, -1);
 
-  // HP bar for tough balloons
   if (b.maxHp > 1 && b.hp > 0) {
     const bw = b.radius * 1.2;
     ctx.fillStyle = "rgba(0,0,0,0.4)";
@@ -118,28 +117,113 @@ function drawDart(ctx, d) {
   ctx.restore();
 }
 
-function drawAimLine(ctx, from, to) {
+// ── Slingshot trajectory preview ──
+function drawTrajectoryPreview(ctx, launchX, launchY, vx, vy, wind, obstacles) {
+  const dt = 1;
+  let px = launchX, py = launchY, pvx = vx, pvy = vy;
   ctx.save();
-  ctx.setLineDash([5, 3]);
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle = "rgba(255,255,255,0.6)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(to.x, to.y, 8, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < TRAJECTORY_DOTS; i++) {
+    px += pvx * dt;
+    py += pvy * dt;
+    pvy += GRAVITY * dt;
+    pvx += wind * dt;
+
+    // Wall ricochets for preview
+    if (px <= 6) { px = 6; pvx = Math.abs(pvx) * RICOCHET_DAMPING; }
+    if (px >= GAME_WIDTH - 6) { px = GAME_WIDTH - 6; pvx = -Math.abs(pvx) * RICOCHET_DAMPING; }
+    if (py <= 6) { py = 6; pvy = Math.abs(pvy) * RICOCHET_DAMPING; }
+
+    if (py > GAME_HEIGHT + 10) break;
+
+    const alpha = 1 - i / TRAJECTORY_DOTS;
+    const size = 2.5 - i * 0.06;
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(px, py, Math.max(size, 1), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ── Slingshot rubber band drawing ──
+function drawSlingshot(ctx, launchPos, pullPos, power) {
+  const dx = pullPos.x - launchPos.x;
+  const dy = pullPos.y - launchPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 5) return;
+
+  ctx.save();
+  // Rubber bands from launcher to pull point
+  const offsetX = 12;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = `rgba(234,179,8,${0.5 + power * 0.5})`;
   ctx.beginPath();
-  ctx.moveTo(to.x - 12, to.y); ctx.lineTo(to.x + 12, to.y);
-  ctx.moveTo(to.x, to.y - 12); ctx.lineTo(to.x, to.y + 12);
+  ctx.moveTo(launchPos.x - offsetX, launchPos.y);
+  ctx.lineTo(pullPos.x, pullPos.y);
+  ctx.moveTo(launchPos.x + offsetX, launchPos.y);
+  ctx.lineTo(pullPos.x, pullPos.y);
   ctx.stroke();
+
+  // Dart preview at pull point — rotated toward launch direction
+  const angle = Math.atan2(launchPos.y - pullPos.y, launchPos.x - pullPos.x);
+  ctx.translate(pullPos.x, pullPos.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#94a3b8";
+  ctx.beginPath();
+  ctx.moveTo(10, 0); ctx.lineTo(-4, -2.5); ctx.lineTo(-2, 0); ctx.lineTo(-4, 2.5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath(); ctx.moveTo(-4, -2.5); ctx.lineTo(-8, -5); ctx.lineTo(-6, -0.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-4, 2.5); ctx.lineTo(-8, 5); ctx.lineTo(-6, 0.5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── Wind indicator on canvas ──
+function drawWindIndicator(ctx, wind) {
+  const cx = GAME_WIDTH / 2;
+  const y = GAME_HEIGHT - 18;
+  const maxW = 40;
+  const strength = wind / WIND_MAX_STRENGTH; // -1 to 1
+  const barLen = Math.abs(strength) * maxW;
+
+  ctx.save();
+  ctx.font = "bold 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillText("WIND", cx, y - 8);
+
+  // Arrow bar
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - maxW, y); ctx.lineTo(cx + maxW, y);
+  ctx.stroke();
+
+  if (Math.abs(strength) > 0.05) {
+    const endX = cx + strength * maxW;
+    const grad = ctx.createLinearGradient(cx, y, endX, y);
+    grad.addColorStop(0, "rgba(59,130,246,0.3)");
+    grad.addColorStop(1, "rgba(59,130,246,0.8)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(Math.min(cx, endX), y - 3, barLen, 6);
+
+    // Arrowhead
+    const dir = Math.sign(strength);
+    ctx.fillStyle = "rgba(59,130,246,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(endX, y - 6);
+    ctx.lineTo(endX + dir * 6, y);
+    ctx.lineTo(endX, y + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.restore();
 }
 
 const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
 const COMBO_WINDOW = 30;
-const POWER_MIN = 0.3;
-const POWER_MAX = 1.0;
-const POWER_SPEED = 0.025;
 const MAGNETIC_SPEED = 1.5;
 
 export default function DartPopBlitzCanvas({
@@ -147,61 +231,64 @@ export default function DartPopBlitzCanvas({
   activePowerup, setActivePowerup,
   powerupInventory, setPowerupInventory,
   onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange,
-  onGameEnd, sounds,
+  onGameEnd, onWindChange, sounds,
 }) {
   const canvasRef = useRef(null);
-  const aimRef = useRef(null);
   const animFrameRef = useRef(null);
   const initIdRef = useRef(null);
-
-  const powerRef = useRef({
-    active: false, power: POWER_MIN, direction: 1,
-    aimX: GAME_WIDTH / 2, aimY: GAME_HEIGHT / 2,
-  });
-
   const callbacksRef = useRef(null);
+
+  // Slingshot state
+  const slingshotRef = useRef({
+    active: false,
+    startX: 0, startY: 0,
+    currentX: 0, currentY: 0,
+  });
 
   const stateRef = useRef({
     balloons: [], darts: [], particles: [], obstacles: [],
     dartsRemaining: 0, score: 0, streak: 0, totalPopped: 0,
     combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
     gameState: "menu", activePowerup: null, ended: false,
+    // Wind
+    wind: 0, windTimer: 0,
+    // Screen shake
+    shakeX: 0, shakeY: 0, shakeIntensity: 0,
+    // Slow-motion
+    slowMoTimer: 0, timeScale: 1,
   });
 
   useEffect(() => { stateRef.current.activePowerup = activePowerup; }, [activePowerup]);
   useEffect(() => { stateRef.current.gameState = gameState; }, [gameState]);
 
-  // ── Shooting ──
-  const shoot = useCallback((targetX, targetY, powerMultiplier = 1) => {
+  // ── Shooting (slingshot release) ──
+  const shoot = useCallback((launchVx, launchVy) => {
     const s = stateRef.current;
     if (s.gameState !== "playing") return;
     if (!s.endless && s.dartsRemaining <= 0) return;
 
-    const dx = targetX - LAUNCHER_POS.x;
-    const dy = targetY - LAUNCHER_POS.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 10) return;
+    const speed = Math.sqrt(launchVx * launchVx + launchVy * launchVy);
+    if (speed < 2) return;
 
-    const speed = DART_SPEED * powerMultiplier;
-    const vx = (dx / dist) * speed;
-    const vy = (dy / dist) * speed;
+    const vx = launchVx;
+    const vy = launchVy;
     const pw = s.activePowerup;
 
     if (pw === "multishot") {
       sounds.playMultishot();
       [-0.15, 0, 0.15].forEach(a => {
         const cos = Math.cos(a), sin = Math.sin(a);
-        s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx: vx * cos - vy * sin, vy: vx * sin + vy * cos, type: "normal", color: "#22d3ee", finColor: "#0891b2", pierce: 0, alive: true });
+        s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx: vx * cos - vy * sin, vy: vx * sin + vy * cos, type: "normal", color: "#22d3ee", finColor: "#0891b2", pierce: 0, alive: true, bounces: 0 });
       });
     } else if (pw === "mirv") {
       sounds.playShoot();
-      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "mirv", color: "#f97316", finColor: "#dc2626", pierce: 0, alive: true, mirvTriggered: false });
+      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "mirv", color: "#f97316", finColor: "#dc2626", pierce: 0, alive: true, mirvTriggered: false, bounces: 0 });
     } else if (pw === "sniper") {
       sounds.playSniper();
-      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx: vx * 1.3, vy: vy * 1.3, type: "sniper", color: "#a855f7", finColor: "#7c3aed", pierce: SNIPER_PIERCE, alive: true });
+      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx: vx * 1.3, vy: vy * 1.3, type: "sniper", color: "#a855f7", finColor: "#7c3aed", pierce: SNIPER_PIERCE, alive: true, bounces: 0 });
     } else {
       sounds.playShoot();
-      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "normal", color: "#94a3b8", finColor: "#ef4444", pierce: 0, alive: true });
+      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "normal", color: "#94a3b8", finColor: "#ef4444", pierce: 0, alive: true, bounces: 0 });
     }
 
     if (!s.endless) {
@@ -211,7 +298,7 @@ export default function DartPopBlitzCanvas({
     if (pw) { s.activePowerup = null; setActivePowerup(null); }
   }, [sounds, setActivePowerup, onDartsRemainingChange]);
 
-  // ── Input ──
+  // ── Input: Slingshot pull-back ──
   const getCanvasPos = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -228,32 +315,48 @@ export default function DartPopBlitzCanvas({
     e.preventDefault();
     const pos = getCanvasPos(e);
     if (!pos) return;
-    const pm = powerRef.current;
-    pm.active = true; pm.power = POWER_MIN; pm.direction = 1;
-    pm.aimX = pos.x; pm.aimY = pos.y;
-    aimRef.current = pos;
+    const sl = slingshotRef.current;
+    sl.active = true;
+    sl.startX = pos.x;
+    sl.startY = pos.y;
+    sl.currentX = pos.x;
+    sl.currentY = pos.y;
   }, [getCanvasPos]);
 
   const handlePointerMove = useCallback((e) => {
     e.preventDefault();
     const pos = getCanvasPos(e);
     if (!pos) return;
-    aimRef.current = pos;
-    powerRef.current.aimX = pos.x;
-    powerRef.current.aimY = pos.y;
+    const sl = slingshotRef.current;
+    if (!sl.active) return;
+    sl.currentX = pos.x;
+    sl.currentY = pos.y;
   }, [getCanvasPos]);
 
   const handlePointerUp = useCallback((e) => {
     e.preventDefault();
-    const pm = powerRef.current;
-    if (!pm.active) return;
-    pm.active = false;
-    const pos = getCanvasPos(e) ?? aimRef.current ?? { x: pm.aimX, y: pm.aimY };
-    shoot(pos.x, pos.y, pm.power);
-    aimRef.current = null;
-  }, [getCanvasPos, shoot]);
+    const sl = slingshotRef.current;
+    if (!sl.active) return;
+    sl.active = false;
 
-  // ── Initialization (only on new game, not on callback changes) ──
+    // Calculate pull vector: from current (pull point) toward launcher = launch direction
+    const pullDx = LAUNCHER_POS.x - sl.currentX;
+    const pullDy = LAUNCHER_POS.y - sl.currentY;
+    const pullDist = Math.sqrt(pullDx * pullDx + pullDy * pullDy);
+    if (pullDist < 15) return; // too small, ignore
+
+    // Clamp and normalize
+    const clampedDist = Math.min(pullDist, SLINGSHOT_MAX_PULL);
+    const power = clampedDist / SLINGSHOT_MAX_PULL; // 0-1
+    const speed = DART_SPEED * (0.4 + power * 0.6); // min 40% speed
+
+    const nx = pullDx / pullDist;
+    const ny = pullDy / pullDist;
+
+    shoot(nx * speed, ny * speed);
+  }, [shoot]);
+
+  // ── Initialization ──
   useEffect(() => {
     if (!preset) return;
     const id = preset._initId;
@@ -267,19 +370,20 @@ export default function DartPopBlitzCanvas({
       dartsRemaining: preset.darts, score: 0, streak: 0, totalPopped: 0,
       combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
       ended: false, endless: !!preset.endless, endlessSpawnTimer: 0,
+      wind: 0, windTimer: 0,
+      shakeX: 0, shakeY: 0, shakeIntensity: 0,
+      slowMoTimer: 0, timeScale: 1,
     });
   }, [preset]);
 
-  // ── Game Loop (stable — no deps that change mid-game) ──
+  // ── Game Loop ──
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const bg = getStaticBg();
 
-    // Close over refs so callbacks changing don't restart the loop
-    const refs = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, sounds, setPowerupInventory };
-    callbacksRef.current = refs;
+    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory };
 
     function loop() {
       const s = stateRef.current;
@@ -291,22 +395,41 @@ export default function DartPopBlitzCanvas({
         return;
       }
 
-      // Power meter
-      const pm = powerRef.current;
-      if (pm.active) {
-        pm.power += POWER_SPEED * pm.direction;
-        if (pm.power >= POWER_MAX) { pm.power = POWER_MAX; pm.direction = -1; }
-        if (pm.power <= POWER_MIN) { pm.power = POWER_MIN; pm.direction = 1; }
+      // Time scale (slow-mo)
+      const ts = s.timeScale;
+
+      // ── Wind ──
+      s.windTimer++;
+      if (s.windTimer >= WIND_CHANGE_INTERVAL) {
+        s.windTimer = 0;
+        s.wind = (Math.random() * 2 - 1) * WIND_MAX_STRENGTH;
+        if (cb.onWindChange) cb.onWindChange(s.wind);
       }
 
-      // Endless mode: spawn new balloons periodically
+      // ── Screen shake decay ──
+      if (s.shakeIntensity > 0.5) {
+        s.shakeX = (Math.random() * 2 - 1) * s.shakeIntensity;
+        s.shakeY = (Math.random() * 2 - 1) * s.shakeIntensity;
+        s.shakeIntensity *= SHAKE_DECAY;
+      } else {
+        s.shakeX = 0; s.shakeY = 0; s.shakeIntensity = 0;
+      }
+
+      // ── Slow-mo timer ──
+      if (s.slowMoTimer > 0) {
+        s.slowMoTimer--;
+        s.timeScale = SLOW_MO_FACTOR + (1 - SLOW_MO_FACTOR) * (1 - s.slowMoTimer / SLOW_MO_DURATION);
+        if (s.slowMoTimer <= 0) s.timeScale = 1;
+      }
+
+      // Endless spawn
       if (s.endless) {
         s.endlessSpawnTimer++;
         if (s.endlessSpawnTimer >= ENDLESS_SPAWN_INTERVAL) {
           s.endlessSpawnTimer = 0;
           const aliveCount = s.balloons.filter(b => b.alive).length;
           if (aliveCount < ENDLESS_MAX_BALLOONS) {
-            const count = 1 + Math.floor(Math.random() * 3); // 1-3 at a time
+            const count = 1 + Math.floor(Math.random() * 3);
             for (let si = 0; si < count && aliveCount + si < ENDLESS_MAX_BALLOONS; si++) {
               s.balloons.push(spawnRandomBalloon());
             }
@@ -317,10 +440,10 @@ export default function DartPopBlitzCanvas({
       // Balloon wobble + magnetic slide
       for (const b of s.balloons) {
         if (!b.alive) continue;
-        b.wobble += b.wobbleSpeed;
+        b.wobble += b.wobbleSpeed * ts;
         const diff = b.targetX - b.x;
         if (Math.abs(diff) > 0.5) {
-          b.x += Math.sign(diff) * Math.min(Math.abs(diff), MAGNETIC_SPEED);
+          b.x += Math.sign(diff) * Math.min(Math.abs(diff), MAGNETIC_SPEED * ts);
         }
       }
 
@@ -335,10 +458,10 @@ export default function DartPopBlitzCanvas({
 
       // Combo floats
       s.comboFloats = s.comboFloats
-        .map(f => ({ ...f, y: f.y - 1.2, life: f.life - 0.025, scale: f.scale + 0.005 }))
+        .map(f => ({ ...f, y: f.y - 1.2 * ts, life: f.life - 0.025, scale: f.scale + 0.005 }))
         .filter(f => f.life > 0);
 
-      // Dart physics
+      // ── Dart physics ──
       let scoreAdd = 0, poppedAdd = 0, hitThisFrame = false, missThisFrame = false;
       let newStreak = s.streak, popsThisFrame = 0;
       const poppedThisFrame = [];
@@ -348,9 +471,11 @@ export default function DartPopBlitzCanvas({
         const d = s.darts[di];
         if (!d.alive) continue;
 
-        d.x += d.vx;
-        d.y += d.vy;
-        if (d.type !== "sniper") d.vy += GRAVITY;
+        d.x += d.vx * ts;
+        d.y += d.vy * ts;
+        if (d.type !== "sniper") d.vy += GRAVITY * ts;
+        // Wind affects all darts
+        d.vx += s.wind * ts;
 
         // MIRV
         if (d.type === "mirv" && !d.mirvTriggered && d.y < GAME_HEIGHT * 0.5) {
@@ -361,14 +486,36 @@ export default function DartPopBlitzCanvas({
           setTimeout(() => {
             for (let i = 0; i < 6; i++) {
               const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-              s.darts.push({ x: mx, y: my, vx: Math.cos(angle) * DART_SPEED * 0.7, vy: Math.sin(angle) * DART_SPEED * 0.7, type: "mini", color: "#fb923c", finColor: "#ea580c", pierce: 0, alive: true });
+              s.darts.push({ x: mx, y: my, vx: Math.cos(angle) * DART_SPEED * 0.7, vy: Math.sin(angle) * DART_SPEED * 0.7, type: "mini", color: "#fb923c", finColor: "#ea580c", pierce: 0, alive: true, bounces: 0 });
             }
           }, 0);
           continue;
         }
 
-        // Off-screen
-        if (d.x < -30 || d.x > GAME_WIDTH + 30 || d.y < -30 || d.y > GAME_HEIGHT + 30) {
+        // ── Wall ricochet ──
+        if (d.type !== "mini") {
+          // Left wall
+          if (d.x <= 6 && d.vx < 0 && (d.bounces || 0) < MAX_RICOCHETS) {
+            d.x = 6; d.vx = Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+            cb.sounds.playRicochet();
+            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
+          }
+          // Right wall
+          if (d.x >= GAME_WIDTH - 6 && d.vx > 0 && (d.bounces || 0) < MAX_RICOCHETS) {
+            d.x = GAME_WIDTH - 6; d.vx = -Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+            cb.sounds.playRicochet();
+            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
+          }
+          // Top wall
+          if (d.y <= 6 && d.vy < 0 && (d.bounces || 0) < MAX_RICOCHETS) {
+            d.y = 6; d.vy = Math.abs(d.vy) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+            cb.sounds.playRicochet();
+            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
+          }
+        }
+
+        // Off-screen (only bottom and far out of bounds after bounces exhausted)
+        if (d.y > GAME_HEIGHT + 30 || d.x < -50 || d.x > GAME_WIDTH + 50 || d.y < -50) {
           if (d.type !== "mini") missThisFrame = true;
           d.alive = false;
           continue;
@@ -408,6 +555,8 @@ export default function DartPopBlitzCanvas({
             if (b.type === "bomb") {
               cb.sounds.playExplosion();
               spawnParticles(s.particles, b.x, b.y, "#f97316", 14);
+              // Screen shake on bomb!
+              s.shakeIntensity = SHAKE_INTENSITY * 1.5;
               const explR = BALLOON_TYPES.bomb.explodeRadius;
               for (let obi = 0; obi < s.balloons.length; obi++) {
                 const ob = s.balloons[obi];
@@ -418,6 +567,15 @@ export default function DartPopBlitzCanvas({
                   poppedThisFrame.push(obi);
                   spawnParticles(s.particles, ob.x, ob.y, ob.color, 5);
                 }
+              }
+            }
+
+            // Check if this was the last balloon — trigger slow-mo
+            if (!s.endless) {
+              const remaining = s.balloons.filter(bb => bb.alive).length;
+              if (remaining === 0 && s.slowMoTimer <= 0) {
+                s.slowMoTimer = SLOW_MO_DURATION;
+                s.timeScale = SLOW_MO_FACTOR;
               }
             }
           } else {
@@ -439,11 +597,11 @@ export default function DartPopBlitzCanvas({
       else if (missThisFrame) newStreak = 0;
 
       // Particles
-      for (const p of s.particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.03; p.size *= 0.97; }
+      for (const p of s.particles) { p.x += p.vx * ts; p.y += p.vy * ts; p.vy += 0.1 * ts; p.life -= 0.03; p.size *= 0.97; }
       for (let i = s.particles.length - 1; i >= 0; i--) { if (s.particles[i].life <= 0) s.particles.splice(i, 1); }
       for (let i = s.darts.length - 1; i >= 0; i--) { if (!s.darts[i].alive) s.darts.splice(i, 1); }
 
-      // Combo
+      // Combo — screen shake on big combos
       if (popsThisFrame > 0) {
         s.comboTimer = COMBO_WINDOW;
         s.combo += popsThisFrame;
@@ -452,6 +610,8 @@ export default function DartPopBlitzCanvas({
           const lastIdx = poppedThisFrame[poppedThisFrame.length - 1];
           const lb = s.balloons[lastIdx];
           s.comboFloats.push({ x: lb ? lb.x : GAME_WIDTH / 2, y: lb ? lb.y : GAME_HEIGHT / 3, text: `${s.comboMultiplier}x COMBO!`, life: 1, scale: 1 });
+          // Screen shake scales with combo
+          s.shakeIntensity = Math.min(SHAKE_INTENSITY * s.comboMultiplier * 0.4, SHAKE_INTENSITY * 2);
         }
       }
 
@@ -471,13 +631,17 @@ export default function DartPopBlitzCanvas({
         cb.setPowerupInventory(prev => ({ ...prev, [reward]: (prev[reward] || 0) + 1 }));
       }
 
-      // Win / lose — endless mode never ends automatically
+      // Win / lose
       if (!s.ended && !s.endless) {
         const allPopped = s.balloons.every(b => !b.alive);
         const noDartsFlying = s.darts.length === 0;
-        if (allPopped || (s.dartsRemaining <= 0 && noDartsFlying)) {
+        if (allPopped && s.slowMoTimer <= 0) {
+          // Wait for slow-mo to finish before ending
           s.ended = true;
-          cb.onGameEnd({ won: allPopped, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0, endless: false });
+          cb.onGameEnd({ won: true, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0, endless: false });
+        } else if (!allPopped && s.dartsRemaining <= 0 && noDartsFlying) {
+          s.ended = true;
+          cb.onGameEnd({ won: false, score: s.score, totalPopped: s.totalPopped, dartsUsed: preset ? preset.darts - s.dartsRemaining : 0, endless: false });
         }
       }
 
@@ -486,6 +650,10 @@ export default function DartPopBlitzCanvas({
     }
 
     function render(ctx, bg, s) {
+      ctx.save();
+      // Apply screen shake
+      ctx.translate(s.shakeX, s.shakeY);
+
       ctx.drawImage(bg, 0, 0);
       if (s.obstacles?.length > 0) drawObstacles(ctx, s.obstacles, Date.now());
       for (const b of s.balloons) { if (b.alive) drawBalloon(ctx, b); }
@@ -496,63 +664,63 @@ export default function DartPopBlitzCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // Launcher — larger for mobile
-      ctx.fillStyle = "#475569";
-      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 22, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.3)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = "#f97316";
-      ctx.beginPath(); ctx.arc(LAUNCHER_POS.x, LAUNCHER_POS.y, 12, 0, Math.PI * 2); ctx.fill();
-      // Launcher crosshair
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 1.5;
+      // ── Launcher (slingshot fork) ──
+      ctx.fillStyle = "#5b4a3a";
+      ctx.fillRect(LAUNCHER_POS.x - 16, LAUNCHER_POS.y - 8, 4, 20);
+      ctx.fillRect(LAUNCHER_POS.x + 12, LAUNCHER_POS.y - 8, 4, 20);
+      // Fork base
+      ctx.fillStyle = "#3e2f22";
+      ctx.fillRect(LAUNCHER_POS.x - 4, LAUNCHER_POS.y + 6, 8, 14);
+      // Fork tips (nubs)
+      ctx.fillStyle = "#7c6650";
       ctx.beginPath();
-      ctx.moveTo(LAUNCHER_POS.x - 6, LAUNCHER_POS.y); ctx.lineTo(LAUNCHER_POS.x + 6, LAUNCHER_POS.y);
-      ctx.moveTo(LAUNCHER_POS.x, LAUNCHER_POS.y - 6); ctx.lineTo(LAUNCHER_POS.x, LAUNCHER_POS.y + 6);
-      ctx.stroke();
-
-      // Power meter — much larger for mobile visibility
-      const pm = powerRef.current;
-      const barW = 22, barH = 90;
-      const barX = LAUNCHER_POS.x - 65, barY = LAUNCHER_POS.y - barH - 10;
-      // Background
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.beginPath();
-      ctx.roundRect(barX, barY, barW, barH, 6);
+      ctx.arc(LAUNCHER_POS.x - 14, LAUNCHER_POS.y - 8, 4, 0, Math.PI * 2);
+      ctx.arc(LAUNCHER_POS.x + 14, LAUNCHER_POS.y - 8, 4, 0, Math.PI * 2);
       ctx.fill();
-      // Border
-      ctx.strokeStyle = pm.active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)";
-      ctx.lineWidth = pm.active ? 2.5 : 1.5;
-      ctx.beginPath();
-      ctx.roundRect(barX, barY, barW, barH, 6);
-      ctx.stroke();
-      // Fill
-      const pwr = pm.active ? pm.power : 0;
-      const pct = Math.max(0, (pwr - POWER_MIN) / (POWER_MAX - POWER_MIN));
-      const fillH = pct * (barH - 6);
-      if (fillH > 0) {
-        const r = Math.round(34 + pct * 221), g = Math.round(197 - pct * 170);
-        ctx.fillStyle = `rgb(${r},${g},50)`;
-        ctx.beginPath();
-        ctx.roundRect(barX + 3, barY + barH - 3 - fillH, barW - 6, fillH, 4);
-        ctx.fill();
-      }
-      // Label
-      ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
-      ctx.fillStyle = pm.active ? "#fbbf24" : "rgba(255,255,255,0.5)";
-      ctx.fillText("PWR", barX + barW / 2, barY - 6);
-      // Percentage when active
-      if (pm.active) {
-        ctx.font = "bold 16px sans-serif"; ctx.fillStyle = "#fff";
-        ctx.fillText(`${Math.round(pct * 100)}%`, barX + barW / 2, barY + barH + 18);
+
+      // ── Slingshot pull-back visuals ──
+      const sl = slingshotRef.current;
+      if (sl.active && s.gameState === "playing") {
+        const pullDx = LAUNCHER_POS.x - sl.currentX;
+        const pullDy = LAUNCHER_POS.y - sl.currentY;
+        const pullDist = Math.sqrt(pullDx * pullDx + pullDy * pullDy);
+        const clampedDist = Math.min(pullDist, SLINGSHOT_MAX_PULL);
+
+        if (pullDist > 10) {
+          const power = clampedDist / SLINGSHOT_MAX_PULL;
+          // Clamp pull point position
+          const clampedX = pullDist > SLINGSHOT_MAX_PULL
+            ? LAUNCHER_POS.x - (pullDx / pullDist) * SLINGSHOT_MAX_PULL
+            : sl.currentX;
+          const clampedY = pullDist > SLINGSHOT_MAX_PULL
+            ? LAUNCHER_POS.y - (pullDy / pullDist) * SLINGSHOT_MAX_PULL
+            : sl.currentY;
+
+          drawSlingshot(ctx, LAUNCHER_POS, { x: clampedX, y: clampedY }, power);
+
+          // Trajectory preview
+          const speed = DART_SPEED * (0.4 + power * 0.6);
+          const nx = pullDx / pullDist;
+          const ny = pullDy / pullDist;
+          drawTrajectoryPreview(ctx, LAUNCHER_POS.x, LAUNCHER_POS.y, nx * speed, ny * speed, s.wind, s.obstacles);
+
+          // Power readout
+          ctx.font = "bold 14px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillStyle = `rgba(255,255,255,${0.6 + power * 0.4})`;
+          ctx.fillText(`${Math.round(power * 100)}%`, clampedX, clampedY + 20);
+        }
       }
 
-      if (!pm.active && s.dartsRemaining > 0 && s.darts.length === 0 && s.gameState === "playing") {
+      // Idle hint
+      if (!sl.active && s.dartsRemaining > 0 && s.darts.length === 0 && s.gameState === "playing") {
         ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
         ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.fillText("Hold to aim · Release to fire", GAME_WIDTH / 2, LAUNCHER_POS.y + 24);
+        ctx.fillText("Pull back & release to fire!", GAME_WIDTH / 2, LAUNCHER_POS.y + 26);
       }
+
+      // Wind indicator
+      drawWindIndicator(ctx, s.wind);
 
       // Combo floats
       for (const f of s.comboFloats) {
@@ -579,15 +747,22 @@ export default function DartPopBlitzCanvas({
         ctx.restore();
       }
 
-      // Aim line
-      if (aimRef.current && s.gameState === "playing" && pm.active) {
-        drawAimLine(ctx, LAUNCHER_POS, aimRef.current);
+      // Slow-mo overlay
+      if (s.slowMoTimer > 0) {
+        ctx.fillStyle = "rgba(0,0,40,0.15)";
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        ctx.font = "bold 18px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillText("🎯 FINAL POP!", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60);
       }
+
+      ctx.restore(); // end shake transform
     }
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [preset]); // Only restart loop when preset changes (new game)
+  }, [preset]);
 
   return (
     <canvas

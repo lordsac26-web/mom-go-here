@@ -14,8 +14,10 @@ import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
 
 const INSTRUCTIONS = [
   "Choose Beginner, Advanced, or Endless mode.",
-  "Press & hold to aim — a power meter oscillates up & down.",
-  "Release to fire! Higher power = faster dart.",
+  "Pull BACK from the slingshot to aim — farther = more power.",
+  "A dotted line shows where your dart will fly!",
+  "Release to fire! Darts bounce off walls for trick shots!",
+  "Watch the wind indicator — wind pushes darts sideways.",
   "Pop all the balloons (or keep going in Endless)!",
   "Hit 4 in a row to earn a random power-up.",
   "Tap a power-up to equip it before your next shot.",
@@ -77,6 +79,7 @@ export default function DartPopBlitz() {
   const [activePowerup, setActivePowerup] = useState(null);
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
   const [isEndless, setIsEndless] = useState(false);
+  const [wind, setWind] = useState(0);
 
   // FIX (bug): savedRef guards against double-saves. It is reset inside
   // startGame via a ref so it doesn't depend on render timing.
@@ -96,6 +99,7 @@ export default function DartPopBlitz() {
     setActivePowerup(null);
     setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
     setIsEndless(!!p.endless);
+    setWind(0);
     setGameState("playing");
     savedRef.current = false;
   }, []);
@@ -181,6 +185,7 @@ export default function DartPopBlitz() {
         powerupInventory={powerupInventory}
         setPowerupInventory={setPowerupInventory}
         endless={isEndless}
+        wind={wind}
       />
 
       {isEndless && (
@@ -212,6 +217,7 @@ export default function DartPopBlitz() {
         onTotalPoppedChange={setTotalPopped}
         onDartsRemainingChange={setDartsRemaining}
         onGameEnd={handleGameEnd}
+        onWindChange={setWind}
         sounds={sounds}
       />
     </div>
