@@ -40,6 +40,14 @@
           },
           "type": {
             "type": "string"
+          },
+          "game": {
+            "type": "string",
+            "description": "Game name for play_specific/win_specific missions"
+          },
+          "page": {
+            "type": "string",
+            "description": "Page path for visit_page missions"
           }
         }
       },
