@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getLevelInfo } from "./usePlayerXP";
+import { pickRandomMissions } from "../components/missions/missionDefinitions";
 
 /**
  * Hook to report mission progress from any game or feature.
@@ -39,8 +40,18 @@ export function useDailyMissions() {
 
       const today = new Date().toISOString().slice(0, 10);
       const records = await base44.entities.DailyMission.filter({ user_email: user.email, date: today });
-      const record = records[0];
-      if (!record) return;
+      let record = records[0];
+      if (!record) {
+        // Auto-create today's missions if they don't exist yet
+        const missions = pickRandomMissions(3);
+        record = await base44.entities.DailyMission.create({
+          user_email: user.email,
+          date: today,
+          missions,
+          all_completed: false,
+          bonus_claimed: false,
+        });
+      }
 
       let updated = false;
       let missions = record.missions.map(m => ({ ...m }));
