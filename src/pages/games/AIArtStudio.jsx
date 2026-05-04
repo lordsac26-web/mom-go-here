@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useDailyMissions } from "../../hooks/useDailyMissions";
-import { Download, Share2, Mail, Facebook, Twitter, Globe } from "lucide-react";
+import { Download, Share2, Mail, Facebook, Twitter, Globe, Frame } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import GameInstructions from "../../components/GameInstructions";
@@ -14,6 +14,8 @@ import ReferenceImageUploader from "../../components/artstudio/ReferenceImageUpl
 import VariationsGrid from "../../components/artstudio/VariationsGrid";
 import PromptStarters from "../../components/artstudio/PromptStarters";
 import GeneratingMessages from "../../components/artstudio/GeneratingMessages";
+import FramedImage from "../../components/artstudio/FramedImage";
+import FramePicker from "../../components/artstudio/FramePicker";
 
 const STYLES = [
   { label: "Realistic Photo", value: "photorealistic, high detail, professional photography" },
@@ -44,6 +46,8 @@ export default function AIArtStudio() {
   const [publishing, setPublishing] = useState(false);
   const [referenceUrl, setReferenceUrl] = useState(null);
   const [confirmNew, setConfirmNew] = useState(false);
+  const [selectedFrame, setSelectedFrame] = useState("none");
+  const [showFramePicker, setShowFramePicker] = useState(false);
   const { reportMissionProgress } = useDailyMissions();
 
   async function handleGenerate() {
@@ -117,6 +121,7 @@ export default function AIArtStudio() {
         image_url: imageUrl,
         prompt: "",
         style: STYLES.find(s => s.value === selectedStyle)?.label || "",
+        frame_id: selectedFrame || "none",
         likes: [],
         like_count: 0,
         comments: [],
@@ -162,6 +167,7 @@ export default function AIArtStudio() {
     setImageUrl(null);
     setReferenceUrl(null);
     setConfirmNew(false);
+    setSelectedFrame("none");
   }
 
   return (
@@ -266,12 +272,20 @@ export default function AIArtStudio() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="bg-card border-2 border-primary rounded-2xl p-4 mb-5 shadow-2xl"
             >
-              <img
+              <FramedImage
                 src={imageUrl}
                 alt={prompt}
-                className="w-full rounded-xl border-2 border-border"
+                frameId={selectedFrame}
               />
               <p className="text-center text-muted-foreground text-base mt-3 italic">"{prompt}"</p>
+
+              {/* Frame picker button */}
+              <button
+                onClick={() => setShowFramePicker(true)}
+                className="w-full flex items-center justify-center gap-2 mt-3 bg-secondary text-foreground text-base font-bold py-3.5 rounded-xl border-2 border-border active:scale-95 transition-all"
+              >
+                <Frame size={18} /> 🖼️ {selectedFrame === "none" ? "Add a Frame" : "Change Frame"}
+              </button>
 
               {/* Action buttons */}
               <div className="grid grid-cols-3 gap-2 mt-3">
@@ -347,6 +361,18 @@ export default function AIArtStudio() {
                 </div>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Frame Picker Overlay */}
+        <AnimatePresence>
+          {showFramePicker && imageUrl && (
+            <FramePicker
+              imageUrl={imageUrl}
+              selectedFrameId={selectedFrame}
+              onSelect={setSelectedFrame}
+              onClose={() => setShowFramePicker(false)}
+            />
           )}
         </AnimatePresence>
 

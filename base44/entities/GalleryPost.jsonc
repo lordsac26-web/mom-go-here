@@ -22,6 +22,10 @@
       "type": "string",
       "description": "Art style used"
     },
+    "frame_id": {
+      "type": "string",
+      "description": "Selected frame style ID for display"
+    },
     "likes": {
       "type": "array",
       "items": {

@@ -3,6 +3,7 @@ import { Heart, MessageCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import FramedImage from "../artstudio/FramedImage";
 
 export default function GalleryPostCard({ post, currentUserEmail, onLikeToggle, onOpenComments }) {
   const [animating, setAnimating] = useState(false);
@@ -22,14 +23,24 @@ export default function GalleryPostCard({ post, currentUserEmail, onLikeToggle, 
 
   return (
     <div className="bg-card border-2 border-border rounded-2xl overflow-hidden shadow-lg">
-      {/* Image */}
+      {/* Image with optional frame */}
       <div className="relative">
-        <img
-          src={post.image_url}
-          alt={post.prompt}
-          className="w-full aspect-square object-cover"
-          loading="lazy"
-        />
+        {post.frame_id && post.frame_id !== "none" ? (
+          <div className="p-2">
+            <FramedImage
+              src={post.image_url}
+              alt={post.prompt}
+              frameId={post.frame_id}
+            />
+          </div>
+        ) : (
+          <img
+            src={post.image_url}
+            alt={post.prompt}
+            className="w-full aspect-square object-cover"
+            loading="lazy"
+          />
+        )}
         {/* Style badge */}
         {post.style && (
           <span className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm">
