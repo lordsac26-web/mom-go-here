@@ -44,12 +44,107 @@ function getStaticBg() {
   return oc;
 }
 
+// Confetti palette per balloon color for multi-color bursts
+const CONFETTI_PALETTES = {
+  "#ef4444": ["#ef4444", "#f87171", "#fca5a5", "#fbbf24", "#fb923c"], // red
+  "#3b82f6": ["#3b82f6", "#60a5fa", "#93c5fd", "#a78bfa", "#38bdf8"], // blue
+  "#a855f7": ["#a855f7", "#c084fc", "#d8b4fe", "#f0abfc", "#818cf8"], // purple
+  "#eab308": ["#eab308", "#facc15", "#fde047", "#fb923c", "#fbbf24"], // gold
+  "#1e293b": ["#f97316", "#ef4444", "#fbbf24", "#fb923c", "#fdba74"], // bomb → fiery
+  "#22c55e": ["#22c55e", "#4ade80", "#86efac", "#fbbf24", "#34d399"], // green
+  "#94a3b8": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#64748b", "#f1f5f9"], // ricochet sparks
+  "#f97316": ["#f97316", "#fb923c", "#fdba74", "#ef4444", "#fbbf24"], // orange/mirv
+};
+
+function getConfettiColors(baseColor) {
+  return CONFETTI_PALETTES[baseColor] || [baseColor, "#fff", "#fbbf24", "#f87171", "#60a5fa"];
+}
+
+const PARTICLE_SHAPES = ["circle", "square", "star", "triangle"];
+
 function spawnParticles(arr, x, y, color, count = 8) {
+  const colors = getConfettiColors(color);
   for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-    const speed = 2 + Math.random() * 4;
-    arr.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color, size: 3 + Math.random() * 4 });
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
+    const speed = 2.5 + Math.random() * 5;
+    arr.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - Math.random() * 2, // slight upward bias
+      life: 1,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 3 + Math.random() * 5,
+      shape: PARTICLE_SHAPES[Math.floor(Math.random() * PARTICLE_SHAPES.length)],
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.3,
+    });
   }
+  // Add a shockwave ring for big bursts (8+ particles)
+  if (count >= 8) {
+    arr.push({
+      x, y, vx: 0, vy: 0,
+      life: 1,
+      color,
+      size: 4,
+      shape: "ring",
+      rotation: 0,
+      rotationSpeed: 0,
+      ringGrowth: 1.8 + count * 0.1,
+    });
+  }
+}
+
+function drawParticle(ctx, p) {
+  ctx.save();
+  ctx.globalAlpha = p.life;
+  ctx.translate(p.x, p.y);
+
+  if (p.shape === "ring") {
+    // Expanding shockwave ring
+    const radius = p.size + (1 - p.life) * 40 * (p.ringGrowth || 1.5);
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = Math.max(2 * p.life, 0.5);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  ctx.rotate(p.rotation);
+  ctx.fillStyle = p.color;
+
+  if (p.shape === "circle") {
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.shape === "square") {
+    const half = p.size;
+    ctx.fillRect(-half, -half, half * 2, half * 1.2);
+  } else if (p.shape === "star") {
+    const r = p.size;
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+      const ax = Math.cos(a) * r, ay = Math.sin(a) * r;
+      const ia = a + Math.PI / 5;
+      const ix = Math.cos(ia) * r * 0.4, iy = Math.sin(ia) * r * 0.4;
+      if (i === 0) ctx.moveTo(ax, ay);
+      else ctx.lineTo(ax, ay);
+      ctx.lineTo(ix, iy);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else if (p.shape === "triangle") {
+    const r = p.size;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(-r * 0.866, r * 0.5);
+    ctx.lineTo(r * 0.866, r * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawBalloon(ctx, b) {
@@ -597,7 +692,17 @@ export default function DartPopBlitzCanvas({
       else if (missThisFrame) newStreak = 0;
 
       // Particles
-      for (const p of s.particles) { p.x += p.vx * ts; p.y += p.vy * ts; p.vy += 0.1 * ts; p.life -= 0.03; p.size *= 0.97; }
+      for (const p of s.particles) {
+        p.x += p.vx * ts;
+        p.y += p.vy * ts;
+        if (p.shape !== "ring") {
+          p.vy += 0.15 * ts; // gravity
+          p.vx *= 0.99;      // air drag
+        }
+        p.rotation += (p.rotationSpeed || 0) * ts;
+        p.life -= 0.025;
+        if (p.shape !== "ring") p.size *= 0.975;
+      }
       for (let i = s.particles.length - 1; i >= 0; i--) { if (s.particles[i].life <= 0) s.particles.splice(i, 1); }
       for (let i = s.darts.length - 1; i >= 0; i--) { if (!s.darts[i].alive) s.darts.splice(i, 1); }
 
@@ -658,10 +763,7 @@ export default function DartPopBlitzCanvas({
       if (s.obstacles?.length > 0) drawObstacles(ctx, s.obstacles, Date.now());
       for (const b of s.balloons) { if (b.alive) drawBalloon(ctx, b); }
       for (const d of s.darts) { if (d.alive) drawDart(ctx, d); }
-      for (const p of s.particles) {
-        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-      }
+      for (const p of s.particles) drawParticle(ctx, p);
       ctx.globalAlpha = 1;
 
       // ── Launcher (slingshot fork) ──
