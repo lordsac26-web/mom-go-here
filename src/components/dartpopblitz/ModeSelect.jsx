@@ -7,10 +7,10 @@ export default function ModeSelect({ onSelect }) {
       <span className="text-6xl">🎯</span>
       <h1 className="text-3xl font-black text-primary text-center">Dart Pop Blitz</h1>
       <p className="text-muted-foreground text-center text-lg font-semibold">
-        Pull back the slingshot, aim, and pop every balloon!
+        Aim the launcher, time the power, and pop every balloon!
       </p>
       <div className="flex flex-wrap justify-center gap-2">
-        <span className="bg-blue-500/20 text-blue-300 text-xs font-black px-2 py-1 rounded-full">🏹 Slingshot Aim</span>
+        <span className="bg-blue-500/20 text-blue-300 text-xs font-black px-2 py-1 rounded-full">🚀 Aim & Fire</span>
         <span className="bg-cyan-500/20 text-cyan-300 text-xs font-black px-2 py-1 rounded-full">💫 Wall Ricochets</span>
         <span className="bg-sky-500/20 text-sky-300 text-xs font-black px-2 py-1 rounded-full">🌬️ Wind</span>
       </div>

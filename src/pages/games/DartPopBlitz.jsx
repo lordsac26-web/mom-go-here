@@ -14,9 +14,11 @@ import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
 
 const INSTRUCTIONS = [
   "Choose Beginner, Advanced, or Endless mode.",
-  "Pull BACK from the slingshot to aim — farther = more power.",
-  "A dotted line shows where your dart will fly!",
-  "Release to fire! Darts bounce off walls for trick shots!",
+  "The launcher rotates left and right — tap to lock your aim!",
+  "A power meter then oscillates — tap again to set power!",
+  "The dart fires at your locked angle and power.",
+  "A dotted line previews your trajectory while setting power.",
+  "Darts bounce off walls for trick shots!",
   "Watch the wind indicator — wind pushes darts sideways.",
   "Pop all the balloons (or keep going in Endless)!",
   "Hit 4 in a row to earn a random power-up.",
