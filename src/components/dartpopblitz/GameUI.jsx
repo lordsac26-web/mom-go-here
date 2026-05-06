@@ -86,11 +86,15 @@ export default function GameUI({
         })}
       </div>
 
-      {activePowerup && (
-        <p className="text-center text-xs text-primary font-bold">
-          {POWERUPS[activePowerup].emoji} {POWERUPS[activePowerup].desc}
+      {activePowerup ? (
+        <p className="text-center text-xs text-primary font-bold animate-pulse">
+          {POWERUPS[activePowerup].emoji} {POWERUPS[activePowerup].desc} — Next shot!
         </p>
-      )}
+      ) : Object.values(powerupInventory).some(c => c > 0) ? (
+        <p className="text-center text-xs text-muted-foreground font-bold">
+          ☝️ Tap a power-up above to equip it for your next shot
+        </p>
+      ) : null}
     </div>
   );
 }
