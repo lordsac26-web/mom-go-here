@@ -528,7 +528,7 @@ export default function DartPopBlitzCanvas({
   activePowerup, setActivePowerup,
   powerupInventory, setPowerupInventory,
   onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange,
-  onGameEnd, onWindChange, sounds,
+  onGameEnd, onWindChange, aimSpeedMultiplier = 1.0, sounds,
 }) {
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -559,13 +559,14 @@ export default function DartPopBlitzCanvas({
   useEffect(() => { stateRef.current.activePowerup = activePowerup; }, [activePowerup]);
   useEffect(() => { stateRef.current.gameState = gameState; }, [gameState]);
 
-  // Keep callbacksRef in sync with latest inventory/powerup state for canvas rendering
+  // Keep callbacksRef in sync with latest inventory/powerup/speed state for canvas rendering
   useEffect(() => {
     if (callbacksRef.current) {
       callbacksRef.current.powerupInventory = powerupInventory;
       callbacksRef.current.activePowerup = activePowerup;
+      callbacksRef.current.aimSpeedMultiplier = aimSpeedMultiplier;
     }
-  }, [powerupInventory, activePowerup]);
+  }, [powerupInventory, activePowerup, aimSpeedMultiplier]);
 
   // ── Fire dart at locked angle + power ──
   const fireDart = useCallback((angle, powerT) => {
@@ -693,7 +694,7 @@ export default function DartPopBlitzCanvas({
     const ctx = canvas.getContext("2d");
     const bg = getStaticBg();
 
-    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory, powerupInventory, activePowerup };
+    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory, powerupInventory, activePowerup, aimSpeedMultiplier };
 
     function loop() {
       const s = stateRef.current;
@@ -707,8 +708,9 @@ export default function DartPopBlitzCanvas({
       }
 
       // ── Launcher phase updates ──
+      const aimMult = cb.aimSpeedMultiplier || 1.0;
       if (lr.phase === "aiming") {
-        lr.aimAngle += AIM_SPEED * lr.aimDir;
+        lr.aimAngle += AIM_SPEED * aimMult * lr.aimDir;
         if (lr.aimAngle >= AIM_MAX_ANGLE) { lr.aimAngle = AIM_MAX_ANGLE; lr.aimDir = -1; }
         if (lr.aimAngle <= AIM_MIN_ANGLE) { lr.aimAngle = AIM_MIN_ANGLE; lr.aimDir = 1; }
       } else if (lr.phase === "power") {
@@ -769,8 +771,8 @@ export default function DartPopBlitzCanvas({
       s.powerupSpawnTimer++;
       if (s.powerupSpawnTimer >= POWERUP_BALLOON_SPAWN_INTERVAL) {
         s.powerupSpawnTimer = 0;
-        // Max 2 on screen at once
-        if (s.powerupBalloons.filter(pb => pb.alive).length < 2) {
+        // Max 3 on screen at once
+        if (s.powerupBalloons.filter(pb => pb.alive).length < 3) {
           s.powerupBalloons.push(spawnPowerupBalloon());
         }
       }

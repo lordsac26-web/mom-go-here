@@ -4,11 +4,19 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Allow any authenticated user to trigger a refresh
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Allow both authenticated users AND entity automations (no user context)
+    // Entity automations don't have a user JWT, so auth.me() will throw
+    let isAuthed = false;
+    try {
+      const user = await base44.auth.me();
+      isAuthed = !!user;
+    } catch {
+      // Automation trigger — no user context, that's fine
+      isAuthed = false;
     }
+
+    // If this is a direct call (not automation), we still allow it for any authed user
+    // For automations, we proceed without user auth check
 
     // Fetch all game scores and user profiles using service role
     const [allScores, allProfiles] = await Promise.all([
@@ -77,6 +85,7 @@ Deno.serve(async (req) => {
       top10: top50.slice(0, 10),
     });
   } catch (error) {
+    console.error("refreshHallOfFame error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

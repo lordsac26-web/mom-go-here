@@ -49,9 +49,11 @@ export default function Rankings() {
     setRefreshing(false);
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     setRefreshing(true);
-    loadScores();
+    // Also refresh Hall of Fame data in background
+    base44.functions.invoke('refreshHallOfFame', {}).catch(() => {});
+    await loadScores();
   }
 
   // Build game filter chips from server data

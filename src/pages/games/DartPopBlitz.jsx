@@ -10,6 +10,7 @@ import DartPopBlitzCanvas from "../../components/dartpopblitz/DartPopBlitzCanvas
 import GameUI from "../../components/dartpopblitz/GameUI";
 import ModeSelect from "../../components/dartpopblitz/ModeSelect";
 import GameOver from "../../components/dartpopblitz/GameOver";
+import AimSpeedSelector from "../../components/dartpopblitz/AimSpeedSelector";
 import { generateBalloons } from "../../components/dartpopblitz/levelGenerator";
 
 const INSTRUCTIONS = [
@@ -82,6 +83,7 @@ export default function DartPopBlitz() {
   const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
   const [isEndless, setIsEndless] = useState(false);
   const [wind, setWind] = useState(0);
+  const [aimSpeedMultiplier, setAimSpeedMultiplier] = useState(1.0);
 
   // FIX (bug): savedRef guards against double-saves. It is reset inside
   // startGame via a ref so it doesn't depend on render timing.
@@ -186,6 +188,8 @@ export default function DartPopBlitz() {
         wind={wind}
       />
 
+      <AimSpeedSelector value={aimSpeedMultiplier} onChange={setAimSpeedMultiplier} />
+
       {isEndless && (
         <button
           onClick={handleEndlessStop}
@@ -216,6 +220,7 @@ export default function DartPopBlitz() {
         onDartsRemainingChange={setDartsRemaining}
         onGameEnd={handleGameEnd}
         onWindChange={setWind}
+        aimSpeedMultiplier={aimSpeedMultiplier}
         sounds={sounds}
       />
     </div>
