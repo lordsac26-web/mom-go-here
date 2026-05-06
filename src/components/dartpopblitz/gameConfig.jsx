@@ -69,7 +69,7 @@ export const WIND_CHANGE_INTERVAL = 300; // frames between wind shifts (~5s)
 
 // Launcher aiming
 export const TRAJECTORY_DOTS = 25;        // number of preview dots
-export const AIM_SPEED = 0.012;           // radians per frame for aim rotation
+export const AIM_SPEED = 0.006;           // radians per frame for aim rotation
 export const AIM_MIN_ANGLE = -Math.PI * 0.85; // leftmost aim (nearly left)
 export const AIM_MAX_ANGLE = -Math.PI * 0.15; // rightmost aim (nearly right)
 export const AIM_START_ANGLE = -Math.PI / 2;  // straight up
@@ -77,7 +77,7 @@ export const AIM_START_ANGLE = -Math.PI / 2;  // straight up
 // Power meter
 export const POWER_MIN = 5;              // minimum launch speed
 export const POWER_MAX = 15;             // maximum launch speed (reaches top of screen)
-export const POWER_OSCILLATE_SPEED = 0.03; // oscillation speed (0-1 range per frame)
+export const POWER_OSCILLATE_SPEED = 0.015; // oscillation speed (0-1 range per frame)
 
 // Screen shake
 export const SHAKE_INTENSITY = 6;         // max px offset
