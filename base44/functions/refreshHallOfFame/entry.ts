@@ -1,17 +1,19 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    
+    // Allow any authenticated user to trigger a refresh
     const user = await base44.auth.me();
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all game scores and user profiles
+    // Fetch all game scores and user profiles using service role
     const [allScores, allProfiles] = await Promise.all([
       base44.asServiceRole.entities.GameScore.list("-score", 500),
-      base44.asServiceRole.entities.UserProfile.list("-created_date", 500),
+      base44.asServiceRole.entities.UserProfile.list(null, 500),
     ]);
 
     // Build a display name lookup
@@ -40,6 +42,7 @@ Deno.serve(async (req) => {
         score > best.score ? { name, score } : best, { name: "", score: 0 });
       
       return {
+        user_email: email,
         display_name: nameMap[email] || email.split("@")[0],
         total_score: totalScore,
         games_played: gamesPlayed,
