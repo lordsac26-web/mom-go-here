@@ -1,10 +1,14 @@
 import { useCallback, useRef } from "react";
 import { useAudioStore } from "@/stores/audioStore";
-import { getAudioCtx, getMaster, playRichTone, playNoiseBurst, playMelody } from "@/lib/SoundEngine";
+import {
+  getAudioCtx, getMaster, noiseBuffer,
+  playRichTone, playNoiseBurst, playMelody,
+  playBoing, playChirp, playSwoosh, playBubblePop, playSparkle, playFanfare,
+} from "@/lib/SoundEngine";
 
 /**
- * Slot-machine-specific procedural sound effects.
- * Respects both the global audio store AND the per-track slot audio prefs.
+ * Slot machine sounds — casual/cartoon style.
+ * Bouncy lever pulls, playful reel clicks, cheerful wins.
  */
 
 const PREFS_KEY = "slots_audio_prefs";
@@ -18,14 +22,13 @@ function getSlotPrefs() {
 
 function trackEnabled(trackKey) {
   const prefs = getSlotPrefs();
-  if (!prefs?.tracks?.[trackKey]) return true; // default on
+  if (!prefs?.tracks?.[trackKey]) return true;
   return prefs.tracks[trackKey].enabled;
 }
 
 function trackVol(trackKey) {
   const prefs = getSlotPrefs();
-  const tv = prefs?.tracks?.[trackKey]?.volume ?? 0.7;
-  return tv;
+  return prefs?.tracks?.[trackKey]?.volume ?? 0.7;
 }
 
 export function useSlotSounds() {
@@ -40,39 +43,35 @@ export function useSlotSounds() {
     return (s.muteAll || s.sfxVolume === 0) ? 0 : s.sfxVolume / 2;
   };
 
-  // ── Lever Pull: mechanical clunk + spring release ──
+  // ── Lever Pull: cartoon spring + clunk ──
   const leverPull = useCallback(() => {
     if (!ok() || !trackEnabled("uiClicks")) return;
     const v = globalVol() * trackVol("uiClicks");
-    // Mechanical clunk
-    playRichTone({ frequency: 180, freqEnd: 80, duration: 0.12, volume: 0.2 * v, type: "square" });
-    playNoiseBurst({ duration: 0.08, volume: 0.15 * v, filterType: "bandpass", filterFreq: 800, filterQ: 2 });
-    // Spring twang
-    playRichTone({ frequency: 400, freqEnd: 1200, duration: 0.15, volume: 0.1 * v, type: "sine", delay: 0.08, harmonic: 3 });
+    playBoing({ pitch: 200, volume: 0.16 * v });
+    playSwoosh({ volume: 0.1 * v, duration: 0.12, freqStart: 600, freqEnd: 2000, delay: 0.05 });
+    playChirp({ pitch: 500, volume: 0.08 * v, delay: 0.1 });
   }, []);
 
-  // ── Reel Spin Start: whirring mechanical loop ──
+  // ── Reel Spin Start: whirring cartoon loop ──
   const reelSpinStart = useCallback(() => {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const ctx = getAudioCtx();
     if (!ctx) return;
     const dest = getMaster();
     if (!dest) return;
-
     const v = globalVol() * trackVol("reelSpin");
-    // Create a continuous clicking/whirring sound
     const now = ctx.currentTime;
 
     // Fast ticking oscillator
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.type = "square";
-    osc.frequency.setValueAtTime(25, now); // fast pulse = mechanical ticking
+    osc.frequency.setValueAtTime(25, now);
     g.gain.setValueAtTime(0.06 * v, now);
     osc.connect(g).connect(dest);
     osc.start(now);
 
-    // Filtered noise for whoosh
+    // Filtered whoosh noise
     const bufLen = ctx.sampleRate * 4;
     const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -92,12 +91,11 @@ export function useSlotSounds() {
     spinOscRef.current = { osc, g, noise, ng, filter, ctx, dest };
   }, []);
 
-  // ── Reel Spin Stop: decelerating tick + hard clunk ──
+  // ── Reel Spin Stop: bouncy snap ──
   const reelSpinStop = useCallback(() => {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const v = globalVol() * trackVol("reelSpin");
 
-    // Kill the continuous spin sound
     if (spinOscRef.current) {
       const { osc, g, noise, ng, ctx } = spinOscRef.current;
       const now = ctx.currentTime;
@@ -108,65 +106,36 @@ export function useSlotSounds() {
       spinOscRef.current = null;
     }
 
-    // Satisfying mechanical stop click
-    playRichTone({ frequency: 600, freqEnd: 200, duration: 0.06, volume: 0.18 * v, type: "square" });
-    playNoiseBurst({ duration: 0.04, volume: 0.12 * v, filterType: "bandpass", filterFreq: 2000, filterQ: 2 });
-    // Resonant thud
-    playRichTone({ frequency: 120, freqEnd: 60, duration: 0.12, volume: 0.1 * v, type: "sine", delay: 0.02 });
+    playBoing({ pitch: 350, volume: 0.12 * v });
+    playChirp({ pitch: 700, volume: 0.08 * v, delay: 0.03 });
   }, []);
 
-  // ── Individual Reel Click (for each reel stopping) ──
+  // ── Individual Reel Click: cartoon tap per reel ──
   const reelStopClick = useCallback((reelIndex = 0) => {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const v = globalVol() * trackVol("reelSpin");
-    const pitchOffset = reelIndex * 40; // slightly different pitch per reel
-    playRichTone({ frequency: 500 + pitchOffset, freqEnd: 250, duration: 0.05, volume: 0.14 * v, type: "square" });
-    playNoiseBurst({ duration: 0.03, volume: 0.08 * v, filterType: "highpass", filterFreq: 3000, filterQ: 1.5 });
+    const pitchOffset = reelIndex * 80;
+    playChirp({ pitch: 800 + pitchOffset, volume: 0.1 * v });
+    playBoing({ pitch: 400 + pitchOffset, volume: 0.05 * v, delay: 0.02 });
   }, []);
 
-  // ── Coin Clink: metallic coin cascade ──
+  // ── Coin Clink: bubbly coin cascade ──
   const coinClink = useCallback((count = 3) => {
     if (!ok() || !trackEnabled("wins")) return;
     const v = globalVol() * trackVol("wins");
     for (let i = 0; i < count; i++) {
-      const pitch = 2000 + Math.random() * 1500;
-      playRichTone({
-        frequency: pitch,
-        freqEnd: pitch * 0.6,
-        duration: 0.08,
-        volume: 0.1 * v,
-        type: "sine",
-        delay: i * 0.06,
-        harmonic: 3.5,
-      });
-      playNoiseBurst({
-        duration: 0.03,
-        volume: 0.04 * v,
-        filterType: "highpass",
-        filterFreq: 6000,
-        filterQ: 1,
-        delay: i * 0.06,
-      });
+      playChirp({ pitch: 2200 + Math.random() * 1500, volume: 0.08 * v, delay: i * 0.05 });
+      playBubblePop({ pitch: 1500 + Math.random() * 500, volume: 0.04 * v, delay: i * 0.05 + 0.02 });
     }
   }, []);
 
-  // ── Small Win: short cheerful jingle + coins ──
+  // ── Small Win: playful chime ──
   const smallWinSound = useCallback(() => {
     if (!ok() || !trackEnabled("wins")) return;
     const v = globalVol() * trackVol("wins");
-    playMelody([659, 784, 880], { spacing: 0.08, noteDuration: 0.15, volume: 0.14 * v, type: "triangle", harmonic: 2 });
-    // Coin shower
-    for (let i = 0; i < 4; i++) {
-      playRichTone({
-        frequency: 2500 + Math.random() * 1000,
-        freqEnd: 1500,
-        duration: 0.06,
-        volume: 0.06 * v,
-        type: "sine",
-        delay: 0.2 + i * 0.05,
-        harmonic: 3,
-      });
-    }
+    playMelody([659, 784, 988], { spacing: 0.08, noteDuration: 0.15, volume: 0.14 * v, type: "sine", harmonic: 2 });
+    playSparkle({ volume: 0.04 * v, delay: 0.2, count: 4 });
+    coinClink(3);
   }, []);
 
   // ── Medium Win: ascending fanfare + coins ──
@@ -174,92 +143,54 @@ export function useSlotSounds() {
     if (!ok() || !trackEnabled("wins")) return;
     const v = globalVol() * trackVol("wins");
     playMelody([523, 659, 784, 1047], { spacing: 0.1, noteDuration: 0.2, volume: 0.16 * v, type: "triangle", harmonic: 2 });
-    // Sub bass punch
-    playRichTone({ frequency: 80, duration: 0.4, volume: 0.08 * v, type: "sine" });
-    // Coin cascade
-    for (let i = 0; i < 8; i++) {
-      playRichTone({
-        frequency: 2200 + Math.random() * 1200,
-        freqEnd: 1200,
-        duration: 0.07,
-        volume: 0.05 * v,
-        type: "sine",
-        delay: 0.35 + i * 0.04,
-        harmonic: 4,
-      });
-    }
+    playBoing({ pitch: 500, volume: 0.08 * v, delay: 0.35 });
+    playSparkle({ volume: 0.05 * v, delay: 0.35, count: 6 });
+    coinClink(6);
   }, []);
 
-  // ── Big/Mega Win: full orchestral hit + extended coin rain ──
+  // ── Big/Mega Win: full cartoon celebration ──
   const bigWinSound = useCallback(() => {
     if (!ok() || !trackEnabled("wins")) return;
     const v = globalVol() * trackVol("wins");
 
-    // Dramatic build-up hit
-    playNoiseBurst({ duration: 0.15, volume: 0.12 * v, filterType: "lowpass", filterFreq: 800, filterQ: 1 });
-    playRichTone({ frequency: 100, freqEnd: 50, duration: 0.3, volume: 0.12 * v, type: "sine" });
+    // Dramatic build
+    playNoiseBurst({ duration: 0.15, volume: 0.1 * v, filterType: "lowpass", filterFreq: 800, filterQ: 1 });
+    playRichTone({ frequency: 100, freqEnd: 50, duration: 0.3, volume: 0.1 * v, type: "sine" });
 
-    // Triumphant ascending fanfare
-    playMelody([392, 523, 659, 784, 1047, 1319], {
-      spacing: 0.1,
-      noteDuration: 0.25,
-      volume: 0.18 * v,
-      type: "triangle",
-      harmonic: 2,
-    });
+    // Bouncy fanfare
+    playFanfare({ volume: 0.16 * v, delay: 0.15 });
 
-    // Sparkle overtones
-    [0.6, 0.7, 0.8, 0.9, 1.0].forEach(d => {
-      playRichTone({
-        frequency: 3000 + Math.random() * 2000,
-        freqEnd: 2000,
-        duration: 0.1,
-        volume: 0.04 * v,
-        type: "sine",
-        delay: d,
-        harmonic: 5,
-      });
-    });
+    // Extended sparkle rain
+    playSparkle({ volume: 0.05 * v, delay: 0.6, count: 8 });
+    playSparkle({ volume: 0.04 * v, delay: 0.9, count: 6 });
 
-    // Extended coin rain
-    for (let i = 0; i < 15; i++) {
-      playRichTone({
-        frequency: 2000 + Math.random() * 1500,
-        freqEnd: 1000,
-        duration: 0.08,
-        volume: 0.04 * v,
-        type: "sine",
-        delay: 0.5 + i * 0.06,
-        harmonic: 3.5,
-      });
+    // Coin rain
+    for (let i = 0; i < 12; i++) {
+      playChirp({ pitch: 2000 + Math.random() * 2000, volume: 0.03 * v, delay: 0.5 + i * 0.06 });
     }
   }, []);
 
-  // ── Scatter Hit: mystical shimmer ──
+  // ── Scatter Hit: mystical cartoon shimmer ──
   const scatterSound = useCallback(() => {
     if (!ok() || !trackEnabled("wins")) return;
     const v = globalVol() * trackVol("wins");
-    // Shimmer sweep up
-    playRichTone({ frequency: 800, freqEnd: 3000, duration: 0.4, volume: 0.1 * v, type: "sine", harmonic: 2.5 });
-    playRichTone({ frequency: 1200, freqEnd: 4000, duration: 0.35, volume: 0.06 * v, type: "sine", delay: 0.05, harmonic: 3 });
-    playNoiseBurst({ duration: 0.3, volume: 0.05 * v, filterType: "highpass", filterFreq: 5000, filterQ: 0.5, delay: 0.1 });
-    // Chime
-    playRichTone({ frequency: 1568, duration: 0.3, volume: 0.08 * v, type: "sine", delay: 0.25, harmonic: 4 });
+    playSwoosh({ volume: 0.1 * v, duration: 0.3, freqStart: 800, freqEnd: 5000 });
+    playSparkle({ volume: 0.08 * v, delay: 0.1, count: 7 });
+    playBoing({ pitch: 1000, volume: 0.06 * v, delay: 0.25 });
   }, []);
 
-  // ── Near Miss: descending disappointment ──
+  // ── Near Miss: cartoon sad note ──
   const nearMissSound = useCallback(() => {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const v = globalVol() * trackVol("reelSpin");
     playRichTone({ frequency: 400, freqEnd: 200, duration: 0.3, volume: 0.08 * v, type: "triangle" });
   }, []);
 
-  // ── Nudge: short tap ──
+  // ── Nudge: quick boop ──
   const nudgeSound = useCallback(() => {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const v = globalVol() * trackVol("reelSpin");
-    playRichTone({ frequency: 300, freqEnd: 500, duration: 0.06, volume: 0.1 * v, type: "triangle" });
-    playNoiseBurst({ duration: 0.03, volume: 0.06 * v, filterType: "bandpass", filterFreq: 1500, filterQ: 1.5 });
+    playChirp({ pitch: 600, volume: 0.1 * v });
   }, []);
 
   return {
