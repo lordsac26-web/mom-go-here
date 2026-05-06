@@ -251,31 +251,31 @@ function drawLauncher(ctx, pos, aimAngle) {
   // Base platform
   ctx.fillStyle = "#374151";
   ctx.beginPath();
-  ctx.moveTo(-18, 4); ctx.lineTo(18, 4); ctx.lineTo(14, 14); ctx.lineTo(-14, 14);
+  ctx.moveTo(-26, 6); ctx.lineTo(26, 6); ctx.lineTo(20, 20); ctx.lineTo(-20, 20);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#4b5563";
-  ctx.fillRect(-12, 5, 24, 3);
+  ctx.fillRect(-18, 7, 36, 4);
   // Rotating turret
   ctx.rotate(aimAngle + Math.PI / 2);
-  const bLen = 24, bW = 7;
+  const bLen = 34, bW = 10;
   ctx.fillStyle = "#6b7280";
   ctx.fillRect(-bW, -bLen, bW * 2, bLen);
   ctx.fillStyle = "#4b5563";
   ctx.fillRect(-bW + 2, -bLen, (bW - 2) * 2, bLen);
   // Muzzle
   ctx.fillStyle = "#ef4444";
-  ctx.fillRect(-bW - 1, -bLen - 4, bW * 2 + 2, 5);
+  ctx.fillRect(-bW - 2, -bLen - 6, bW * 2 + 4, 7);
   ctx.fillStyle = "#1f2937";
-  ctx.beginPath(); ctx.arc(0, -bLen - 2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -bLen - 3, 4, 0, Math.PI * 2); ctx.fill();
   // Fins
   ctx.fillStyle = "#9ca3af";
-  ctx.beginPath(); ctx.moveTo(-bW - 3, -4); ctx.lineTo(-bW - 8, 6); ctx.lineTo(-bW, 2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(bW + 3, -4); ctx.lineTo(bW + 8, 6); ctx.lineTo(bW, 2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-bW - 4, -5); ctx.lineTo(-bW - 12, 8); ctx.lineTo(-bW, 3); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(bW + 4, -5); ctx.lineTo(bW + 12, 8); ctx.lineTo(bW, 3); ctx.closePath(); ctx.fill();
   ctx.restore();
   // Hinge
   ctx.fillStyle = "#f59e0b";
-  ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#d97706"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#d97706"; ctx.lineWidth = 2; ctx.stroke();
 }
 
 // ── Power meter bar (right side) ──
