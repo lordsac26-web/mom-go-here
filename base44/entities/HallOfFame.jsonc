@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Player display name"
     },
+    "user_email": {
+      "type": "string",
+      "description": "Player email for matching"
+    },
     "total_score": {
       "type": "number",
       "description": "Aggregate best score across all games"
@@ -45,11 +49,7 @@
         "role": "admin"
       }
     },
-    "read": {
-      "created_by": {
-        "$ne": null
-      }
-    },
+    "read": {},
     "update": {
       "user_condition": {
         "role": "admin"

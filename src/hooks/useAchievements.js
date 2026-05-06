@@ -4,14 +4,15 @@ import ACHIEVEMENTS from "../components/achievementDefinitions";
 
 /**
  * Hook to check and unlock achievements after each game event.
- * Gathers player stats from GameScore + PlayerXP + current streak,
+ * Gathers player stats from GameScore + PlayerXP + DailyLoginBonus +
+ * DailyWheelSpin + EngagementStreak + SolitaireStats + current streak,
  * then checks each achievement definition.
  *
  * Returns: { checkAchievements(currentStreak) } — call after win/loss
- * The `onUnlock` callback in the store is used to show toasts.
+ * The `onUnlock` callback is used to show toasts.
  */
 
-// We keep a module-level set so we don't re-check already-earned within one session
+// Module-level session cache to avoid re-checking already-earned achievements
 let sessionEarnedKeys = new Set();
 let lastEmail = null;
 
@@ -32,17 +33,21 @@ export function useAchievements(onUnlock) {
         lastEmail = user.email;
       }
 
-      // Gather stats in parallel
-      const [scores, xpRecords, existingAchievements] = await Promise.all([
+      // Gather all stats in parallel
+      const [scores, xpRecords, existingAchievements, loginRecords, spinRecords, streakRecords, solRecords] = await Promise.all([
         base44.entities.GameScore.filter({ user_email: user.email }),
         base44.entities.PlayerXP.filter({ user_email: user.email }),
         base44.entities.Achievement.filter({ user_email: user.email }),
+        base44.entities.DailyLoginBonus.filter({ user_email: user.email }),
+        base44.entities.DailyWheelSpin.filter({ user_email: user.email }),
+        base44.entities.EngagementStreak.filter({ user_email: user.email }),
+        base44.entities.SolitaireStats.filter({ user_email: user.email }),
       ]);
 
       const earnedKeys = new Set(existingAchievements.map(a => a.achievement_key));
-      // Also add to session cache
       earnedKeys.forEach(k => sessionEarnedKeys.add(k));
 
+      // ── Core stats ──
       const totalGames = scores.length;
       const totalWins = scores.filter(s => s.completed).length;
       const xpRecord = xpRecords[0];
@@ -50,11 +55,54 @@ export function useAchievements(onUnlock) {
       const level = xpRecord?.level || 1;
       const distinctGames = new Set(scores.map(s => s.game_name)).size;
 
-      // Best streak: use the max of the currentStreak from zustand and any historical best
-      // We track bestStreak from the EngagementStreak or just the current session
+      // Best streak: use current session streak
       const bestStreak = Math.max(currentStreak || 0, 0);
 
-      const stats = { totalGames, totalWins, winStreak: currentStreak || 0, bestStreak, level, totalXP, distinctGames };
+      // ── Daily login streak ──
+      const loginRecord = loginRecords[0];
+      const loginStreak = loginRecord?.current_streak || 0;
+
+      // ── Daily devotional streak ──
+      const streakRecord = streakRecords[0];
+      const dailyStreak = streakRecord?.daily_current_streak || 0;
+
+      // ── Wheel spins ──
+      const spinRecord = spinRecords[0];
+      const totalSpins = spinRecord?.total_spins || 0;
+
+      // ── Solitaire stats ──
+      const solRecord = solRecords[0];
+      const solitaireWins = solRecord?.games_won || 0;
+
+      // ── Game-specific win counts from GameScore ──
+      const gameWins = {};
+      const gameHighScores = {};
+      for (const s of scores) {
+        const gn = s.game_name || "";
+        if (s.completed) {
+          gameWins[gn] = (gameWins[gn] || 0) + 1;
+        }
+        if (typeof s.score === "number") {
+          gameHighScores[gn] = Math.max(gameHighScores[gn] || 0, s.score);
+        }
+      }
+
+      const checkersWins = gameWins["Checkers"] || 0;
+      const dartPopBest = gameHighScores["Dart Pop Blitz"] || 0;
+      const yahtzeeHigh = gameHighScores["Yahtzee"] || 0;
+      const memoryWins = gameWins["Memory Match"] || 0;
+      const wordSearchWins = gameWins["Word Search"] || 0;
+      const buzzwordWins = gameWins["BuzzWord"] || gameWins["Buzz Word"] || 0;
+      const mahjongWins = gameWins["Mahjong"] || 0;
+      const slotsBigWin = gameHighScores["Slots"] || gameHighScores["Slot Machine"] || 0;
+
+      const stats = {
+        totalGames, totalWins, winStreak: currentStreak || 0, bestStreak,
+        level, totalXP, distinctGames,
+        loginStreak, dailyStreak, totalSpins,
+        solitaireWins, checkersWins, dartPopBest, yahtzeeHigh,
+        memoryWins, wordSearchWins, buzzwordWins, mahjongWins, slotsBigWin,
+      };
 
       // Check each achievement
       const newlyUnlocked = [];

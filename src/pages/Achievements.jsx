@@ -117,8 +117,8 @@ export default function Achievements() {
       </div>
 
       {/* Category filters */}
-      <div className="px-4 mb-4 overflow-x-auto">
-        <div className="flex gap-2 pb-1">
+      <div className="px-4 mb-4 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 pb-2 min-w-max">
           <button
             onClick={() => setActiveCategory(null)}
             className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${

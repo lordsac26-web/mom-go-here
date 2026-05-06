@@ -69,7 +69,8 @@ export default function HallOfFameWidget({ userEmail, refreshKey }) {
         await refreshRankings();
         return;
       }
-    } catch {
+    } catch (e) {
+      console.warn("HallOfFame fetch error:", e);
       setError(true);
     } finally {
       setLoading(false);
@@ -80,9 +81,12 @@ export default function HallOfFameWidget({ userEmail, refreshKey }) {
     setRefreshing(true);
     try {
       await base44.functions.invoke("refreshHallOfFame", {});
+      // Small delay to let entity writes settle
+      await new Promise(r => setTimeout(r, 500));
       const data = await base44.entities.HallOfFame.list("-total_score", 10);
       setEntries(data);
-    } catch {
+    } catch (e) {
+      console.warn("HallOfFame refresh error:", e);
       setError(true);
     } finally {
       setRefreshing(false);
