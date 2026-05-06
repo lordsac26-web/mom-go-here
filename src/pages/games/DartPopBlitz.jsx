@@ -182,10 +182,6 @@ export default function DartPopBlitz() {
         totalPopped={totalPopped}
         totalBalloons={totalBalloons}
         streak={streak}
-        activePowerup={activePowerup}
-        setActivePowerup={setActivePowerup}
-        powerupInventory={powerupInventory}
-        setPowerupInventory={setPowerupInventory}
         endless={isEndless}
         wind={wind}
       />

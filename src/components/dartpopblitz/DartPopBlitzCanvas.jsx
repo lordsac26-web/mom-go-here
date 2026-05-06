@@ -19,7 +19,8 @@ import {
 import { POWERUP_BALLOON_SPAWN_INTERVAL } from "./gameConfig";
 
 // ── Offscreen static background ──
-let staticBg = null;
+// Bump version to invalidate cache when ground layout changes
+let staticBg = null; const _bgVer = 2;
 function getStaticBg() {
   if (staticBg) return staticBg;
   const oc = document.createElement("canvas");
@@ -40,11 +41,37 @@ function getStaticBg() {
     ctx.arc(cx - r * 0.5, cy + r * 0.1, r * 0.5, 0, Math.PI * 2);
     ctx.fill();
   });
+  // Dirt layer under grass
+  const GROUND_TOP = GAME_HEIGHT - 80;
+  ctx.fillStyle = "#8B6914";
+  ctx.fillRect(0, GROUND_TOP + 12, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP);
+  // Darker dirt stripe
+  ctx.fillStyle = "#6B4F12";
+  ctx.fillRect(0, GROUND_TOP + 24, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP - 24);
+  // Dirt texture dots
+  ctx.fillStyle = "#7A5C13";
+  for (let dx = 5; dx < GAME_WIDTH; dx += 14) {
+    for (let dy = GROUND_TOP + 28; dy < GAME_HEIGHT; dy += 12) {
+      ctx.globalAlpha = 0.3 + Math.random() * 0.3;
+      ctx.beginPath();
+      ctx.arc(dx + Math.random() * 6, dy + Math.random() * 4, 1.5 + Math.random(), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  // Grass layer on top of dirt
   ctx.fillStyle = "#16a34a";
-  ctx.fillRect(0, GAME_HEIGHT - 50, GAME_WIDTH, 50);
+  ctx.fillRect(0, GROUND_TOP, GAME_WIDTH, 14);
+  // Grass blades
   ctx.fillStyle = "#15803d";
-  for (let gx = 0; gx < GAME_WIDTH; gx += 20) {
-    ctx.fillRect(gx, GAME_HEIGHT - 50, 2, 8 + Math.sin(gx) * 4);
+  for (let gx = 0; gx < GAME_WIDTH; gx += 12) {
+    const h = 6 + Math.sin(gx * 0.3) * 3 + Math.random() * 3;
+    ctx.fillRect(gx, GROUND_TOP - 2, 3, h);
+  }
+  // Lighter grass highlights
+  ctx.fillStyle = "#22c55e";
+  for (let gx = 6; gx < GAME_WIDTH; gx += 18) {
+    ctx.fillRect(gx, GROUND_TOP, 2, 5 + Math.random() * 3);
   }
   staticBg = oc;
   return oc;
@@ -321,7 +348,7 @@ function drawAimArc(ctx, pos, currentAngle) {
 // ── Wind indicator on canvas ──
 function drawWindIndicator(ctx, wind) {
   const cx = GAME_WIDTH / 2;
-  const y = GAME_HEIGHT - 18;
+  const y = GAME_HEIGHT - 84;
   const maxW = 40;
   const strength = wind / WIND_MAX_STRENGTH; // -1 to 1
   const barLen = Math.abs(strength) * maxW;
@@ -360,7 +387,133 @@ function drawWindIndicator(ctx, wind) {
   ctx.restore();
 }
 
-const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
+const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 68 };
+
+// ── Power-up slots in the dirt area ──
+const POWERUP_KEYS_ORDER = ["multishot", "mirv", "sniper"];
+const SLOT_SIZE = 36;
+const SLOT_GAP = 12;
+const SLOT_TOTAL_W = POWERUP_KEYS_ORDER.length * SLOT_SIZE + (POWERUP_KEYS_ORDER.length - 1) * SLOT_GAP;
+const SLOT_START_X = (GAME_WIDTH - SLOT_TOTAL_W) / 2;
+const SLOT_Y = GAME_HEIGHT - 38;
+const SLOT_COLORS = { multishot: "#22d3ee", mirv: "#f97316", sniper: "#a855f7" };
+
+function getSlotRects() {
+  return POWERUP_KEYS_ORDER.map((key, i) => ({
+    key,
+    x: SLOT_START_X + i * (SLOT_SIZE + SLOT_GAP),
+    y: SLOT_Y,
+    w: SLOT_SIZE,
+    h: SLOT_SIZE,
+  }));
+}
+
+function drawPowerupSlots(ctx, inventory, activeKey, time) {
+  const slots = getSlotRects();
+  for (const slot of slots) {
+    const pw = POWERUPS[slot.key];
+    const count = inventory[slot.key] || 0;
+    const isActive = activeKey === slot.key;
+    const baseColor = SLOT_COLORS[slot.key];
+
+    ctx.save();
+
+    // Slot background — carved-into-dirt look
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.roundRect(slot.x - 1, slot.y - 1, slot.w + 2, slot.h + 2, 8);
+    ctx.fill();
+
+    if (isActive) {
+      // Glowing active border
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(slot.x, slot.y, slot.w, slot.h, 7);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Fill with tinted bg
+      ctx.fillStyle = baseColor + "30"; // alpha
+      ctx.beginPath();
+      ctx.roundRect(slot.x, slot.y, slot.w, slot.h, 7);
+      ctx.fill();
+    } else if (count > 0) {
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(slot.x, slot.y, slot.w, slot.h, 7);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fill();
+    } else {
+      // Empty / dimmed slot
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+      ctx.beginPath();
+      ctx.roundRect(slot.x, slot.y, slot.w, slot.h, 7);
+      ctx.fill();
+    }
+
+    // Emoji
+    const alpha = count > 0 || isActive ? 1 : 0.3;
+    ctx.globalAlpha = alpha;
+    ctx.font = `${SLOT_SIZE * 0.55}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(pw.emoji, slot.x + slot.w / 2, slot.y + slot.h / 2);
+    ctx.globalAlpha = 1;
+
+    // Count badge
+    if (count > 0 && !isActive) {
+      const bx = slot.x + slot.w - 4;
+      const by = slot.y + 4;
+      ctx.fillStyle = baseColor;
+      ctx.beginPath();
+      ctx.arc(bx, by, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(count, bx, by);
+    }
+
+    // Active checkmark
+    if (isActive) {
+      const bx = slot.x + slot.w - 4;
+      const by = slot.y + 4;
+      ctx.fillStyle = "#22c55e";
+      ctx.beginPath();
+      ctx.arc(bx, by, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("✓", bx, by);
+    }
+
+    ctx.restore();
+  }
+
+  // "POWER-UPS" label above slots
+  ctx.font = "bold 9px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.fillText("POWER-UPS", GAME_WIDTH / 2, SLOT_Y - 6);
+}
+
+/** Check if a canvas-relative point hits a power-up slot. Returns key or null. */
+function hitTestPowerupSlot(cx, cy) {
+  const slots = getSlotRects();
+  for (const slot of slots) {
+    if (cx >= slot.x && cx <= slot.x + slot.w && cy >= slot.y && cy <= slot.y + slot.h) {
+      return slot.key;
+    }
+  }
+  return null;
+}
 const COMBO_WINDOW = 30;
 const MAGNETIC_SPEED = 1.5;
 
@@ -406,6 +559,14 @@ export default function DartPopBlitzCanvas({
   useEffect(() => { stateRef.current.activePowerup = activePowerup; }, [activePowerup]);
   useEffect(() => { stateRef.current.gameState = gameState; }, [gameState]);
 
+  // Keep callbacksRef in sync with latest inventory/powerup state for canvas rendering
+  useEffect(() => {
+    if (callbacksRef.current) {
+      callbacksRef.current.powerupInventory = powerupInventory;
+      callbacksRef.current.activePowerup = activePowerup;
+    }
+  }, [powerupInventory, activePowerup]);
+
   // ── Fire dart at locked angle + power ──
   const fireDart = useCallback((angle, powerT) => {
     const s = stateRef.current;
@@ -441,28 +602,64 @@ export default function DartPopBlitzCanvas({
     if (pw) { s.activePowerup = null; setActivePowerup(null); }
   }, [sounds, setActivePowerup, onDartsRemainingChange]);
 
-  // ── Input: Tap to advance phase ──
+  // ── Canvas coordinate helper ──
+  const getCanvasPos = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const scaleX = GAME_WIDTH / rect.width;
+    const scaleY = GAME_HEIGHT / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }, []);
+
+  // ── Input: Tap to advance phase OR equip power-up ──
   const handleTap = useCallback((e) => {
     e.preventDefault();
     const s = stateRef.current;
     if (s.gameState !== "playing") return;
+
+    // Check if tap hit a power-up slot
+    const pos = getCanvasPos(e);
+    if (pos) {
+      const slotKey = hitTestPowerupSlot(pos.x, pos.y);
+      if (slotKey) {
+        // Toggle equip/unequip via React state setters
+        const cb = callbacksRef.current;
+        if (activePowerup === slotKey) {
+          // Unequip — return to inventory
+          setPowerupInventory(prev => ({ ...prev, [slotKey]: (prev[slotKey] || 0) + 1 }));
+          setActivePowerup(null);
+        } else {
+          const inv = powerupInventory;
+          if ((inv[slotKey] || 0) > 0) {
+            // Return currently equipped one first
+            if (activePowerup) {
+              setPowerupInventory(prev => ({ ...prev, [activePowerup]: (prev[activePowerup] || 0) + 1 }));
+            }
+            setPowerupInventory(prev => ({ ...prev, [slotKey]: prev[slotKey] - 1 }));
+            setActivePowerup(slotKey);
+          }
+        }
+        return; // Don't advance aim/power phase
+      }
+    }
+
     if (!s.endless && s.dartsRemaining <= 0) return;
 
     const lr = launcherRef.current;
     if (lr.phase === "aiming") {
-      // Lock aim angle, start power meter
       lr.lockedAngle = lr.aimAngle;
       lr.phase = "power";
       lr.powerT = 0;
       lr.powerDir = 1;
     } else if (lr.phase === "power") {
-      // Lock power, fire!
       fireDart(lr.lockedAngle, lr.powerT);
       lr.phase = "cooldown";
       lr.cooldownTimer = COOLDOWN_FRAMES;
     }
-    // ignore taps during cooldown
-  }, [fireDart]);
+  }, [fireDart, getCanvasPos, activePowerup, powerupInventory, setActivePowerup, setPowerupInventory]);
 
   // ── Initialization ──
   useEffect(() => {
@@ -496,7 +693,7 @@ export default function DartPopBlitzCanvas({
     const ctx = canvas.getContext("2d");
     const bg = getStaticBg();
 
-    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory };
+    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory, powerupInventory, activePowerup };
 
     function loop() {
       const s = stateRef.current;
@@ -504,7 +701,7 @@ export default function DartPopBlitzCanvas({
       const lr = launcherRef.current;
 
       if (s.gameState !== "playing") {
-        render(ctx, bg, s, lr);
+        render(ctx, bg, s, lr, cb);
         animFrameRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -815,11 +1012,11 @@ export default function DartPopBlitzCanvas({
         }
       }
 
-      render(ctx, bg, s, lr);
+      render(ctx, bg, s, lr, cb);
       animFrameRef.current = requestAnimationFrame(loop);
     }
 
-    function render(ctx, bg, s, lr) {
+    function render(ctx, bg, s, lr, cb) {
       ctx.save();
       ctx.translate(s.shakeX, s.shakeY);
 
@@ -853,19 +1050,22 @@ export default function DartPopBlitzCanvas({
         drawPowerMeter(ctx, lr.powerT, lr.phase === "cooldown");
       }
 
-      // Phase hint text
+      // Phase hint text — positioned between launcher and power-up slots
       if (s.gameState === "playing" && s.dartsRemaining > 0) {
-        ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+        ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         if (lr.phase === "aiming") {
-          ctx.fillText("Tap to lock aim!", GAME_WIDTH / 2, LAUNCHER_POS.y + 28);
+          ctx.fillText("Tap to lock aim!", GAME_WIDTH / 2, LAUNCHER_POS.y + 34);
         } else if (lr.phase === "power") {
-          ctx.fillText("Tap to set power!", GAME_WIDTH / 2, LAUNCHER_POS.y + 28);
+          ctx.fillText("Tap to set power!", GAME_WIDTH / 2, LAUNCHER_POS.y + 34);
         }
       }
 
-      // Wind indicator
+      // Wind indicator (moved above launcher area)
       drawWindIndicator(ctx, s.wind);
+
+      // Power-up slots in dirt
+      drawPowerupSlots(ctx, cb.powerupInventory, cb.activePowerup, Date.now());
 
       // Combo floats
       for (const f of s.comboFloats) {
