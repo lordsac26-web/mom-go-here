@@ -87,6 +87,13 @@ export const SHAKE_DECAY = 0.85;          // per-frame decay
 export const SLOW_MO_DURATION = 90;       // frames of slow-mo (~1.5s)
 export const SLOW_MO_FACTOR = 0.3;        // time scale during slow-mo
 
+// Floating power-up balloons
+export const POWERUP_BALLOON_SPAWN_INTERVAL = 600; // frames (~10s at 60fps)
+export const POWERUP_BALLOON_SPEED = 0.6;          // horizontal px/frame
+export const POWERUP_BALLOON_RADIUS = 16;
+export const POWERUP_BALLOON_WOBBLE_AMP = 12;      // vertical wobble pixels
+export const POWERUP_BALLOON_WOBBLE_SPEED = 0.04;
+
 // Canvas sizing
 export const GAME_WIDTH = 400;
 export const GAME_HEIGHT = 600;

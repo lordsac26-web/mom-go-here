@@ -13,6 +13,10 @@ import {
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
+import {
+  spawnPowerupBalloon, updatePowerupBalloons, drawPowerupBalloons, checkDartPowerupCollision,
+} from "./powerupBalloons";
+import { POWERUP_BALLOON_SPAWN_INTERVAL } from "./gameConfig";
 
 // ── Offscreen static background ──
 let staticBg = null;
@@ -471,6 +475,7 @@ export default function DartPopBlitzCanvas({
     Object.assign(stateRef.current, {
       balloons: b, darts: [], particles: [],
       obstacles: generateObstacles(preset.obstacles || []),
+      powerupBalloons: [], powerupSpawnTimer: 0,
       dartsRemaining: preset.darts, score: 0, streak: 0, totalPopped: 0,
       combo: 0, comboMultiplier: 1, comboTimer: 0, comboFloats: [],
       ended: false, endless: !!preset.endless, endlessSpawnTimer: 0,
@@ -562,6 +567,17 @@ export default function DartPopBlitzCanvas({
           }
         }
       }
+
+      // ── Floating power-up balloons ──
+      s.powerupSpawnTimer++;
+      if (s.powerupSpawnTimer >= POWERUP_BALLOON_SPAWN_INTERVAL) {
+        s.powerupSpawnTimer = 0;
+        // Max 2 on screen at once
+        if (s.powerupBalloons.filter(pb => pb.alive).length < 2) {
+          s.powerupBalloons.push(spawnPowerupBalloon());
+        }
+      }
+      s.powerupBalloons = updatePowerupBalloons(s.powerupBalloons, ts);
 
       // Balloon wobble + magnetic slide
       for (const b of s.balloons) {
@@ -656,6 +672,24 @@ export default function DartPopBlitzCanvas({
             cb.sounds.playPop();
             continue;
           }
+        }
+
+        // ── Power-up balloon collision ──
+        const hitPU = checkDartPowerupCollision(d, s.powerupBalloons);
+        if (hitPU) {
+          // Award the power-up to inventory
+          cb.sounds.playStreakChime();
+          spawnParticles(s.particles, hitPU.x, hitPU.y, hitPU.color, 12);
+          s.comboFloats.push({
+            x: hitPU.x, y: hitPU.y,
+            text: `${hitPU.emoji} ${hitPU.powerupKey.toUpperCase()}!`,
+            life: 1, scale: 1,
+          });
+          cb.setPowerupInventory(prev => ({
+            ...prev,
+            [hitPU.powerupKey]: (prev[hitPU.powerupKey] || 0) + 1,
+          }));
+          // Dart passes through (not consumed)
         }
 
         // Balloon collision
@@ -792,6 +826,7 @@ export default function DartPopBlitzCanvas({
       ctx.drawImage(bg, 0, 0);
       if (s.obstacles?.length > 0) drawObstacles(ctx, s.obstacles, Date.now());
       for (const b of s.balloons) { if (b.alive) drawBalloon(ctx, b); }
+      drawPowerupBalloons(ctx, s.powerupBalloons);
       for (const d of s.darts) { if (d.alive) drawDart(ctx, d); }
       for (const p of s.particles) drawParticle(ctx, p);
       ctx.globalAlpha = 1;
