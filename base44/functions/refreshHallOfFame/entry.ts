@@ -3,9 +3,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const startTime = Date.now();
 
-    // Helper: Fetch ALL records with pagination
-    async function fetchAll(entityName, orderBy) {
+    // === Fetch All Necessary Data with Pagination ===
+    async function fetchAll(entityName, orderBy = null, filter = {}) {
       let all = [];
       let cursor = null;
       let page = 0;
@@ -15,28 +16,34 @@ Deno.serve(async (req) => {
           order: orderBy,
           limit: 500,
           cursor: cursor,
+          ...filter
         });
 
         const items = response?.items || response || [];
         all = all.concat(items);
-
         cursor = response?.nextCursor || response?.next || response?.cursor;
         page++;
 
-        if (page > 40) break; // safety limit
+        if (page > 50) break;
       } while (cursor);
 
       console.log(`Fetched ${all.length} records from ${entityName}`);
       return all;
     }
 
-    // Fetch data
-    const [allScores, allProfiles] = await Promise.all([
-      fetchAll('GameScore', '-score'),
-      fetchAll('UserProfile', null),
-    ]);
+    // Get last refresh time (for incremental updates)
+    const lastRun = await base44.asServiceRole.entities.SystemConfig.get("last_hall_of_fame_refresh") 
+                     || { value: "2020-01-01T00:00:00Z" };
 
-    // Build display name map
+    const lastRefreshTime = lastRun.value;
+
+    // Fetch scores - prefer recent ones for optimization
+    const allScores = await fetchAll('GameScore', '-updated_at');
+
+    // Fetch profiles (usually much smaller)
+    const allProfiles = await fetchAll('UserProfile');
+
+    // Build name map
     const nameMap = {};
     allProfiles.forEach((p) => {
       if (p.user_email) {
@@ -46,12 +53,12 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Best score per player per game
+    // === Best score per player per game ===
     const playerGames = {};
 
     allScores.forEach((s) => {
       if (!s?.user_email || typeof s.score !== 'number' || s.score <= 0) return;
-      
+
       if (!playerGames[s.user_email]) playerGames[s.user_email] = {};
 
       const current = playerGames[s.user_email][s.game_name] || 0;
@@ -60,7 +67,7 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Build ranked entries
+    // Build entries
     const entries = Object.entries(playerGames).map(([email, games]) => {
       const total_score = Object.values(games).reduce((a, b) => a + b, 0);
       const games_played = Object.keys(games).length;
@@ -78,48 +85,51 @@ Deno.serve(async (req) => {
       return {
         user_email: email,
         display_name: nameMap[email] || email.split("@")[0],
-        total_score: total_score,
-        games_played: games_played,
-        best_game: best_game,
-        best_game_score: best_game_score,
+        total_score,
+        games_played,
+        best_game,
+        best_game_score,
         game_breakdown: games,
         last_updated: new Date().toISOString(),
         rank: 0,
       };
     });
 
-    // Sort and assign ranks
+    // Sort & rank
     entries.sort((a, b) => b.total_score - a.total_score);
-    entries.forEach((e, i) => {
-      e.rank = i + 1;
+    entries.forEach((e, i) => { e.rank = i + 1; });
+
+    const top50 = entries.slice(0, 50);
+
+    // === UPSERT into HallOfFame (Much Better than Delete + Recreate) ===
+    if (top50.length > 0) {
+      // Prepare records with unique key (user_email)
+      const recordsToUpsert = top50.map(player => ({
+        ...player,
+        // Use user_email as unique identifier for upsert
+        id: `hof_${player.user_email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      }));
+
+      await base44.asServiceRole.entities.HallOfFame.bulkUpsert(recordsToUpsert, {
+        key: 'user_email'   // Important: tells Base44 to upsert on this field
+      });
+
+      console.log(`✅ Upserted ${top50.length} Hall of Fame entries`);
+    }
+
+    // Update last refresh time
+    await base44.asServiceRole.entities.SystemConfig.upsert({
+      key: "last_hall_of_fame_refresh",
+      value: new Date().toISOString()
     });
 
-    // Update HallOfFame safely
-    const existing = await base44.asServiceRole.entities.HallOfFame.list("-total_score", 200);
-
-    // Delete old entries
-    if (existing.length > 0) {
-      console.log(`Deleting ${existing.length} old Hall of Fame entries...`);
-      for (const old of existing) {
-        try {
-          await base44.asServiceRole.entities.HallOfFame.delete(old.id);
-        } catch (e) {
-          console.warn(`Failed to delete ${old.id}`);
-        }
-      }
-    }
-
-    // Create new top 50
-    const top50 = entries.slice(0, 50);
-    if (top50.length > 0) {
-      await base44.asServiceRole.entities.HallOfFame.bulkCreate(top50);
-      console.log(`Successfully saved ${top50.length} Hall of Fame entries`);
-    }
+    const duration = Date.now() - startTime;
 
     return Response.json({
       success: true,
       totalPlayers: entries.length,
       top50Count: top50.length,
+      durationMs: duration,
       top10: top50.slice(0, 10).map(p => ({
         rank: p.rank,
         display_name: p.display_name,
