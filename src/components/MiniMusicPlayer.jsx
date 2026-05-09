@@ -146,10 +146,10 @@ export default function MiniMusicPlayer() {
         {/* Station info — tappable to open genre picker */}
         <button
           onClick={() => setShowPicker(!showPicker)}
-          className="min-w-0 flex-1 text-left flex items-center gap-1"
+          className="min-w-0 flex-1 text-left flex items-center gap-1 overflow-hidden"
         >
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-foreground truncate leading-tight">
+          <div className="min-w-0 overflow-hidden">
+            <p className="text-xs font-bold text-foreground truncate leading-tight max-w-[140px] sm:max-w-[200px]">
               {genreConfig.emoji} {currentStationName || `${genreConfig.label} Radio`}
             </p>
             {isPlayerActive && (
@@ -175,9 +175,9 @@ export default function MiniMusicPlayer() {
         <button
           onClick={handleSkip}
           disabled={loading || streams.length === 0}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-transform active:scale-90 flex-shrink-0"
+          className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-transform active:scale-90 flex-shrink-0 p-1"
         >
-          <SkipForward size={16} />
+          <SkipForward size={18} />
         </button>
       </div>
 
