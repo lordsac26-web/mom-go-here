@@ -120,5 +120,5 @@ async function clear(storeName) {
   } catch {}
 }
 
-const offlineCache = { get, set, getAll, remove, clear, STORES };
+const offlineCache = { get, set, getAll, remove, clear, STORES, _openDB: openDB };
 export default offlineCache;

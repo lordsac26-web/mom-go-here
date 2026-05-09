@@ -142,15 +142,9 @@ async function flush() {
   _notify({ syncing: false, total: 0, completed: 0, remaining });
 }
 
-/** Helper — reuses offlineCache's DB connection */
+/** Helper — reuses offlineCache's shared DB connection (which handles upgrades) */
 function _openDB() {
-  // Access the same openDB from offlineCache by calling a dummy get
-  // Actually, we just re-open from offlineCache internals
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open("momgohere-offline", 2);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+  return offlineCache._openDB();
 }
 
 /**
