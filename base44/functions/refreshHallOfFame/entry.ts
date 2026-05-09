@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const startTime = Date.now();
 
-    // === Fetch All Necessary Data with Pagination ===
+    // ====================== HELPERS ======================
     async function fetchAll(entityName, orderBy = null, filter = {}) {
       let all = [];
       let cursor = null;
@@ -24,23 +24,33 @@ Deno.serve(async (req) => {
         cursor = response?.nextCursor || response?.next || response?.cursor;
         page++;
 
-        if (page > 50) break;
+        if (page > 60) break;
       } while (cursor);
 
       console.log(`Fetched ${all.length} records from ${entityName}`);
       return all;
     }
 
-    // Get last refresh time (for incremental updates)
-    const lastRun = await base44.asServiceRole.entities.SystemConfig.get("last_hall_of_fame_refresh") 
-                     || { value: "2020-01-01T00:00:00Z" };
+    // Get last refresh timestamp
+    let lastRefresh = "2020-01-01T00:00:00Z";
+    try {
+      const config = await base44.asServiceRole.entities.SystemConfig.get("last_hall_of_fame_refresh");
+      if (config?.value) lastRefresh = config.value;
+    } catch (e) {}
 
-    const lastRefreshTime = lastRun.value;
+    console.log(`Last refresh: ${lastRefresh}`);
 
-    // Fetch scores - prefer recent ones for optimization
-    const allScores = await fetchAll('GameScore', '-updated_at');
+    // ====================== FETCH DATA ======================
 
-    // Fetch profiles (usually much smaller)
+    // 1. Fetch NEW scores only (incremental)
+    const newScores = await fetchAll('GameScore', '-updated_at', {
+      updated_at: { $gte: lastRefresh }
+    });
+
+    // 2. Fetch ALL HallOfFame (previous state)
+    const previousHof = await fetchAll('HallOfFame', '-total_score');
+
+    // 3. Fetch ALL User Profiles (needed for names)
     const allProfiles = await fetchAll('UserProfile');
 
     // Build name map
@@ -48,15 +58,23 @@ Deno.serve(async (req) => {
     allProfiles.forEach((p) => {
       if (p.user_email) {
         nameMap[p.user_email] = (p.display_name || "").trim() || 
-                               p.user_email.split("@")[0] || 
-                               "Senior Player";
+                               p.user_email.split("@")[0] || "Senior Player";
       }
     });
 
-    // === Best score per player per game ===
+    // ====================== BUILD PLAYER BESTS ======================
+
     const playerGames = {};
 
-    allScores.forEach((s) => {
+    // First: Load previous bests from HallOfFame
+    previousHof.forEach((entry) => {
+      if (entry.user_email && entry.game_breakdown) {
+        playerGames[entry.user_email] = { ...entry.game_breakdown };
+      }
+    });
+
+    // Then: Update with any new/better scores
+    newScores.forEach((s) => {
       if (!s?.user_email || typeof s.score !== 'number' || s.score <= 0) return;
 
       if (!playerGames[s.user_email]) playerGames[s.user_email] = {};
@@ -67,7 +85,18 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Build entries
+    // If no new scores, we can early exit
+    if (newScores.length === 0 && previousHof.length > 0) {
+      console.log("No new scores since last refresh. Skipping full recalc.");
+      return Response.json({
+        success: true,
+        message: "No changes detected",
+        totalPlayers: previousHof.length,
+        durationMs: Date.now() - startTime
+      });
+    }
+
+    // ====================== BUILD FINAL ENTRIES ======================
     const entries = Object.entries(playerGames).map(([email, games]) => {
       const total_score = Object.values(games).reduce((a, b) => a + b, 0);
       const games_played = Object.keys(games).length;
@@ -95,23 +124,21 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Sort & rank
+    // Sort and rank
     entries.sort((a, b) => b.total_score - a.total_score);
     entries.forEach((e, i) => { e.rank = i + 1; });
 
     const top50 = entries.slice(0, 50);
 
-    // === UPSERT into HallOfFame (Much Better than Delete + Recreate) ===
+    // ====================== UPSERT ======================
     if (top50.length > 0) {
-      // Prepare records with unique key (user_email)
       const recordsToUpsert = top50.map(player => ({
         ...player,
-        // Use user_email as unique identifier for upsert
-        id: `hof_${player.user_email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        id: `hof_${player.user_email.replace(/[^a-zA-Z0-9@._-]/g, '_')}`,
       }));
 
       await base44.asServiceRole.entities.HallOfFame.bulkUpsert(recordsToUpsert, {
-        key: 'user_email'   // Important: tells Base44 to upsert on this field
+        key: 'user_email'
       });
 
       console.log(`✅ Upserted ${top50.length} Hall of Fame entries`);
@@ -128,6 +155,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       totalPlayers: entries.length,
+      updatedPlayers: newScores.length,
       top50Count: top50.length,
       durationMs: duration,
       top10: top50.slice(0, 10).map(p => ({
