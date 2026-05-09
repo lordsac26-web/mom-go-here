@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import syncQueue from "@/lib/syncQueue";
 
 /**
  * XP & Level System (25 levels, exponential curve)
@@ -72,17 +73,17 @@ export function usePlayerXP() {
     if (busyRef.current) return;
     busyRef.current = true;
 
+    const xpAmount = outcome === "win" ? XP_WIN : XP_LOSS;
+
     try {
       const user = await base44.auth.me();
       if (!user?.email) return;
-
-      const xpAmount = outcome === "win" ? XP_WIN : XP_LOSS;
 
       const records = await base44.entities.PlayerXP.filter({ user_email: user.email });
       let record = records[0];
 
       if (!record) {
-        record = await base44.entities.PlayerXP.create({
+        await syncQueue.safeCreate("PlayerXP", {
           user_email: user.email,
           total_xp: xpAmount,
           level: 1,
@@ -90,13 +91,17 @@ export function usePlayerXP() {
       } else {
         const newXP = (record.total_xp || 0) + xpAmount;
         const info = getLevelInfo(newXP);
-        await base44.entities.PlayerXP.update(record.id, {
+        await syncQueue.safeUpdate("PlayerXP", record.id, {
           total_xp: newXP,
           level: info.level,
         });
       }
     } catch (err) {
-      console.error("Failed to award XP:", err);
+      // Offline and the filter/auth itself failed — silently drop
+      // (the XP will be awarded next time the user plays online)
+      if (navigator.onLine) {
+        console.error("Failed to award XP:", err);
+      }
     } finally {
       busyRef.current = false;
     }

@@ -13,6 +13,7 @@ import HeaderSoundControls from "./HeaderSoundControls";
 import AchievementUnlockToast from "./AchievementUnlockToast";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 import OfflineBanner from "./OfflineBanner";
+import useSyncQueue from "../hooks/useSyncQueue";
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -74,6 +75,9 @@ export default function Layout() {
   }, [location.pathname]);
 
   const achievementBadge = useAchievementToastStore((s) => s.badge);
+
+  // Wire up background sync queue — flushes pending offline operations when reconnected
+  useSyncQueue();
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">

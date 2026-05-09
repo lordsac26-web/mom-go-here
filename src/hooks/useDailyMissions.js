@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getLevelInfo } from "./usePlayerXP";
 import { pickRandomMissions } from "../components/missions/missionDefinitions";
+import syncQueue from "@/lib/syncQueue";
 
 /**
  * Hook to report mission progress from any game or feature.
@@ -160,12 +161,12 @@ export function useDailyMissions() {
           if (xpRecord) {
             const newXP = (xpRecord.total_xp || 0) + totalMissionXP;
             const info = getLevelInfo(newXP);
-            await base44.entities.PlayerXP.update(xpRecord.id, { total_xp: newXP, level: info.level });
+            await syncQueue.safeUpdate("PlayerXP", xpRecord.id, { total_xp: newXP, level: info.level });
           }
         }
       }
 
-      await base44.entities.DailyMission.update(record.id, {
+      await syncQueue.safeUpdate("DailyMission", record.id, {
         missions,
         all_completed: allCompleted,
       });

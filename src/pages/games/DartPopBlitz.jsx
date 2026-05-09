@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import syncQueue from "@/lib/syncQueue";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import useHaptics from "../../hooks/useHaptics";
 import useConfetti from "../../hooks/useConfetti";
@@ -45,7 +46,7 @@ async function saveGameScore({ userEmail, displayName, score, dartLimit, balloon
   if (!userEmail) return;
   const base = { user_email: userEmail, score, level_completed: won };
   try {
-    await base44.entities.DartPopBlitzScore.create({
+    await syncQueue.safeCreate("DartPopBlitzScore", {
       ...base,
       dart_limit: dartLimit,
       balloons_popped: balloonsPopped,
@@ -54,7 +55,7 @@ async function saveGameScore({ userEmail, displayName, score, dartLimit, balloon
     console.error("Failed to save DartPopBlitzScore:", err);
   }
   try {
-    await base44.entities.GameScore.create({
+    await syncQueue.safeCreate("GameScore", {
       ...base,
       display_name: displayName || '',
       game_name: "Dart Pop Blitz",

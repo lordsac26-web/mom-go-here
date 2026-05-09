@@ -12,7 +12,7 @@
  */
 
 const DB_NAME = "momgohere-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   scripture: "scripture",
@@ -21,6 +21,7 @@ const STORES = {
   gameScores: "gameScores",
   dailyMissions: "dailyMissions",
   generic: "generic",
+  syncQueue: "syncQueue",
 };
 
 let dbPromise = null;
@@ -33,7 +34,12 @@ function openDB() {
       const db = e.target.result;
       Object.values(STORES).forEach((name) => {
         if (!db.objectStoreNames.contains(name)) {
-          db.createObjectStore(name);
+          // syncQueue uses autoIncrement keys for ordered processing
+          if (name === "syncQueue") {
+            db.createObjectStore(name, { keyPath: "id", autoIncrement: true });
+          } else {
+            db.createObjectStore(name);
+          }
         }
       });
     };
