@@ -29,30 +29,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Look up display names from UserProfile
-      const dartNameMap = {};
-      try {
-        const profiles = await base44.asServiceRole.entities.UserProfile.list(null, 5000);
-        profiles.forEach((p) => {
-          if (p?.user_email) {
-            dartNameMap[p.user_email] =
-              (p.display_name || '').trim() ||
-              p.user_email.split('@')[0] ||
-              'Senior Player';
-          }
-        });
-      } catch {
-        // Non-critical
-      }
-
       const top10 = Object.values(bestByUser)
         .sort((a, b) => b.score - a.score)
         .slice(0, 10)
         .map((s) => ({
-          display_name:
-            dartNameMap[s.user_email] ||
-            s.user_email?.split('@')[0] ||
-            'Player',
+          display_name: s.user_email?.split('@')[0] || 'Player',
           score: s.score,
           balloons_popped: s.balloons_popped,
           dart_limit: s.dart_limit,
@@ -63,40 +44,30 @@ Deno.serve(async (req) => {
     }
 
     // ====================== Main Leaderboard Logic ======================
-    // Use .list() with asServiceRole — .filter({}) returns empty for RLS-protected entities
-    const allScores  = await base44.asServiceRole.entities.GameScore.list('-created_date', 5000);
+    // HallOfFame has open read RLS — always accessible.
+    // We derive EVERYTHING from HallOfFame (which refreshHallOfFame populates).
+    // This avoids RLS issues with GameScore/UserProfile in read-only contexts.
     const hallOfFame = await base44.asServiceRole.entities.HallOfFame.list('-total_score', 5000);
-    const profiles   = await base44.asServiceRole.entities.UserProfile.list(null, 5000);
 
-    // Build name map from UserProfile
-    const nameMap = {};
-    profiles.forEach((p) => {
-      if (p?.user_email) {
-        nameMap[p.user_email] =
-          (p.display_name || '').trim() ||
-          p.user_email.split('@')[0] ||
-          'Senior Player';
-      }
-    });
-
-    const getDisplayName = (email) =>
-      (email && nameMap[email]) ||
-      (email ? email.split('@')[0] : 'Player');
-
-    // ── Per-Game Leaderboards ──
+    // ── Per-Game Leaderboards from game_breakdown ──
     const gameMap = {};
 
-    allScores.forEach((s) => {
-      if (!s?.game_name || !s?.user_email || typeof s.score !== 'number') return;
+    hallOfFame.forEach((entry) => {
+      if (!entry?.user_email || !entry.game_breakdown) return;
 
-      const gameName = s.game_name.trim().replace(/\s+/g, ' ');
-      if (!gameMap[gameName]) gameMap[gameName] = new Map();
+      Object.entries(entry.game_breakdown).forEach(([gameName, score]) => {
+        if (typeof score !== 'number') return;
+        const normalizedName = gameName.trim().replace(/\s+/g, ' ');
 
-      const map = gameMap[gameName];
-      const existing = map.get(s.user_email);
-      if (!existing || s.score > existing.score) {
-        map.set(s.user_email, { ...s, game_name: gameName });
-      }
+        if (!gameMap[normalizedName]) gameMap[normalizedName] = [];
+        gameMap[normalizedName].push({
+          user_email: entry.user_email,
+          display_name: entry.display_name || entry.user_email.split('@')[0],
+          score,
+          game_name: normalizedName,
+          is_current_user: entry.user_email === userEmail,
+        });
+      });
     });
 
     const leaderboards = {};
@@ -107,15 +78,15 @@ Deno.serve(async (req) => {
       .forEach((gameName) => {
         game_names.push(gameName);
 
-        const top10 = Array.from(gameMap[gameName].values())
+        const top10 = gameMap[gameName]
           .sort((a, b) => b.score - a.score)
           .slice(0, 10)
           .map((s, i) => ({
             rank: i + 1,
-            display_name: getDisplayName(s.user_email),
+            display_name: s.display_name,
             score: s.score,
             game_name: gameName,
-            is_current_user: s.user_email === userEmail,
+            is_current_user: s.is_current_user,
           }));
 
         leaderboards[gameName] = top10;
@@ -124,9 +95,9 @@ Deno.serve(async (req) => {
     // ── Overall from HallOfFame ──
     const overall = hallOfFame.slice(0, 50).map((entry, i) => ({
       rank: entry.rank || i + 1,
-      display_name: entry.display_name || getDisplayName(entry.user_email),
+      display_name: entry.display_name || entry.user_email?.split('@')[0] || 'Player',
       total_score: entry.total_score,
-      score: entry.total_score, // alias for RankRow compatibility
+      score: entry.total_score,
       games_played: entry.games_played || 0,
       best_game: entry.best_game,
       best_game_score: entry.best_game_score,
@@ -140,7 +111,6 @@ Deno.serve(async (req) => {
       leaderboards,
       overall,
       game_names,
-      _debug: { scoresCount: allScores.length, hofCount: hallOfFame.length, profileCount: profiles.length },
       player: {
         rank: playerEntry?.rank || null,
         total_players: hallOfFame.length,
@@ -149,7 +119,7 @@ Deno.serve(async (req) => {
         games_played: playerEntry?.games_played || 0,
         best_game: playerEntry?.best_game || '',
         best_game_score: playerEntry?.best_game_score || 0,
-        display_name: getDisplayName(userEmail),
+        display_name: playerEntry?.display_name || (userEmail ? userEmail.split('@')[0] : 'Player'),
       },
       last_updated: new Date().toISOString(),
     });
