@@ -11,6 +11,7 @@ import useHaptics from "../hooks/useHaptics";
 import MiniMusicPlayer from "./MiniMusicPlayer";
 import HeaderSoundControls from "./HeaderSoundControls";
 import AchievementUnlockToast from "./AchievementUnlockToast";
+import MajorAchievementModal from "./achievements/MajorAchievementModal";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 import OfflineBanner from "./OfflineBanner";
 import useSyncQueue from "../hooks/useSyncQueue";
@@ -126,6 +127,9 @@ export default function Layout() {
 
       {/* Achievement Toast */}
       <AchievementUnlockToast achievement={achievementBadge} />
+
+      {/* Major Achievement Full-Screen Celebration */}
+      <MajorAchievementModal />
 
       {/* AI Chat Bot */}
       <AIChatBot />

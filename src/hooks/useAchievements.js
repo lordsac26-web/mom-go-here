@@ -1,6 +1,8 @@
 import { useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import ACHIEVEMENTS from "../components/achievementDefinitions";
+import { isMajorAchievement } from "../components/achievements/majorAchievements";
+import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
 /**
  * Hook to check and unlock achievements after each game event.
@@ -126,9 +128,13 @@ export function useAchievements(onUnlock) {
         }));
         await base44.entities.Achievement.bulkCreate(records);
 
-        // Fire unlock callback for each
+        // Fire unlock callback for each + dispatch major-modal where applicable
+        const showMajorBadge = useAchievementToastStore.getState().showMajorBadge;
         newlyUnlocked.forEach(a => {
           if (onUnlock) onUnlock(a);
+          if (isMajorAchievement(a.key)) {
+            showMajorBadge(a);
+          }
         });
       }
     } catch (err) {
