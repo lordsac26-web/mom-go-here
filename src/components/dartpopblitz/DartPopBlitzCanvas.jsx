@@ -10,6 +10,7 @@ import {
   POWER_MIN, POWER_MAX, POWER_OSCILLATE_SPEED,
   SHAKE_INTENSITY, SHAKE_DECAY,
   SLOW_MO_DURATION, SLOW_MO_FACTOR,
+  FREEZE_DURATION, GRAVITY_BOMB_RADIUS, GRAVITY_BOMB_PULL_FRAMES,
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
@@ -87,6 +88,11 @@ const CONFETTI_PALETTES = {
   "#22c55e": ["#22c55e", "#4ade80", "#86efac", "#fbbf24", "#34d399"], // green
   "#94a3b8": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#64748b", "#f1f5f9"], // ricochet sparks
   "#f97316": ["#f97316", "#fb923c", "#fdba74", "#ef4444", "#fbbf24"], // orange/mirv
+  "#f59e0b": ["#f59e0b", "#fbbf24", "#fde047", "#fb923c", "#f97316"], // speed
+  "#6366f1": ["#6366f1", "#818cf8", "#a78bfa", "#c084fc", "#e0e7ff"], // ghost
+  "#ec4899": ["#ec4899", "#f472b6", "#fb7185", "#fda4af", "#fbbf24"], // magnet
+  "#38bdf8": ["#38bdf8", "#7dd3fc", "#bae6fd", "#e0f2fe", "#fff"],    // freeze
+  "#8b5cf6": ["#8b5cf6", "#a78bfa", "#c084fc", "#ddd6fe", "#6366f1"], // gravity
 };
 
 function getConfettiColors(baseColor) {
@@ -180,13 +186,18 @@ function drawParticle(ctx, p) {
   ctx.restore();
 }
 
-function drawBalloon(ctx, b) {
+function drawBalloon(ctx, b, frozen) {
   ctx.save();
   const bx = b.x;
   const by = b.y + Math.sin(b.wobble) * b.wobbleAmp;
   ctx.translate(bx, by);
   const s = b.hp / b.maxHp * 0.3 + 0.7;
   ctx.scale(s, s);
+
+  // Ghost transparency
+  if (b.type === "ghost" && b._ghostAlpha !== undefined) {
+    ctx.globalAlpha = b._ghostAlpha;
+  }
 
   ctx.beginPath();
   ctx.ellipse(0, b.radius + 3, b.radius * 0.5, 3, 0, 0, Math.PI * 2);
@@ -225,6 +236,28 @@ function drawBalloon(ctx, b) {
     ctx.fillStyle = "#22c55e";
     ctx.fillRect(-bw / 2, -b.radius - 8, bw * (b.hp / b.maxHp), 4);
   }
+
+  // Frozen ice crystal overlay
+  if (frozen) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "#bae6fd";
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Magnet field ring
+  if (b.type === "magnet") {
+    ctx.globalAlpha = 0.2 + Math.sin(b.wobble * 3) * 0.1;
+    ctx.strokeStyle = "#ec4899";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.radius + 8 + Math.sin(b.wobble * 2) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
   ctx.restore();
 }
 
@@ -390,13 +423,13 @@ function drawWindIndicator(ctx, wind) {
 const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 68 };
 
 // ── Power-up slots in the dirt area ──
-const POWERUP_KEYS_ORDER = ["multishot", "mirv", "sniper"];
-const SLOT_SIZE = 36;
-const SLOT_GAP = 12;
+const POWERUP_KEYS_ORDER = ["multishot", "mirv", "sniper", "freeze", "gravity"];
+const SLOT_SIZE = 30;
+const SLOT_GAP = 6;
 const SLOT_TOTAL_W = POWERUP_KEYS_ORDER.length * SLOT_SIZE + (POWERUP_KEYS_ORDER.length - 1) * SLOT_GAP;
 const SLOT_START_X = (GAME_WIDTH - SLOT_TOTAL_W) / 2;
-const SLOT_Y = GAME_HEIGHT - 38;
-const SLOT_COLORS = { multishot: "#22d3ee", mirv: "#f97316", sniper: "#a855f7" };
+const SLOT_Y = GAME_HEIGHT - 36;
+const SLOT_COLORS = { multishot: "#22d3ee", mirv: "#f97316", sniper: "#a855f7", freeze: "#38bdf8", gravity: "#8b5cf6" };
 
 function getSlotRects() {
   return POWERUP_KEYS_ORDER.map((key, i) => ({
@@ -554,6 +587,8 @@ export default function DartPopBlitzCanvas({
     wind: 0, windTimer: 0,
     shakeX: 0, shakeY: 0, shakeIntensity: 0,
     slowMoTimer: 0, timeScale: 1,
+    freezeTimer: 0,           // frames remaining for freeze effect
+    gravityBombs: [],         // active gravity bomb pull effects
   });
 
   useEffect(() => { stateRef.current.activePowerup = activePowerup; }, [activePowerup]);
@@ -591,6 +626,17 @@ export default function DartPopBlitzCanvas({
     } else if (pw === "sniper") {
       sounds.playSniper();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx: vx * 1.3, vy: vy * 1.3, type: "sniper", color: "#a855f7", finColor: "#7c3aed", pierce: SNIPER_PIERCE, alive: true, bounces: 0 });
+    } else if (pw === "freeze") {
+      sounds.playStreakChime();
+      s.freezeTimer = FREEZE_DURATION;
+      // Visual feedback: icy particles at launcher
+      spawnParticles(s.particles, LAUNCHER_POS.x, LAUNCHER_POS.y - 30, "#38bdf8", 16);
+      s.comboFloats.push({ x: GAME_WIDTH / 2, y: GAME_HEIGHT / 3, text: "❄️ FREEZE!", life: 1, scale: 1.2 });
+      // Don't fire a dart — just activate the effect
+      if (!s.endless) { s.dartsRemaining++; onDartsRemainingChange(s.dartsRemaining); } // refund the dart
+    } else if (pw === "gravity") {
+      sounds.playExplosion();
+      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "gravity", color: "#8b5cf6", finColor: "#6366f1", pierce: 0, alive: true, bounces: 0, gravTriggered: false });
     } else {
       sounds.playShoot();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "normal", color: "#94a3b8", finColor: "#ef4444", pierce: 0, alive: true, bounces: 0 });
@@ -680,6 +726,7 @@ export default function DartPopBlitzCanvas({
       wind: 0, windTimer: 0,
       shakeX: 0, shakeY: 0, shakeIntensity: 0,
       slowMoTimer: 0, timeScale: 1,
+      freezeTimer: 0, gravityBombs: [],
     });
     // Reset launcher
     const lr = launcherRef.current;
@@ -778,13 +825,71 @@ export default function DartPopBlitzCanvas({
       }
       s.powerupBalloons = updatePowerupBalloons(s.powerupBalloons, ts);
 
-      // Balloon wobble + magnetic slide
+      // ── Freeze timer ──
+      if (s.freezeTimer > 0) s.freezeTimer--;
+
+      // ── Gravity bombs ──
+      for (let gi = s.gravityBombs.length - 1; gi >= 0; gi--) {
+        const gb = s.gravityBombs[gi];
+        gb.timer--;
+        // Pull nearby balloons toward center
+        for (const b of s.balloons) {
+          if (!b.alive) continue;
+          const dx = gb.x - b.x, dy = gb.y - b.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < GRAVITY_BOMB_RADIUS && dist > 2) {
+            b.x += (dx / dist) * 2 * ts;
+            b.y += (dy / dist) * 2 * ts;
+            b.targetX = b.x;
+          }
+        }
+        // Explode after pull phase
+        if (gb.timer <= 0) {
+          cb.sounds.playExplosion();
+          spawnParticles(s.particles, gb.x, gb.y, "#8b5cf6", 18);
+          s.shakeIntensity = SHAKE_INTENSITY * 2;
+          for (const b of s.balloons) {
+            if (!b.alive) continue;
+            const dist = Math.sqrt((b.x - gb.x) ** 2 + (b.y - gb.y) ** 2);
+            if (dist < GRAVITY_BOMB_RADIUS) {
+              b.alive = false;
+              s.score += b.points;
+              s.totalPopped++;
+              spawnParticles(s.particles, b.x, b.y, b.color, 6);
+            }
+          }
+          cb.onScoreChange(s.score);
+          cb.onTotalPoppedChange(s.totalPopped);
+          recalcCollapseTargets(s.balloons);
+          s.gravityBombs.splice(gi, 1);
+        }
+      }
+
+      // Balloon wobble + magnetic slide + special behaviors
+      const frozen = s.freezeTimer > 0;
       for (const b of s.balloons) {
         if (!b.alive) continue;
+        if (frozen) continue; // frozen balloons don't move
+
         b.wobble += b.wobbleSpeed * ts;
         const diff = b.targetX - b.x;
         if (Math.abs(diff) > 0.5) {
           b.x += Math.sign(diff) * Math.min(Math.abs(diff), MAGNETIC_SPEED * ts);
+        }
+
+        // Speed balloons: extra horizontal drift
+        if (b.type === "speed") {
+          if (!b._speedDir) b._speedDir = Math.random() > 0.5 ? 1 : -1;
+          b.x += b._speedDir * 1.2 * ts;
+          if (b.x < 20) { b.x = 20; b._speedDir = 1; }
+          if (b.x > GAME_WIDTH - 20) { b.x = GAME_WIDTH - 20; b._speedDir = -1; }
+          b.targetX = b.x;
+        }
+
+        // Ghost balloons: oscillating opacity
+        if (b.type === "ghost") {
+          b._ghostPhase = (b._ghostPhase || b.wobble) + 0.03 * ts;
+          b._ghostAlpha = 0.25 + Math.abs(Math.sin(b._ghostPhase)) * 0.75;
         }
       }
 
@@ -817,6 +922,28 @@ export default function DartPopBlitzCanvas({
         if (d.type !== "sniper") d.vy += GRAVITY * ts;
         // Wind affects all darts
         d.vx += s.wind * ts;
+
+        // Gravity bomb dart — triggers when it reaches mid-screen
+        if (d.type === "gravity" && !d.gravTriggered && d.y < GAME_HEIGHT * 0.5) {
+          d.gravTriggered = true; d.alive = false;
+          spawnParticles(s.particles, d.x, d.y, "#8b5cf6", 10);
+          s.gravityBombs.push({ x: d.x, y: d.y, timer: GRAVITY_BOMB_PULL_FRAMES });
+          s.comboFloats.push({ x: d.x, y: d.y, text: "🌀 GRAVITY!", life: 1, scale: 1 });
+          continue;
+        }
+
+        // Magnet balloon deflection — alive magnet balloons push darts sideways
+        if (d.type !== "sniper") {
+          for (const b of s.balloons) {
+            if (!b.alive || b.type !== "magnet") continue;
+            const mdx = d.x - b.x, mdy = d.y - b.y;
+            const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+            if (mDist < 60 && mDist > 2) {
+              d.vx += (mdx / mDist) * 0.3;
+              d.vy += (mdy / mDist) * 0.3;
+            }
+          }
+        }
 
         // MIRV
         if (d.type === "mirv" && !d.mirvTriggered && d.y < GAME_HEIGHT * 0.5) {
@@ -1024,7 +1151,8 @@ export default function DartPopBlitzCanvas({
 
       ctx.drawImage(bg, 0, 0);
       if (s.obstacles?.length > 0) drawObstacles(ctx, s.obstacles, Date.now());
-      for (const b of s.balloons) { if (b.alive) drawBalloon(ctx, b); }
+      const isFrozen = s.freezeTimer > 0;
+      for (const b of s.balloons) { if (b.alive) drawBalloon(ctx, b, isFrozen); }
       drawPowerupBalloons(ctx, s.powerupBalloons);
       for (const d of s.darts) { if (d.alive) drawDart(ctx, d); }
       for (const p of s.particles) drawParticle(ctx, p);
@@ -1091,6 +1219,38 @@ export default function DartPopBlitzCanvas({
         ctx.fillStyle = cg; ctx.fillRect(20, 10, cw, 8);
         ctx.font = "bold 12px sans-serif"; ctx.textAlign = "right";
         ctx.fillStyle = "#fbbf24"; ctx.fillText(`${s.comboMultiplier}x`, GAME_WIDTH - 22, 20);
+        ctx.restore();
+      }
+
+      // Freeze overlay
+      if (s.freezeTimer > 0) {
+        ctx.fillStyle = "rgba(56,189,248,0.08)";
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(186,230,253,0.8)";
+        ctx.fillText(`❄️ FROZEN ${Math.ceil(s.freezeTimer / 60)}s`, GAME_WIDTH / 2, 28);
+      }
+
+      // Gravity bomb vortex visuals
+      for (const gb of (s.gravityBombs || [])) {
+        const progress = 1 - gb.timer / GRAVITY_BOMB_PULL_FRAMES;
+        ctx.save();
+        ctx.translate(gb.x, gb.y);
+        ctx.globalAlpha = 0.4 + progress * 0.3;
+        ctx.strokeStyle = "#8b5cf6";
+        ctx.lineWidth = 2;
+        for (let ri = 0; ri < 3; ri++) {
+          ctx.beginPath();
+          const rad = GRAVITY_BOMB_RADIUS * (1 - progress * 0.5) * (0.3 + ri * 0.3);
+          ctx.arc(0, 0, rad, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.font = "24px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🌀", 0, 0);
         ctx.restore();
       }
 

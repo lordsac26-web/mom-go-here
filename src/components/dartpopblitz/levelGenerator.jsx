@@ -75,7 +75,7 @@ let _nextId = 10000;
 export function spawnRandomBalloon() {
   const keys = Object.keys(BALLOON_TYPES);
   // Weight: basic is more common
-  const weights = { basic: 5, tough: 1, small: 2, gold: 1, bomb: 1 };
+  const weights = { basic: 5, tough: 1, small: 2, gold: 1, bomb: 1, speed: 2, ghost: 1, magnet: 1 };
   const pool = [];
   for (const k of keys) {
     for (let i = 0; i < (weights[k] || 1); i++) pool.push(k);

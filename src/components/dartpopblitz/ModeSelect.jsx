@@ -75,7 +75,7 @@ export default function ModeSelect({ onSelect }) {
 
       {/* Power-ups Legend */}
       <div className="bg-card/60 border border-border rounded-2xl p-4 w-full">
-        <h3 className="text-sm font-black text-foreground mb-2">⚡ Power-Ups <span className="text-muted-foreground font-semibold">(hit {4} in a row!)</span></h3>
+        <h3 className="text-sm font-black text-foreground mb-2">⚡ Power-Ups <span className="text-muted-foreground font-semibold">(hit 3 in a row!)</span></h3>
         <div className="space-y-1">
           {Object.entries(POWERUPS).map(([key, pw]) => (
             <div key={key} className="flex items-center gap-2">

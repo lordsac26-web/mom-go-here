@@ -22,13 +22,18 @@ const INSTRUCTIONS = [
   "Darts bounce off walls for trick shots!",
   "Watch the wind indicator — wind pushes darts sideways.",
   "Pop all the balloons (or keep going in Endless)!",
-  "Hit 4 in a row to earn a random power-up.",
+  "Hit 3 in a row to earn a random power-up.",
   "Tap a power-up to equip it before your next shot.",
   "🔱 Multi-Shot fires 3 darts at once.",
   "💥 MIRV Bomb explodes into cluster darts mid-flight.",
   "🎯 Sniper pierces through 5 balloons AND obstacles!",
+  "❄️ Freeze stops all balloons in place for 3 seconds!",
+  "🌀 Gravity Bomb pulls nearby balloons together then pops them!",
   "💣 Bomb balloons chain-explode nearby balloons!",
   "🛡️ Tough balloons need 3 hits to pop.",
+  "⚡ Speed balloons zip back and forth — hard to hit!",
+  "👻 Ghost balloons fade in and out — time your shot!",
+  "🧲 Magnet balloons deflect darts that fly near them!",
   "♾️ Endless mode: balloons keep spawning — tap Stop to end your run!",
 ];
 
@@ -80,7 +85,7 @@ export default function DartPopBlitz() {
   const [dartsRemaining, setDartsRemaining] = useState(0);
   const [totalBalloons, setTotalBalloons] = useState(0);
   const [activePowerup, setActivePowerup] = useState(null);
-  const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0 });
+  const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0, freeze: 0, gravity: 0 });
   const [isEndless, setIsEndless] = useState(false);
   const [wind, setWind] = useState(0);
   const [aimSpeedMultiplier, setAimSpeedMultiplier] = useState(1.0);
@@ -101,7 +106,7 @@ export default function DartPopBlitz() {
     setStreak(0);
     setTotalPopped(0);
     setActivePowerup(null);
-    setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0 });
+    setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0, freeze: 0, gravity: 0 });
     setIsEndless(!!p.endless);
     setWind(0);
     setGameState("playing");

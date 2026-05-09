@@ -17,6 +17,8 @@ const POWERUP_COLORS = {
   multishot: "#22d3ee",  // cyan
   mirv: "#f97316",       // orange
   sniper: "#a855f7",     // purple
+  freeze: "#38bdf8",     // sky blue
+  gravity: "#8b5cf6",    // violet
 };
 
 /** Spawn a new floating power-up balloon from left or right edge */

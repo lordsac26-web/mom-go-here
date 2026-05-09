@@ -9,6 +9,9 @@ export const BALLOON_TYPES = {
   small:  { emoji: "🫧", hp: 1, points: 175, radius: 10, color: "#a855f7", label: "Tiny", desc: "Small & tricky" },
   gold:   { emoji: "⭐", hp: 2, points: 400, radius: 13, color: "#eab308", label: "Gold", desc: "2 hits, big points" },
   bomb:   { emoji: "💣", hp: 1, points: 150, radius: 14, color: "#1e293b", label: "Bomb", desc: "Chain explosion!", explodeRadius: 50 },
+  speed:  { emoji: "⚡", hp: 1, points: 225, radius: 12, color: "#f59e0b", label: "Speed", desc: "Zips around fast!" },
+  ghost:  { emoji: "👻", hp: 1, points: 300, radius: 14, color: "#6366f1", label: "Ghost", desc: "Fades in & out!" },
+  magnet: { emoji: "🧲", hp: 2, points: 350, radius: 15, color: "#ec4899", label: "Magnet", desc: "Pulls nearby darts off-course" },
 };
 
 // Power-up types
@@ -16,7 +19,16 @@ export const POWERUPS = {
   multishot: { emoji: "🔱", label: "Multi-Shot", desc: "Fires 3 darts at once!" },
   mirv:      { emoji: "💥", label: "MIRV Bomb", desc: "Explodes into cluster darts!" },
   sniper:    { emoji: "🎯", label: "Sniper", desc: "Pierces through 5 balloons!" },
+  freeze:    { emoji: "❄️", label: "Freeze", desc: "Freezes all balloons for 3 sec!" },
+  gravity:   { emoji: "🌀", label: "Gravity Bomb", desc: "Pulls balloons together then pops!" },
 };
+
+// Freeze power-up duration
+export const FREEZE_DURATION = 180; // frames (~3s at 60fps)
+
+// Gravity bomb pull radius and delay
+export const GRAVITY_BOMB_RADIUS = 80;
+export const GRAVITY_BOMB_PULL_FRAMES = 60; // pull for 1s then explode
 
 export const STREAK_FOR_POWERUP = 3;
 
@@ -27,7 +39,7 @@ export const DART_PRESETS = [
     darts: 30,
     label: "🟢 Beginner",
     subtitle: "Easy targets, no obstacles",
-    balloons: { basic: 20, tough: 2, small: 5, gold: 3, bomb: 3 },
+    balloons: { basic: 20, tough: 2, small: 5, gold: 3, bomb: 3, speed: 3, ghost: 2, magnet: 1 },
     obstacles: [],
   },
   {
@@ -35,7 +47,7 @@ export const DART_PRESETS = [
     darts: 50,
     label: "🔴 Advanced",
     subtitle: "More balloons, moving obstacles",
-    balloons: { basic: 35, tough: 10, small: 15, gold: 6, bomb: 6 },
+    balloons: { basic: 35, tough: 10, small: 15, gold: 6, bomb: 6, speed: 8, ghost: 5, magnet: 4 },
     obstacles: [
       { type: "platform", width: 60, speed: 0.8 },
       { type: "spinner", armLength: 40, speed: 0.02 },
@@ -46,7 +58,7 @@ export const DART_PRESETS = [
     darts: Infinity,
     label: "♾️ Endless Pop",
     subtitle: "Unlimited darts! Balloons keep spawning!",
-    balloons: { basic: 12, tough: 2, small: 4, gold: 1, bomb: 2 },
+    balloons: { basic: 12, tough: 2, small: 4, gold: 1, bomb: 2, speed: 2, ghost: 1, magnet: 1 },
     obstacles: [],
     endless: true,
   },
