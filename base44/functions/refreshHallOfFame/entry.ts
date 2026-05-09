@@ -7,18 +7,31 @@ Deno.serve(async (req) => {
 
     // ====================== FETCH ALL DATA ======================
     // Use .list() with asServiceRole — .filter({}) returns empty for RLS-protected entities
-    const allScores = await base44.asServiceRole.entities.GameScore.list('-created_date', 5000);
-    const previousHof = await base44.asServiceRole.entities.HallOfFame.list('-total_score', 5000);
-    const allProfiles = await base44.asServiceRole.entities.UserProfile.list('-created_date', 5000);
+    const [allScores, previousHof, allUsers, allProfiles] = await Promise.all([
+      base44.asServiceRole.entities.GameScore.list('-created_date', 5000),
+      base44.asServiceRole.entities.HallOfFame.list('-total_score', 5000),
+      base44.asServiceRole.entities.User.list(null, 5000),
+      base44.asServiceRole.entities.UserProfile.list('-created_date', 5000),
+    ]);
 
-    // Build name map from UserProfile
+    // Build name map — priority: UserProfile.display_name > User.full_name > email prefix
     const nameMap = {};
+    // 1. Seed from built-in User entity (full_name)
+    allUsers.forEach((u) => {
+      if (u?.email) {
+        nameMap[u.email] = (u.full_name || '').trim() || u.email.split('@')[0];
+      }
+    });
+    // 2. Override with UserProfile display_name (the name users set in Settings)
     allProfiles.forEach((p) => {
-      if (p?.user_email) {
-        nameMap[p.user_email] =
-          (p.display_name || '').trim() ||
-          p.user_email.split('@')[0] ||
-          'Senior Player';
+      if (p?.user_email && (p.display_name || '').trim()) {
+        nameMap[p.user_email] = p.display_name.trim();
+      }
+    });
+    // 3. Preserve existing HoF names as last-resort fallback
+    previousHof.forEach((entry) => {
+      if (entry?.user_email && !nameMap[entry.user_email] && entry.display_name) {
+        nameMap[entry.user_email] = entry.display_name;
       }
     });
 
