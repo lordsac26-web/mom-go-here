@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useGameActivity } from "../../hooks/useGameActivity";
@@ -41,7 +41,7 @@ const INSTRUCTIONS = [
 // so it isn't embedded inside a useEffect or useCallback. This makes it easy
 // to call directly, test independently, and add real error handling.
 // FIX (bug): errors are now logged instead of silently swallowed.
-async function saveGameScore({ userEmail, score, dartLimit, balloonsPopped, won }) {
+async function saveGameScore({ userEmail, displayName, score, dartLimit, balloonsPopped, won }) {
   if (!userEmail) return;
   const base = { user_email: userEmail, score, level_completed: won };
   try {
@@ -56,6 +56,7 @@ async function saveGameScore({ userEmail, score, dartLimit, balloonsPopped, won 
   try {
     await base44.entities.GameScore.create({
       ...base,
+      display_name: displayName || '',
       game_name: "Dart Pop Blitz",
       completed: won,
     });
@@ -70,6 +71,17 @@ export default function DartPopBlitz() {
   const haptics = useHaptics();
   const { fireConfetti } = useConfetti();
   const sounds = useDartSounds();
+  const [playerDisplayName, setPlayerDisplayName] = useState("");
+
+  // Load display name from UserProfile once
+  useEffect(() => {
+    if (!user?.email) return;
+    base44.entities.UserProfile.filter({ user_email: user.email })
+      .then(profiles => {
+        if (profiles[0]?.display_name) setPlayerDisplayName(profiles[0].display_name);
+      })
+      .catch(() => {});
+  }, [user]);
 
   // Game phases: menu | playing | won | lost
   const [gameState, setGameState] = useState("menu");
@@ -132,6 +144,7 @@ export default function DartPopBlitz() {
 
     await saveGameScore({
       userEmail: user?.email,
+      displayName: playerDisplayName,
       score: finalScore,
       dartLimit: preset?.darts ?? 0,
       balloonsPopped: finalPopped,

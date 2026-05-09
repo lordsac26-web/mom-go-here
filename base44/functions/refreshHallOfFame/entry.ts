@@ -15,25 +15,51 @@ Deno.serve(async (req) => {
     ]);
 
     // Build name map — priority: UserProfile.display_name > User.full_name > email prefix
+    // NOTE: UserProfile.list() may return 0 due to RLS, so we also fetch each
+    // unique player's profile individually via service role filter.
     const nameMap = {};
-    // 1. Seed from built-in User entity (full_name)
+
+    // 1. Seed from built-in User entity (full_name) — always accessible via service role
     allUsers.forEach((u) => {
       if (u?.email) {
         nameMap[u.email] = (u.full_name || '').trim() || u.email.split('@')[0];
       }
     });
-    // 2. Override with UserProfile display_name (the name users set in Settings)
+
+    // 2. Override with display_name from GameScore (saved by frontend with each score)
+    // allScores is sorted by -created_date, so first match per email is the latest
+    const seenScoreEmails = new Set();
+    for (const s of allScores) {
+      if (s?.user_email && !seenScoreEmails.has(s.user_email) && (s.display_name || '').trim()) {
+        nameMap[s.user_email] = s.display_name.trim();
+        seenScoreEmails.add(s.user_email);
+      }
+    }
+
+    // 3. Override with UserProfile display_name (highest priority)
+    // Bulk list may be empty due to RLS, so also fetch individually per player
     allProfiles.forEach((p) => {
       if (p?.user_email && (p.display_name || '').trim()) {
         nameMap[p.user_email] = p.display_name.trim();
       }
     });
-    // 3. Preserve existing HoF names as last-resort fallback
-    previousHof.forEach((entry) => {
-      if (entry?.user_email && !nameMap[entry.user_email] && entry.display_name) {
-        nameMap[entry.user_email] = entry.display_name;
-      }
-    });
+
+    // If bulk profiles returned nothing, try individual lookups via service role
+    if (allProfiles.length === 0) {
+      const uniqueEmails = new Set();
+      allScores.forEach((s) => { if (s?.user_email) uniqueEmails.add(s.user_email); });
+      previousHof.forEach((e) => { if (e?.user_email) uniqueEmails.add(e.user_email); });
+
+      const profileLookups = [...uniqueEmails].map(async (email) => {
+        try {
+          const results = await base44.asServiceRole.entities.UserProfile.filter({ user_email: email });
+          if (results[0]?.display_name?.trim()) {
+            nameMap[email] = results[0].display_name.trim();
+          }
+        } catch (_) { /* skip */ }
+      });
+      await Promise.all(profileLookups);
+    }
 
     // ====================== BUILD PLAYER BEST SCORES ======================
     // Seed from existing Hall of Fame so we don't lose historical bests

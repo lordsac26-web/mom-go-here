@@ -5,6 +5,10 @@
     "user_email": {
       "type": "string"
     },
+    "display_name": {
+      "type": "string",
+      "description": "Player display name at time of score submission"
+    },
     "game_name": {
       "type": "string"
     },
