@@ -5,23 +5,50 @@ import { useDailyMissions } from "../hooks/useDailyMissions";
 import { motion, AnimatePresence } from "framer-motion";
 import { playRichTone } from "../lib/SoundEngine";
 import { useAudioStore } from "../stores/audioStore";
+import useConfetti from "../hooks/useConfetti";
+import useHaptics from "../hooks/useHaptics";
 
+// Brighter, more game-like prize segments with vivid gradients
 const SEGMENTS = [
-  { label: "500", value: 500, type: "coins", color: "#3b82f6", emoji: "🪙" },
-  { label: "25 XP", value: 25, type: "xp", color: "#8b5cf6", emoji: "⭐" },
-  { label: "1,000", value: 1000, type: "coins", color: "#22c55e", emoji: "🪙" },
-  { label: "50 XP", value: 50, type: "xp", color: "#f97316", emoji: "⭐" },
-  { label: "2,500", value: 2500, type: "coins", color: "#eab308", emoji: "💰" },
-  { label: "10 XP", value: 10, type: "xp", color: "#ec4899", emoji: "⭐" },
-  { label: "5,000", value: 5000, type: "coins", color: "#ef4444", emoji: "🔥" },
-  { label: "100 XP", value: 100, type: "xp", color: "#06b6d4", emoji: "💎" },
+  { label: "500",     value: 500,  type: "coins", color: "#3b82f6", colorEnd: "#1e40af", emoji: "🪙", glow: "#60a5fa" },
+  { label: "25 XP",   value: 25,   type: "xp",    color: "#a855f7", colorEnd: "#6b21a8", emoji: "⭐", glow: "#c084fc" },
+  { label: "1,000",   value: 1000, type: "coins", color: "#22c55e", colorEnd: "#15803d", emoji: "🪙", glow: "#4ade80" },
+  { label: "50 XP",   value: 50,   type: "xp",    color: "#f97316", colorEnd: "#9a3412", emoji: "✨", glow: "#fb923c" },
+  { label: "2,500",   value: 2500, type: "coins", color: "#eab308", colorEnd: "#854d0e", emoji: "💰", glow: "#fde047" },
+  { label: "10 XP",   value: 10,   type: "xp",    color: "#ec4899", colorEnd: "#9f1239", emoji: "⭐", glow: "#f472b6" },
+  { label: "JACKPOT", value: 5000, type: "coins", color: "#ef4444", colorEnd: "#7f1d1d", emoji: "🔥", glow: "#fca5a5", jackpot: true },
+  { label: "100 XP",  value: 100,  type: "xp",    color: "#06b6d4", colorEnd: "#155e75", emoji: "💎", glow: "#67e8f9" },
 ];
 
 const SEGMENT_COUNT = SEGMENTS.length;
 const SEGMENT_ANGLE = 360 / SEGMENT_COUNT;
+const RIM_LIGHTS = 24; // bulbs around the rim
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Countdown to next midnight (local)
+function useNextSpinCountdown(canSpin) {
+  const [text, setText] = useState("");
+  useEffect(() => {
+    if (canSpin) { setText(""); return; }
+    function tick() {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const ms = tomorrow - now;
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      setText(`${h}h ${m}m ${s}s`);
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [canSpin]);
+  return text;
 }
 
 export default function DailyWheel({ userEmail }) {
@@ -32,9 +59,20 @@ export default function DailyWheel({ userEmail }) {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [lightPhase, setLightPhase] = useState(0);
   const totalRotationRef = useRef(0);
   const tickIntervalRef = useRef(null);
   const { reportMissionProgress } = useDailyMissions();
+  const { fireworks, emojiRain, burst } = useConfetti();
+  const { tapVibrate, winVibrate, scoreMilestone } = useHaptics();
+  const countdown = useNextSpinCountdown(canSpin);
+
+  // Animated chasing rim lights when idle and ready
+  useEffect(() => {
+    if (!expanded || spinning) return;
+    const id = setInterval(() => setLightPhase(p => (p + 1) % RIM_LIGHTS), 120);
+    return () => clearInterval(id);
+  }, [expanded, spinning]);
 
   // Tick sound during spin
   function playTick(pitch) {
@@ -44,13 +82,11 @@ export default function DailyWheel({ userEmail }) {
   }
 
   function startTickSound() {
-    // Clear any existing interval
     if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
-    
     const startTime = Date.now();
-    const totalDuration = 4000; // matches spin transition duration
+    const totalDuration = 4000;
     let tickCount = 0;
-    
+
     function scheduleTick() {
       const elapsed = Date.now() - startTime;
       if (elapsed >= totalDuration) {
@@ -58,24 +94,17 @@ export default function DailyWheel({ userEmail }) {
         tickIntervalRef.current = null;
         return;
       }
-      // Cubic ease-out to match CSS cubic-bezier deceleration
       const progress = elapsed / totalDuration;
-      // Tick pitch alternates slightly for realism
       const pitch = tickCount % 2 === 0 ? 1800 : 2200;
       playTick(pitch);
       tickCount++;
-      
-      // Dynamically adjust interval: fast at start, slow at end
-      // Start ~40ms (25 ticks/sec), end ~300ms (3 ticks/sec)
       const nextInterval = 40 + progress * progress * 260;
       clearInterval(tickIntervalRef.current);
       tickIntervalRef.current = setTimeout(scheduleTick, nextInterval);
     }
-    
     scheduleTick();
   }
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (tickIntervalRef.current) {
@@ -112,28 +141,38 @@ export default function DailyWheel({ userEmail }) {
 
   const handleSpin = useCallback(async () => {
     if (!canSpin || spinning || !record) return;
+    tapVibrate();
     setSpinning(true);
     setResult(null);
 
-    // Pick random segment
     const winIdx = Math.floor(Math.random() * SEGMENT_COUNT);
     const prize = SEGMENTS[winIdx];
 
-    // Calculate rotation: land in the middle of the winning segment
-    // Pointer is at top (0°). Segment 0 starts at 0° going clockwise.
-    // To land segment winIdx under the pointer, rotate so that segment's center aligns with top.
     const segmentCenter = winIdx * SEGMENT_ANGLE + SEGMENT_ANGLE / 2;
-    const extraSpins = 5 * 360; // 5 full rotations
+    const extraSpins = 6 * 360;
     const targetRotation = totalRotationRef.current + extraSpins + (360 - segmentCenter);
     totalRotationRef.current = targetRotation;
     setRotation(targetRotation);
     startTickSound();
 
-    // Wait for spin to finish (4s)
     setTimeout(async () => {
       setResult(prize);
       setCanSpin(false);
       setSpinning(false);
+
+      // Celebration based on prize
+      if (prize.jackpot) {
+        winVibrate();
+        fireworks();
+        emojiRain(["🔥", "💰", "🎉", "🏆"]);
+      } else if (prize.value >= 1000 || prize.value >= 100) {
+        scoreMilestone();
+        burst();
+        emojiRain([prize.emoji, "✨"]);
+      } else {
+        scoreMilestone();
+        burst();
+      }
 
       const today = getTodayKey();
       const updates = {
@@ -143,14 +182,12 @@ export default function DailyWheel({ userEmail }) {
 
       if (prize.type === "coins") {
         updates.total_coins_won = (record.total_coins_won || 0) + prize.value;
-        // Add to slots balance
         try {
           const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
           localStorage.setItem("slots_balance", (current + prize.value).toString());
         } catch {}
       } else if (prize.type === "xp") {
         updates.total_xp_won = (record.total_xp_won || 0) + prize.value;
-        // Award XP to PlayerXP entity
         try {
           const xpRecords = await base44.entities.PlayerXP.filter({ user_email: userEmail });
           if (xpRecords[0]) {
@@ -166,37 +203,66 @@ export default function DailyWheel({ userEmail }) {
 
       await base44.entities.DailyWheelSpin.update(record.id, updates);
       setRecord(prev => ({ ...prev, ...updates }));
-
-      // Report to daily missions
       reportMissionProgress("spin_wheel");
     }, 4000);
-  }, [canSpin, spinning, record, userEmail]);
+  }, [canSpin, spinning, record, userEmail, tapVibrate, winVibrate, scoreMilestone, fireworks, burst, emojiRain, reportMissionProgress]);
 
   if (loading) return null;
 
+  // Top prize for header preview
+  const topPrize = SEGMENTS.find(s => s.jackpot);
+
   return (
-    <div className="bg-card border border-border rounded-2xl shadow mb-4 overflow-hidden">
+    <div className={`relative rounded-2xl shadow-xl mb-4 overflow-hidden border-2 transition-colors ${
+      canSpin
+        ? "bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900 border-yellow-400/60"
+        : "bg-card border-border"
+    }`}>
+      {/* Animated sheen overlay when spin available */}
+      {canSpin && !expanded && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)",
+          }}
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+
       {/* Header — always visible */}
       <button
-        onClick={() => setExpanded(prev => !prev)}
-        className="w-full flex items-center justify-between px-4 py-3"
+        onClick={() => { tapVibrate(); setExpanded(p => !p); }}
+        className="relative w-full flex items-center justify-between px-4 py-3 z-10"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🎡</span>
+        <div className="flex items-center gap-3">
+          <motion.span
+            className="text-3xl"
+            animate={canSpin ? { rotate: [0, -10, 10, -10, 0], scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+          >
+            🎡
+          </motion.span>
           <div className="text-left">
-            <p className="text-sm font-black text-foreground leading-tight">Daily Wheel</p>
-            <p className="text-xs text-muted-foreground">
-              {canSpin ? "Free spin available!" : "Come back tomorrow!"}
+            <p className={`text-sm font-black leading-tight ${canSpin ? "text-yellow-300" : "text-foreground"}`}>
+              Daily Wheel
+            </p>
+            <p className={`text-xs ${canSpin ? "text-yellow-100/80" : "text-muted-foreground"}`}>
+              {canSpin ? `Win up to ${topPrize?.label} Coins!` : `Next spin in ${countdown}`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {canSpin && (
-            <span className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-green-500/40 animate-pulse">
-              READY
-            </span>
+            <motion.span
+              className="bg-yellow-400 text-yellow-950 text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              SPIN!
+            </motion.span>
           )}
-          <span className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}>▼</span>
+          <span className={`transition-transform ${expanded ? "rotate-180" : ""} ${canSpin ? "text-yellow-300" : "text-muted-foreground"}`}>▼</span>
         </div>
       </button>
 
@@ -210,98 +276,235 @@ export default function DailyWheel({ userEmail }) {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4">
-              {/* Wheel */}
-              <div className="relative flex items-center justify-center my-3">
-                {/* Pointer */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-20">
-                  <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[18px] border-l-transparent border-r-transparent border-t-yellow-400 drop-shadow-lg" />
+            <div className="px-4 pb-4 relative">
+              {/* Sparkle backdrop */}
+              {canSpin && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                  {[...Array(12)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute text-yellow-300/40"
+                      style={{
+                        left: `${(i * 17) % 100}%`,
+                        top: `${(i * 23) % 100}%`,
+                        fontSize: "10px",
+                      }}
+                      animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
+                      transition={{ duration: 2, delay: i * 0.2, repeat: Infinity }}
+                    >
+                      ✨
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Wheel container */}
+              <div className="relative flex items-center justify-center my-4">
+                {/* Pointer at top */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-30">
+                  <motion.div
+                    animate={spinning ? { rotate: [-8, 8, -8] } : {}}
+                    transition={{ duration: 0.1, repeat: spinning ? Infinity : 0 }}
+                  >
+                    <div className="w-0 h-0 border-l-[14px] border-r-[14px] border-t-[24px] border-l-transparent border-r-transparent border-t-yellow-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" />
+                    <div className="w-3 h-3 bg-yellow-300 rounded-full mx-auto -mt-1 border border-yellow-600 shadow-md" />
+                  </motion.div>
                 </div>
 
-                {/* Wheel SVG */}
-                <div
-                  className="w-56 h-56 sm:w-64 sm:h-64 rounded-full border-4 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)] overflow-hidden"
-                  style={{ perspective: "600px" }}
-                >
-                  <svg
-                    viewBox="0 0 200 200"
-                    className="w-full h-full"
-                    style={{
-                      transform: `rotate(${rotation}deg)`,
-                      transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none",
-                    }}
-                  >
-                    {SEGMENTS.map((seg, i) => {
-                      const startAngle = (i * SEGMENT_ANGLE * Math.PI) / 180;
-                      const endAngle = ((i + 1) * SEGMENT_ANGLE * Math.PI) / 180;
-                      const x1 = 100 + 100 * Math.sin(startAngle);
-                      const y1 = 100 - 100 * Math.cos(startAngle);
-                      const x2 = 100 + 100 * Math.sin(endAngle);
-                      const y2 = 100 - 100 * Math.cos(endAngle);
-                      const largeArc = SEGMENT_ANGLE > 180 ? 1 : 0;
-                      const midAngle = ((i + 0.5) * SEGMENT_ANGLE * Math.PI) / 180;
-                      const textX = 100 + 62 * Math.sin(midAngle);
-                      const textY = 100 - 62 * Math.cos(midAngle);
-                      const textRotation = (i + 0.5) * SEGMENT_ANGLE;
+                {/* Outer rim with glow + chasing lights */}
+                <div className="relative">
+                  {/* Glow ring behind wheel */}
+                  {canSpin && (
+                    <motion.div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        boxShadow: "0 0 60px 10px rgba(234,179,8,0.4), 0 0 30px 5px rgba(234,179,8,0.6)",
+                      }}
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  )}
 
+                  {/* Rim bulbs */}
+                  <div className="absolute inset-0 pointer-events-none z-20">
+                    {[...Array(RIM_LIGHTS)].map((_, i) => {
+                      const angle = (i / RIM_LIGHTS) * 360;
+                      const isActive = spinning
+                        ? i % 3 === Math.floor(Date.now() / 80) % 3
+                        : i === lightPhase || i === (lightPhase + 8) % RIM_LIGHTS || i === (lightPhase + 16) % RIM_LIGHTS;
                       return (
-                        <g key={i}>
-                          <path
-                            d={`M100,100 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z`}
-                            fill={seg.color}
-                            stroke="#1e1e2e"
-                            strokeWidth="1"
+                        <div
+                          key={i}
+                          className="absolute top-1/2 left-1/2"
+                          style={{
+                            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-50%)`,
+                            height: "calc(100% + 4px)",
+                            width: 0,
+                          }}
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full transition-colors duration-100"
+                            style={{
+                              background: isActive ? "#fde047" : "#713f12",
+                              boxShadow: isActive ? "0 0 8px 2px rgba(253,224,71,0.9)" : "none",
+                              transform: "translateY(-2px)",
+                            }}
                           />
-                          <text
-                            x={textX}
-                            y={textY}
-                            fill="white"
-                            fontSize="9"
-                            fontWeight="900"
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            transform={`rotate(${textRotation}, ${textX}, ${textY})`}
-                          >
-                            {seg.emoji} {seg.label}
-                          </text>
-                        </g>
+                        </div>
                       );
                     })}
-                    {/* Center circle */}
-                    <circle cx="100" cy="100" r="16" fill="#1e1e2e" stroke="#eab308" strokeWidth="2" />
-                    <text x="100" y="100" fill="#eab308" fontSize="14" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
-                      🎡
-                    </text>
-                  </svg>
+                  </div>
+
+                  {/* Wheel SVG */}
+                  <div
+                    className="relative w-60 h-60 sm:w-72 sm:h-72 rounded-full overflow-hidden"
+                    style={{
+                      boxShadow: "inset 0 0 0 6px #ca8a04, inset 0 0 0 8px #1e1e2e, 0 8px 24px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    <svg
+                      viewBox="0 0 200 200"
+                      className="w-full h-full"
+                      style={{
+                        transform: `rotate(${rotation}deg)`,
+                        transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none",
+                        filter: spinning ? "blur(0.4px)" : "none",
+                      }}
+                    >
+                      <defs>
+                        {SEGMENTS.map((seg, i) => (
+                          <radialGradient key={i} id={`grad-${i}`} cx="50%" cy="50%" r="70%">
+                            <stop offset="0%" stopColor={seg.color} />
+                            <stop offset="100%" stopColor={seg.colorEnd} />
+                          </radialGradient>
+                        ))}
+                      </defs>
+                      {SEGMENTS.map((seg, i) => {
+                        const startAngle = (i * SEGMENT_ANGLE * Math.PI) / 180;
+                        const endAngle = ((i + 1) * SEGMENT_ANGLE * Math.PI) / 180;
+                        const x1 = 100 + 100 * Math.sin(startAngle);
+                        const y1 = 100 - 100 * Math.cos(startAngle);
+                        const x2 = 100 + 100 * Math.sin(endAngle);
+                        const y2 = 100 - 100 * Math.cos(endAngle);
+                        const largeArc = SEGMENT_ANGLE > 180 ? 1 : 0;
+                        const midAngle = ((i + 0.5) * SEGMENT_ANGLE * Math.PI) / 180;
+                        const textX = 100 + 60 * Math.sin(midAngle);
+                        const textY = 100 - 60 * Math.cos(midAngle);
+                        const emojiX = 100 + 78 * Math.sin(midAngle);
+                        const emojiY = 100 - 78 * Math.cos(midAngle);
+                        const textRotation = (i + 0.5) * SEGMENT_ANGLE;
+
+                        return (
+                          <g key={i}>
+                            <path
+                              d={`M100,100 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z`}
+                              fill={`url(#grad-${i})`}
+                              stroke="#fde047"
+                              strokeWidth="0.8"
+                            />
+                            {/* Emoji near outer edge */}
+                            <text
+                              x={emojiX}
+                              y={emojiY}
+                              fontSize="14"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              transform={`rotate(${textRotation}, ${emojiX}, ${emojiY})`}
+                            >
+                              {seg.emoji}
+                            </text>
+                            {/* Label */}
+                            <text
+                              x={textX}
+                              y={textY}
+                              fill="white"
+                              fontSize={seg.jackpot ? "9" : "10"}
+                              fontWeight="900"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              transform={`rotate(${textRotation}, ${textX}, ${textY})`}
+                              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.5px" }}
+                            >
+                              {seg.label}
+                            </text>
+                          </g>
+                        );
+                      })}
+                      {/* Center hub */}
+                      <circle cx="100" cy="100" r="20" fill="#1e1e2e" stroke="#fde047" strokeWidth="2.5" />
+                      <circle cx="100" cy="100" r="14" fill="url(#hubGrad)" />
+                      <defs>
+                        <radialGradient id="hubGrad" cx="50%" cy="40%" r="60%">
+                          <stop offset="0%" stopColor="#fef3c7" />
+                          <stop offset="60%" stopColor="#eab308" />
+                          <stop offset="100%" stopColor="#854d0e" />
+                        </radialGradient>
+                      </defs>
+                      <text x="100" y="100" fill="#1e1e2e" fontSize="16" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
+                        🎡
+                      </text>
+                    </svg>
+                  </div>
                 </div>
               </div>
 
               {/* Spin Button */}
               {canSpin && !result && (
-                <button
+                <motion.button
                   onClick={handleSpin}
                   disabled={spinning}
-                  className={`w-full text-lg font-black py-3.5 rounded-2xl border-2 transition-all active:scale-95 ${
+                  whileTap={{ scale: 0.95 }}
+                  className={`relative w-full text-xl font-black py-4 rounded-2xl border-2 transition-all overflow-hidden ${
                     spinning
                       ? "bg-secondary border-border text-muted-foreground"
-                      : "bg-primary border-yellow-300 text-primary-foreground animate-pulse"
+                      : "bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 border-yellow-200 text-yellow-950 shadow-[0_4px_20px_rgba(234,179,8,0.5)]"
                   }`}
                 >
-                  {spinning ? "🎡 Spinning..." : "🎡 Spin the Wheel!"}
-                </button>
+                  {!spinning && (
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)" }}
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                    />
+                  )}
+                  <span className="relative">
+                    {spinning ? "🎡 Spinning..." : "🎰 SPIN THE WHEEL!"}
+                  </span>
+                </motion.button>
               )}
 
               {/* Result */}
               <AnimatePresence>
                 {result && (
                   <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl p-4 border-2 border-yellow-300 text-center"
+                    initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className={`relative rounded-2xl p-4 border-2 text-center overflow-hidden ${
+                      result.jackpot
+                        ? "bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 border-yellow-200"
+                        : "bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 border-yellow-300"
+                    }`}
                   >
-                    <span className="text-3xl">{result.emoji}</span>
-                    <p className="text-xs font-bold text-yellow-900/80 uppercase mt-1">You won!</p>
-                    <p className="text-2xl font-black text-gray-900">
+                    {/* Animated shine */}
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)" }}
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                    <motion.span
+                      className="block text-5xl relative"
+                      animate={{ scale: [1, 1.25, 1], rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 0.8, repeat: 2 }}
+                    >
+                      {result.emoji}
+                    </motion.span>
+                    <p className="text-xs font-black text-yellow-950 uppercase mt-1 tracking-widest">
+                      {result.jackpot ? "🎉 JACKPOT! 🎉" : "You Won!"}
+                    </p>
+                    <p className="text-3xl font-black text-gray-900 drop-shadow">
                       +{result.type === "coins" ? `${result.value.toLocaleString()} Coins` : `${result.value} XP`}
                     </p>
                   </motion.div>
@@ -310,18 +513,29 @@ export default function DailyWheel({ userEmail }) {
 
               {/* Already spun today */}
               {!canSpin && !result && (
-                <div className="text-center py-2">
-                  <p className="text-sm text-muted-foreground font-bold">✅ You already spun today!</p>
-                  <p className="text-xs text-muted-foreground">Come back tomorrow for another free spin.</p>
+                <div className="text-center py-3 bg-secondary/50 rounded-xl border border-border">
+                  <p className="text-sm text-foreground font-bold">✅ You already spun today!</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Next spin in <span className="text-primary font-black">{countdown}</span>
+                  </p>
                 </div>
               )}
 
               {/* Stats */}
               {(record?.total_spins || 0) > 0 && (
-                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
-                  <span>🎡 {record.total_spins} spins</span>
-                  <span>🪙 {(record.total_coins_won || 0).toLocaleString()}</span>
-                  <span>⭐ {(record.total_xp_won || 0).toLocaleString()} XP</span>
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  <div className="bg-secondary/40 rounded-lg py-2 text-center border border-border">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Spins</p>
+                    <p className="text-sm font-black text-foreground">🎡 {record.total_spins}</p>
+                  </div>
+                  <div className="bg-secondary/40 rounded-lg py-2 text-center border border-border">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Coins</p>
+                    <p className="text-sm font-black text-yellow-400">🪙 {(record.total_coins_won || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="bg-secondary/40 rounded-lg py-2 text-center border border-border">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">XP</p>
+                    <p className="text-sm font-black text-purple-400">⭐ {(record.total_xp_won || 0).toLocaleString()}</p>
+                  </div>
                 </div>
               )}
             </div>
