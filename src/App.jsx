@@ -62,7 +62,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <AnimatePresence mode="popLayout">
+    <AnimatePresence mode="wait">
       <Routes location={loc} key={loc.pathname}>
         <Route element={<Layout />}>
           <Route path="/" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Home /></motion.div>} />

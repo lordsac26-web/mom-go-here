@@ -6,9 +6,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1a1e2e",
   "theme_color": "#1a1e2e",
-  "categories": ["games", "lifestyle", "entertainment"],
+  "background_color": "#1a1e2e",
   "icons": [
     {
       "src": "https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png",
@@ -22,5 +21,8 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["games", "entertainment", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr"
 }
