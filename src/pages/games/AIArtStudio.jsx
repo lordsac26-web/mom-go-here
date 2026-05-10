@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import useHaptics from "../../hooks/useHaptics";
 import { useGameAudio } from "../../hooks/useGameAudio";
 import { useDailyMissions } from "../../hooks/useDailyMissions";
+import { useGameActivity } from "../../hooks/useGameActivity";
 import { Download, Share2, Mail, Facebook, Twitter, Globe, Frame } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,6 +50,7 @@ export default function AIArtStudio() {
   const [selectedFrame, setSelectedFrame] = useState("none");
   const [showFramePicker, setShowFramePicker] = useState(false);
   const { reportMissionProgress } = useDailyMissions();
+  const { reportWin } = useGameActivity();
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
@@ -68,6 +70,8 @@ export default function AIArtStudio() {
       successVibrate();
       matchSound();
       setImageUrl(result.url);
+      // Creating art counts as completing the activity — fire mission/XP/achievement progress
+      reportWin("AI Art Studio");
       setHistory(prev =>
         [
           {

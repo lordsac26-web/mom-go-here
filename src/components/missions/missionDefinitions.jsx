@@ -39,7 +39,7 @@ const MISSION_POOL = [
   { id: "play_checkers", title: "Board Master",        description: "Play Checkers",                  emoji: "♟️", target: 1, xp_reward: 30,  type: "play_specific", game: "Checkers" },
   { id: "play_mahjong",  title: "Tile Matcher",        description: "Play Mahjong",                   emoji: "🀄", target: 1, xp_reward: 30,  type: "play_specific", game: "Mahjong" },
   { id: "play_solitaire",title: "Card Shark",          description: "Play Solitaire",                 emoji: "🃏", target: 1, xp_reward: 30,  type: "play_specific", game: "Solitaire" },
-  { id: "play_buzzword", title: "Buzz Buzz",           description: "Play BuzzWord",                  emoji: "🐝", target: 1, xp_reward: 30,  type: "play_specific", game: "BuzzWord" },
+  { id: "play_buzzword", title: "Buzz Buzz",           description: "Play BuzzWord",                  emoji: "🐝", target: 1, xp_reward: 30,  type: "play_specific", game: "Buzz Word" },
   { id: "play_slots",    title: "Feeling Lucky",       description: "Play the Slots",                 emoji: "🎰", target: 1, xp_reward: 30,  type: "play_specific", game: "Lucky Slots" },
   { id: "play_dartpop",  title: "Pop Pop Pop",         description: "Play Dart Pop Blitz",            emoji: "🎯", target: 1, xp_reward: 30,  type: "play_specific", game: "Dart Pop Blitz" },
   { id: "play_art",      title: "Creative Spark",      description: "Create art in AI Art Studio",    emoji: "🎨", target: 1, xp_reward: 30,  type: "play_specific", game: "AI Art Studio" },

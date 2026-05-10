@@ -55,7 +55,7 @@ export default function WordWhomp() {
   const { tapVibrate, matchVibrate, winVibrate, scoreHit } = useHaptics();
   const { matchSound, winSound, uiClickSound, cardFlipSound } = useGameAudio();
   const { spark, burst, fireworks, sideCannons, emojiRain } = useConfetti();
-  const { reportWin } = useGameActivity();
+  const { reportWin, reportLoss } = useGameActivity();
 
   // Mode selection
   const [mode, setMode] = useState(null); // null = not started, "timed" | "relaxed"
@@ -124,6 +124,8 @@ export default function WordWhomp() {
   // Record stats on game over (timeout path)
   useEffect(() => {
     if (gameOver && started && !statsRecordedRef.current && foundWords.length < allWords.length) {
+      // Time ran out without finding everything — still counts as a play for missions
+      reportLoss("Buzz Word");
       recordStats();
     }
   }, [gameOver]);
