@@ -38,8 +38,10 @@ export default function Layout() {
   const mainRef = useRef(null);
   const scrollMap = useRef({});
 
-  // Tab history management
-  const { recordVisit, getTabTarget, activeTab } = useTabHistoryStore();
+  // Tab history management — use individual selectors to avoid useSyncExternalStoreWithSelector edge cases
+  const recordVisit = useTabHistoryStore((s) => s.recordVisit);
+  const getTabTarget = useTabHistoryStore((s) => s.getTabTarget);
+  const activeTab = useTabHistoryStore((s) => s.activeTab);
 
   // Record every navigation
   useEffect(() => {
