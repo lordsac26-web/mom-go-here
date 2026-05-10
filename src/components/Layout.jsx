@@ -127,17 +127,23 @@ export default function Layout() {
         </div>
       </main>
 
-      {/* Game Activity Monitor (invisible) */}
-      <GameActivityMonitor />
+      <Suspense fallback={null}>
+        {/* Game Activity Monitor (invisible) */}
+        <GameActivityMonitor />
+      </Suspense>
 
-      {/* Achievement Toast */}
-      <AchievementUnlockToast achievement={achievementBadge} />
+      <Suspense fallback={null}>
+        {/* Achievement Toast */}
+        <AchievementUnlockToast achievement={achievementBadge} />
 
-      {/* Major Achievement Full-Screen Celebration */}
-      <MajorAchievementModal />
+        {/* Major Achievement Full-Screen Celebration */}
+        <MajorAchievementModal />
+      </Suspense>
 
-      {/* AI Chat Bot */}
-      <AIChatBot />
+      <Suspense fallback={null}>
+        {/* AI Chat Bot */}
+        <AIChatBot />
+      </Suspense>
 
       </Suspense>
 
