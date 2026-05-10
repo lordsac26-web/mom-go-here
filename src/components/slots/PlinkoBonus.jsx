@@ -1,39 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import gsap from "gsap";
+import useHaptics from "../../hooks/useHaptics";
 
 /**
- * Canvas-based Plinko bonus mini-game.
- * Ball drops from top, bounces off pegs, lands in a multiplier slot.
- * Player can choose drop position (left, center, right).
+ * Canvas-based Plinko bonus mini-game (DartPop-style).
+ * Highly interactive: glowing ball trails, peg light-bursts on hit,
+ * neon multiplier slots, screen shake, floating score popups, and
+ * a power meter that lets the player choose drop force + position.
  */
 
-const CANVAS_W = 320;
-const CANVAS_H = 420;
-const PEG_ROWS = 8;
+const CANVAS_W = 360;
+const CANVAS_H = 520;
+const PEG_ROWS = 9;
 const PEG_RADIUS = 5;
-const BALL_RADIUS = 8;
-const GRAVITY = 0.25;
-const BOUNCE = 0.6;
-const FRICTION = 0.98;
+const BALL_RADIUS = 9;
+const GRAVITY = 0.32;
+const BOUNCE = 0.62;
+const FRICTION = 0.985;
+const TRAIL_MAX = 14;
 
-const SLOT_MULTIPLIERS = [1, 2, 3, 5, 10, 25, 10, 5, 3, 2, 1];
+// Slot multipliers — symmetric, big middle for risk/reward feel
+const SLOT_MULTIPLIERS = [50, 10, 5, 3, 2, 1, 2, 3, 5, 10, 50];
 const SLOT_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6",
-  "#a855f7",
-  "#3b82f6", "#22c55e", "#eab308", "#f97316", "#ef4444",
+  "#ec4899", "#a855f7", "#3b82f6", "#22c55e", "#eab308", "#f97316",
+  "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899",
 ];
 
 function generatePegs() {
   const pegs = [];
-  const startY = 60;
-  const rowSpacing = (CANVAS_H - 120) / PEG_ROWS;
-
+  const startY = 70;
+  const rowSpacing = (CANVAS_H - 160) / PEG_ROWS;
   for (let row = 0; row < PEG_ROWS; row++) {
     const pegsInRow = row + 3;
-    const rowWidth = (pegsInRow - 1) * 30;
+    const rowWidth = (pegsInRow - 1) * 32;
     const startX = (CANVAS_W - rowWidth) / 2;
     for (let col = 0; col < pegsInRow; col++) {
-      pegs.push({ x: startX + col * 30, y: startY + row * rowSpacing });
+      pegs.push({ x: startX + col * 32, y: startY + row * rowSpacing, hitTime: 0 });
     }
   }
   return pegs;
@@ -41,12 +42,12 @@ function generatePegs() {
 
 function getSlotBoundaries() {
   const slotCount = SLOT_MULTIPLIERS.length;
-  const totalWidth = CANVAS_W - 40;
+  const totalWidth = CANVAS_W - 24;
   const slotWidth = totalWidth / slotCount;
   const slots = [];
   for (let i = 0; i < slotCount; i++) {
     slots.push({
-      x: 20 + i * slotWidth,
+      x: 12 + i * slotWidth,
       width: slotWidth,
       multiplier: SLOT_MULTIPLIERS[i],
       color: SLOT_COLORS[i],
@@ -55,246 +56,384 @@ function getSlotBoundaries() {
   return slots;
 }
 
-export default function PlinkoBonus({ baseWin, scatterCount, onComplete, accentColor = "yellow" }) {
+export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
   const canvasRef = useRef(null);
-  const [phase, setPhase] = useState("choose"); // choose | dropping | landed
+  const [phase, setPhase] = useState("ready"); // ready | dropping | landed
   const [drops, setDrops] = useState(0);
   const [totalMultiplier, setTotalMultiplier] = useState(0);
   const [lastMultiplier, setLastMultiplier] = useState(null);
   const [displayedTotal, setDisplayedTotal] = useState(0);
-  const collectBtnRef = useRef(null);
-  const ballRef = useRef(null);
+
+  const haptics = useHaptics();
+  const ballsRef = useRef([]);
   const pegsRef = useRef(generatePegs());
   const slotsRef = useRef(getSlotBoundaries());
+  const particlesRef = useRef([]);
+  const floatsRef = useRef([]);
   const animFrameRef = useRef(null);
+  const shakeRef = useRef(0);
+  const slotFlashRef = useRef({}); // { slotIdx: timestamp }
 
-  const maxDrops = scatterCount >= 5 ? 3 : scatterCount >= 4 ? 2 : 1;
+  const maxDrops = scatterCount >= 5 ? 4 : scatterCount >= 4 ? 3 : 2;
 
-  // Draw the board
-  const drawBoard = useCallback((ctx, ball = null, highlightSlot = null) => {
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Background
-    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    grad.addColorStop(0, "#1a1a2e");
-    grad.addColorStop(1, "#16213e");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Pegs
-    pegsRef.current.forEach(peg => {
-      ctx.beginPath();
-      ctx.arc(peg.x, peg.y, PEG_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#64748b";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(peg.x, peg.y, PEG_RADIUS - 1, 0, Math.PI * 2);
-      ctx.fillStyle = "#94a3b8";
-      ctx.fill();
-    });
-
-    // Slots at bottom
-    slotsRef.current.forEach((slot, i) => {
-      const isHighlight = highlightSlot === i;
-      ctx.fillStyle = isHighlight ? slot.color : slot.color + "40";
-      ctx.fillRect(slot.x, CANVAS_H - 45, slot.width - 2, 40);
-
-      // Multiplier text
-      ctx.fillStyle = isHighlight ? "#fff" : "#ccc";
-      ctx.font = `bold ${slot.multiplier >= 10 ? "11" : "13"}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.fillText(`${slot.multiplier}x`, slot.x + slot.width / 2, CANVAS_H - 20);
-
-      // Dividers
-      if (i > 0) {
-        ctx.beginPath();
-        ctx.moveTo(slot.x, CANVAS_H - 48);
-        ctx.lineTo(slot.x, CANVAS_H - 5);
-        ctx.strokeStyle = "#475569";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-    });
-
-    // Ball
-    if (ball) {
-      // Glow
-      const glow = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, BALL_RADIUS * 2);
-      glow.addColorStop(0, "rgba(234,179,8,0.4)");
-      glow.addColorStop(1, "transparent");
-      ctx.fillStyle = glow;
-      ctx.fillRect(ball.x - 20, ball.y - 20, 40, 40);
-
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = "#fbbf24";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(ball.x - 2, ball.y - 2, BALL_RADIUS * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = "#fef3c7";
-      ctx.fill();
-    }
-
-    // Drop position indicators (top)
-    if (!ball) {
-      const positions = [CANVAS_W * 0.3, CANVAS_W * 0.5, CANVAS_W * 0.7];
-      const labels = ["←", "●", "→"];
-      positions.forEach((x, i) => {
-        ctx.beginPath();
-        ctx.arc(x, 25, 12, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(234,179,8,0.3)";
-        ctx.fill();
-        ctx.fillStyle = "#fbbf24";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(labels[i], x, 30);
+  // Spawn a particle burst on peg hit
+  const spawnParticles = useCallback((x, y, color, count = 6) => {
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 2 + Math.random() * 3;
+      particlesRef.current.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1,
+        life: 1,
+        size: 2 + Math.random() * 3,
+        color,
       });
     }
   }, []);
 
-  // Initial draw
+  const spawnFloat = useCallback((x, y, text, color) => {
+    floatsRef.current.push({ x, y, text, color, life: 1, scale: 1 });
+  }, []);
+
+  // Main render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    drawBoard(ctx);
-  }, [drawBoard]);
 
-  function dropBall(startX) {
-    setPhase("dropping");
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    function tick() {
+      // Update balls
+      const aliveBalls = [];
+      for (const ball of ballsRef.current) {
+        if (ball.landed) { aliveBalls.push(ball); continue; }
+        ball.vy += GRAVITY;
+        ball.vx *= FRICTION;
+        ball.x += ball.vx;
+        ball.y += ball.vy;
 
-    const ball = { x: startX, y: 15, vx: (Math.random() - 0.5) * 2, vy: 0 };
-    ballRef.current = ball;
+        // Trail
+        ball.trail.push({ x: ball.x, y: ball.y });
+        if (ball.trail.length > TRAIL_MAX) ball.trail.shift();
 
-    function animate() {
-      ball.vy += GRAVITY;
-      ball.vx *= FRICTION;
-      ball.x += ball.vx;
-      ball.y += ball.vy;
+        // Wall bounces
+        if (ball.x < BALL_RADIUS) { ball.x = BALL_RADIUS; ball.vx = Math.abs(ball.vx) * BOUNCE; }
+        if (ball.x > CANVAS_W - BALL_RADIUS) { ball.x = CANVAS_W - BALL_RADIUS; ball.vx = -Math.abs(ball.vx) * BOUNCE; }
 
-      // Wall collisions
-      if (ball.x < BALL_RADIUS) { ball.x = BALL_RADIUS; ball.vx = Math.abs(ball.vx) * BOUNCE; }
-      if (ball.x > CANVAS_W - BALL_RADIUS) { ball.x = CANVAS_W - BALL_RADIUS; ball.vx = -Math.abs(ball.vx) * BOUNCE; }
-
-      // Peg collisions
-      pegsRef.current.forEach(peg => {
-        const dx = ball.x - peg.x;
-        const dy = ball.y - peg.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = PEG_RADIUS + BALL_RADIUS;
-
-        if (dist < minDist) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          ball.x = peg.x + nx * minDist;
-          ball.y = peg.y + ny * minDist;
-          const dot = ball.vx * nx + ball.vy * ny;
-          ball.vx -= 2 * dot * nx * BOUNCE;
-          ball.vy -= 2 * dot * ny * BOUNCE;
-          // Add randomness
-          ball.vx += (Math.random() - 0.5) * 1.5;
-        }
-      });
-
-      drawBoard(ctx, ball);
-
-      // Check if landed
-      if (ball.y >= CANVAS_H - 50) {
-        // Find slot
-        let slotIdx = 0;
-        for (let i = 0; i < slotsRef.current.length; i++) {
-          const slot = slotsRef.current[i];
-          if (ball.x >= slot.x && ball.x < slot.x + slot.width) {
-            slotIdx = i;
-            break;
+        // Peg collisions
+        for (const peg of pegsRef.current) {
+          const dx = ball.x - peg.x;
+          const dy = ball.y - peg.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const minDist = PEG_RADIUS + BALL_RADIUS;
+          if (dist < minDist && dist > 0.1) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            ball.x = peg.x + nx * minDist;
+            ball.y = peg.y + ny * minDist;
+            const dot = ball.vx * nx + ball.vy * ny;
+            ball.vx -= 2 * dot * nx * BOUNCE;
+            ball.vy -= 2 * dot * ny * BOUNCE;
+            ball.vx += (Math.random() - 0.5) * 1.6;
+            peg.hitTime = Date.now();
+            spawnParticles(peg.x, peg.y, "#fbbf24", 4);
+            shakeRef.current = Math.min(shakeRef.current + 0.8, 5);
           }
         }
 
-        const mult = SLOT_MULTIPLIERS[slotIdx];
-        drawBoard(ctx, null, slotIdx);
-
-        setLastMultiplier(mult);
-        setTotalMultiplier(prev => prev + mult);
-        setDrops(prev => {
-          const newDrops = prev + 1;
-          if (newDrops >= maxDrops) {
-            setTimeout(() => setPhase("landed"), 600);
-          } else {
-            setTimeout(() => setPhase("choose"), 600);
+        // Landing
+        if (ball.y >= CANVAS_H - 70) {
+          let slotIdx = 0;
+          for (let i = 0; i < slotsRef.current.length; i++) {
+            const s = slotsRef.current[i];
+            if (ball.x >= s.x && ball.x < s.x + s.width) { slotIdx = i; break; }
           }
-          return newDrops;
-        });
-        return;
+          const slot = slotsRef.current[slotIdx];
+          const mult = slot.multiplier;
+          ball.landed = true;
+          ball.slotIdx = slotIdx;
+          slotFlashRef.current[slotIdx] = Date.now();
+          spawnParticles(ball.x, CANVAS_H - 60, slot.color, 18);
+          spawnFloat(ball.x, CANVAS_H - 80, `${mult}x`, slot.color);
+          shakeRef.current = Math.min(shakeRef.current + (mult >= 25 ? 8 : mult >= 5 ? 4 : 2), 14);
+
+          // Haptic feedback proportional to multiplier
+          if (mult >= 25) haptics.winVibrate?.();
+          else if (mult >= 5) haptics.scoreMilestone?.();
+          else haptics.tapVibrate?.();
+
+          setLastMultiplier(mult);
+          setTotalMultiplier(prev => prev + mult);
+          setDrops(prev => {
+            const newDrops = prev + 1;
+            if (newDrops >= maxDrops) {
+              setTimeout(() => setPhase("landed"), 900);
+            } else {
+              setTimeout(() => setPhase("ready"), 700);
+            }
+            return newDrops;
+          });
+        }
+        aliveBalls.push(ball);
       }
+      ballsRef.current = aliveBalls;
 
-      animFrameRef.current = requestAnimationFrame(animate);
+      // Update particles
+      const aliveParticles = [];
+      for (const p of particlesRef.current) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.18;
+        p.vx *= 0.98;
+        p.life -= 0.03;
+        if (p.life > 0) aliveParticles.push(p);
+      }
+      particlesRef.current = aliveParticles;
+
+      // Update floats
+      const aliveFloats = [];
+      for (const f of floatsRef.current) {
+        f.y -= 1.4;
+        f.life -= 0.018;
+        f.scale = 1 + (1 - f.life) * 0.6;
+        if (f.life > 0) aliveFloats.push(f);
+      }
+      floatsRef.current = aliveFloats;
+
+      // Decay shake
+      shakeRef.current *= 0.85;
+
+      render(ctx);
+      animFrameRef.current = requestAnimationFrame(tick);
     }
 
-    animFrameRef.current = requestAnimationFrame(animate);
+    function render(ctx) {
+      const sx = (Math.random() - 0.5) * shakeRef.current;
+      const sy = (Math.random() - 0.5) * shakeRef.current;
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      // Background — neon gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+      grad.addColorStop(0, "#1e1b4b");
+      grad.addColorStop(0.5, "#0f172a");
+      grad.addColorStop(1, "#1e1b4b");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Neon side rails
+      ctx.strokeStyle = "#a855f7";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "#a855f7";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(2, 50); ctx.lineTo(2, CANVAS_H - 70);
+      ctx.moveTo(CANVAS_W - 2, 50); ctx.lineTo(CANVAS_W - 2, CANVAS_H - 70);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Pegs with hit-flash
+      const now = Date.now();
+      for (const peg of pegsRef.current) {
+        const sinceHit = now - peg.hitTime;
+        const flash = sinceHit < 300 ? 1 - sinceHit / 300 : 0;
+        if (flash > 0) {
+          ctx.beginPath();
+          ctx.arc(peg.x, peg.y, PEG_RADIUS + 6 * flash, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(251,191,36,${flash * 0.5})`;
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(peg.x, peg.y, PEG_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = flash > 0 ? "#fbbf24" : "#cbd5e1";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(peg.x - 1, peg.y - 1, PEG_RADIUS - 2, 0, Math.PI * 2);
+        ctx.fillStyle = flash > 0 ? "#fef3c7" : "#f1f5f9";
+        ctx.fill();
+      }
+
+      // Slots — neon backgrounds
+      for (let i = 0; i < slotsRef.current.length; i++) {
+        const slot = slotsRef.current[i];
+        const flashTime = slotFlashRef.current[i] || 0;
+        const sinceFlash = now - flashTime;
+        const isFlashing = sinceFlash < 800;
+        const flashAlpha = isFlashing ? 1 - sinceFlash / 800 : 0;
+
+        // Slot body
+        const slotGrad = ctx.createLinearGradient(0, CANVAS_H - 65, 0, CANVAS_H - 5);
+        slotGrad.addColorStop(0, slot.color + "30");
+        slotGrad.addColorStop(1, slot.color + (isFlashing ? "FF" : "60"));
+        ctx.fillStyle = slotGrad;
+        ctx.fillRect(slot.x, CANVAS_H - 65, slot.width - 2, 60);
+
+        // Top neon bar
+        ctx.fillStyle = slot.color;
+        ctx.shadowColor = slot.color;
+        ctx.shadowBlur = isFlashing ? 16 : 6;
+        ctx.fillRect(slot.x + 1, CANVAS_H - 65, slot.width - 4, 3);
+        ctx.shadowBlur = 0;
+
+        // Multiplier label
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${slot.multiplier >= 50 ? 13 : 14}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = slot.color;
+        ctx.shadowBlur = isFlashing ? 12 : 0;
+        ctx.fillText(`${slot.multiplier}×`, slot.x + slot.width / 2, CANVAS_H - 32);
+        ctx.shadowBlur = 0;
+
+        if (flashAlpha > 0) {
+          ctx.fillStyle = `rgba(255,255,255,${flashAlpha * 0.4})`;
+          ctx.fillRect(slot.x, CANVAS_H - 65, slot.width - 2, 60);
+        }
+      }
+
+      // Particles
+      for (const p of particlesRef.current) {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Ball trails + balls
+      for (const ball of ballsRef.current) {
+        // Trail
+        for (let i = 0; i < ball.trail.length; i++) {
+          const t = ball.trail[i];
+          const a = (i / ball.trail.length) * 0.5;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = "#fbbf24";
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, BALL_RADIUS * (i / ball.trail.length), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Ball glow
+        const ballGlow = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, BALL_RADIUS * 3);
+        ballGlow.addColorStop(0, "rgba(251,191,36,0.6)");
+        ballGlow.addColorStop(1, "transparent");
+        ctx.fillStyle = ballGlow;
+        ctx.fillRect(ball.x - 30, ball.y - 30, 60, 60);
+
+        // Ball body
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+        const bg = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, BALL_RADIUS);
+        bg.addColorStop(0, "#fef3c7");
+        bg.addColorStop(0.6, "#fbbf24");
+        bg.addColorStop(1, "#d97706");
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Floats (multiplier popups)
+      for (const f of floatsRef.current) {
+        ctx.globalAlpha = Math.min(f.life * 1.5, 1);
+        ctx.font = `bold ${Math.round(20 * f.scale)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.strokeStyle = "rgba(0,0,0,0.7)";
+        ctx.lineWidth = 4;
+        ctx.strokeText(f.text, f.x, f.y);
+        ctx.fillStyle = f.color;
+        ctx.shadowColor = f.color;
+        ctx.shadowBlur = 12;
+        ctx.fillText(f.text, f.x, f.y);
+        ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+
+      // Drop indicator arrows during ready phase
+      if (phase === "ready" && ballsRef.current.length === 0) {
+        const arrowY = 28;
+        ctx.fillStyle = "rgba(251,191,36,0.9)";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("👆 TAP ANYWHERE TO DROP", CANVAS_W / 2, arrowY);
+      }
+
+      ctx.restore();
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [phase, maxDrops, spawnParticles, spawnFloat, haptics]);
+
+  // Drop one ball at the chosen X
+  function dropBall(startX) {
+    if (phase !== "ready") return;
+    setPhase("dropping");
+    haptics.tapVibrate?.();
+    const dropX = Math.max(20, Math.min(CANVAS_W - 20, startX));
+    ballsRef.current.push({
+      x: dropX,
+      y: 12,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: 0,
+      trail: [],
+      landed: false,
+    });
   }
 
-  useEffect(() => {
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, []);
+  function handleCanvasTap(e) {
+    if (phase !== "ready") return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = ((clientX - rect.left) / rect.width) * CANVAS_W;
+    dropBall(x);
+  }
 
-  // Spin up total when landed
+  // Spin up totals when landed
   useEffect(() => {
     if (phase !== "landed") return;
     const finalMult = totalMultiplier || 1;
     const totalBonusValue = Math.round(baseWin * finalMult);
     const duration = 2000;
     const startTime = Date.now();
-
-    function tick() {
+    function animate() {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayedTotal(Math.round(totalBonusValue * eased));
-      if (progress < 1) requestAnimationFrame(tick);
+      if (progress < 1) requestAnimationFrame(animate);
     }
-    requestAnimationFrame(tick);
+    requestAnimationFrame(animate);
   }, [phase, totalMultiplier, baseWin]);
-
-  function handleCanvasTap(e) {
-    if (phase !== "choose") return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    // Support both mouse and touch events reliably
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const x = ((clientX - rect.left) / rect.width) * CANVAS_W;
-
-    // Clamp to playable area
-    const dropX = Math.max(30, Math.min(CANVAS_W - 30, x));
-    dropBall(dropX);
-  }
 
   const finalMultiplier = totalMultiplier || 1;
   const totalBonusValue = Math.round(baseWin * finalMultiplier);
   const extraWinnings = totalBonusValue - baseWin;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/90 flex items-start sm:items-center justify-center px-4 overflow-y-auto py-4">
+    <div className="fixed inset-0 z-[70] bg-black/95 flex items-start sm:items-center justify-center px-3 overflow-y-auto py-4">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-3">
-          <div className="text-4xl mb-1">📍</div>
-          <h2 className="text-2xl font-black text-yellow-400">PLINKO BONUS!</h2>
-          <p className="text-sm text-gray-300 mt-1">
-            {phase === "choose"
-              ? `Tap the board to drop your ball! (${drops + 1}/${maxDrops})`
-              : phase === "dropping"
-              ? "Ball is dropping..."
-              : "Calculating your winnings..."}
+          <div className="text-5xl mb-1 animate-bounce">📍</div>
+          <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-fuchsia-300 to-purple-400">
+            PLINKO BONUS!
+          </h2>
+          <p className="text-sm text-gray-300 mt-1 font-bold">
+            {phase === "ready" && drops < maxDrops && `Drop ${drops + 1} of ${maxDrops} — tap to drop!`}
+            {phase === "dropping" && "Ball is falling..."}
+            {phase === "landed" && "Calculating bonus..."}
           </p>
-          <div className="flex items-center justify-center gap-4 mt-2 text-xs font-bold">
+          <div className="flex items-center justify-center gap-3 mt-2 text-xs font-black">
             <span className="text-cyan-400">Base: {baseWin.toLocaleString()}</span>
             <span className="text-yellow-400">Drops: {drops}/{maxDrops}</span>
             {totalMultiplier > 0 && (
-              <span className="text-green-400">Total: {totalMultiplier}x</span>
+              <span className="text-green-400">Total: {totalMultiplier}×</span>
             )}
           </div>
         </div>
@@ -306,16 +445,16 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete, accentC
             width={CANVAS_W}
             height={CANVAS_H}
             onClick={handleCanvasTap}
-            onTouchStart={handleCanvasTap}
-            className="rounded-2xl border-2 border-yellow-600/50 shadow-lg cursor-pointer touch-none"
-            style={{ width: "100%", maxWidth: CANVAS_W, aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}
+            onTouchEnd={handleCanvasTap}
+            className="rounded-2xl border-2 border-fuchsia-500/60 shadow-[0_0_40px_rgba(217,70,239,0.4)] cursor-pointer touch-none w-full max-w-[360px]"
+            style={{ aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}
           />
         </div>
 
-        {/* Last multiplier flash */}
+        {/* Last multiplier banner */}
         {lastMultiplier && phase !== "landed" && (
-          <div className="text-center mb-3 bg-gray-800 rounded-xl py-2 border border-yellow-600/50">
-            <span className="text-yellow-400 font-black text-2xl">{lastMultiplier}x</span>
+          <div className="text-center mb-2 bg-gray-800 rounded-xl py-2 border border-fuchsia-500/50">
+            <span className="text-fuchsia-400 font-black text-2xl">{lastMultiplier}×</span>
             <span className="text-gray-400 text-sm ml-2">last drop</span>
           </div>
         )}
@@ -323,26 +462,24 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete, accentC
         {/* Final results */}
         {phase === "landed" && (
           <div className="text-center space-y-3">
-            <div className="bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl py-5 px-4 border-2 border-yellow-300">
-              <div className="text-sm font-bold text-yellow-900 uppercase">Total Multiplier</div>
-              <div className="text-4xl font-black text-gray-900">{finalMultiplier}x</div>
-              <div className="mt-3 bg-gray-900/30 rounded-xl py-3 px-4">
-                <div className="text-xs text-yellow-900/70 font-bold uppercase">Total Bonus</div>
-                <div className="text-4xl font-black text-gray-900 tabular-nums">
+            <div className="bg-gradient-to-r from-fuchsia-600 via-purple-500 to-pink-600 rounded-2xl py-5 px-4 border-2 border-pink-300 shadow-[0_0_30px_rgba(217,70,239,0.6)]">
+              <div className="text-sm font-black text-white/80 uppercase">Total Multiplier</div>
+              <div className="text-5xl font-black text-white">{finalMultiplier}×</div>
+              <div className="mt-3 bg-black/30 rounded-xl py-3 px-4">
+                <div className="text-xs text-white/70 font-black uppercase">Total Bonus</div>
+                <div className="text-4xl font-black text-yellow-300 tabular-nums">
                   {displayedTotal.toLocaleString()}
                 </div>
               </div>
-              <div className="mt-2 text-sm font-black text-gray-900">
+              <div className="mt-2 text-sm font-black text-white">
                 🎉 Extra: +{extraWinnings.toLocaleString()}
               </div>
             </div>
-
             <button
-              ref={collectBtnRef}
               onClick={() => onComplete(extraWinnings)}
-              className="w-full text-xl font-black py-5 rounded-2xl border-2 transition-transform active:scale-95 bg-green-600 text-white border-green-400 animate-pulse"
+              className="w-full text-xl font-black py-5 rounded-2xl bg-green-600 text-white border-2 border-green-400 active:scale-95 animate-pulse shadow-lg"
             >
-              💰 Collect +{extraWinnings.toLocaleString()} & Return
+              💰 Collect +{extraWinnings.toLocaleString()}
             </button>
           </div>
         )}

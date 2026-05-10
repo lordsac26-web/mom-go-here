@@ -16,6 +16,7 @@ import {
 } from "../../components/checkers/CheckersEngine";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import {
   BOARD_STYLES, PIECE_SKINS, rollRareDrops,
 } from "../../components/checkers/cosmeticDefinitions";
@@ -108,8 +109,7 @@ export default function Checkers() {
   // ── Persist checkers win to GameScore for cosmetic unlock tracking ──
   async function recordCheckersWin() {
     if (!userEmail) return;
-    await base44.entities.GameScore.create({
-      user_email: userEmail,
+    await saveGameScore({
       game_name: "Checkers",
       score: moveCountRef.current,
       completed: true,

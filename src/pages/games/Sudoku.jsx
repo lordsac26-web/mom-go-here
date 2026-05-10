@@ -9,6 +9,7 @@ import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import SudokuResetDialog from "../../components/sudoku/SudokuResetDialog";
 import SudokuHintButton from "../../components/sudoku/SudokuHintButton";
 import SudokuStatusBar from "../../components/sudoku/SudokuStatusBar";
@@ -256,8 +257,7 @@ export default function Sudoku() {
     if (!user?.email || statsRecordedRef.current) return;
     statsRecordedRef.current = true;
     reportWin("Sudoku");
-    await base44.entities.GameScore.create({
-      user_email: user.email,
+    await saveGameScore({
       game_name: "Sudoku",
       score: moves,
       duration_seconds: elapsed,

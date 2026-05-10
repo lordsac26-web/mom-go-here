@@ -13,6 +13,7 @@ import BeeFlightTitle from "../../components/BeeFlightTitle";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import BuzzWordResetDialog from "../../components/wordwhomp/BuzzWordResetDialog";
 import BuzzWordStatusBar from "../../components/wordwhomp/BuzzWordStatusBar";
 import BuzzWordGameOver from "../../components/wordwhomp/BuzzWordGameOver";
@@ -132,8 +133,7 @@ export default function WordWhomp() {
     statsRecordedRef.current = true;
     const elapsed = gameStartRef.current ? Math.round((Date.now() - gameStartRef.current) / 1000) : 0;
     const allFound = foundWords.length === allWords.length;
-    await base44.entities.GameScore.create({
-      user_email: user.email,
+    await saveGameScore({
       game_name: "Buzz Word",
       score: score,
       duration_seconds: elapsed,

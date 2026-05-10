@@ -11,6 +11,7 @@ import SolitaireResetDialog from "../../components/solitaire/SolitaireResetDialo
 import SolitaireHintButton from "../../components/solitaire/SolitaireHintButton";
 import SolitaireStatusBar from "../../components/solitaire/SolitaireStatusBar";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import { useAuth } from "@/lib/AuthContext";
 import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
@@ -284,8 +285,7 @@ export default function Solitaire() {
     // Also record to GameScore for Hall of Fame / XP / achievements
     if (didWin) {
       setWinTime(elapsed);
-      await base44.entities.GameScore.create({
-        user_email: user.email,
+      await saveGameScore({
         game_name: "Solitaire",
         score: moves,
         duration_seconds: elapsed,

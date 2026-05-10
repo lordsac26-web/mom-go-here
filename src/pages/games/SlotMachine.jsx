@@ -26,6 +26,7 @@ import GameInstructions from "../../components/GameInstructions";
 import JackpotTicker from "../../components/slots/JackpotTicker";
 import JackpotWinOverlay from "../../components/slots/JackpotWinOverlay";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import {
   REELS, ROWS, BET_LEVELS,
   STARTING_BALANCE, TOPOFF_THRESHOLD,
@@ -382,6 +383,9 @@ export default function SlotMachine() {
                   setPlinkoBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
                 } else if (currentMachine.bonusType === "freeSpins") {
                   setFreeSpinsBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
+                } else if (currentMachine.bonusType === "both") {
+                  // Hi-Roller: boxes first, then plinko (chained in handleBonusComplete)
+                  setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount, chainPlinko: true });
                 } else {
                   setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount });
                 }
@@ -495,17 +499,27 @@ export default function SlotMachine() {
       setBalance(prev => prev + extraWinnings);
       setLastWin(prev => prev + extraWinnings);
     }
+    // Hi-Roller chain: after Mystery Boxes finishes, kick off Plinko with the new total
+    const wasBoxesWithChain = bonusRound?.chainPlinko;
+    const carryWin = (bonusRound?.baseWin || 0) + Math.max(0, extraWinnings);
+    const carryScatter = bonusRound?.scatterCount || 3;
+
     setBonusRound(null); setPlinkoBonus(null); setFreeSpinsBonus(null);
+
+    if (wasBoxesWithChain) {
+      setTimeout(() => {
+        setPlinkoBonus({ baseWin: carryWin, scatterCount: carryScatter });
+      }, 400);
+      return;
+    }
     scheduleNextAutoSpin(800);
   }
 
   // Record session to GameScore when leaving
   async function recordSessionScore() {
-    const user = await base44.auth.me();
-    if (!user?.email || sessionSpinsRef.current === 0) return;
+    if (sessionSpinsRef.current === 0) return;
     const elapsed = Math.round((Date.now() - sessionStartRef.current) / 1000);
-    await base44.entities.GameScore.create({
-      user_email: user.email,
+    await saveGameScore({
       game_name: "Lucky Slots",
       score: sessionEarnedRef.current,
       duration_seconds: elapsed,

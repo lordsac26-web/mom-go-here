@@ -1,11 +1,13 @@
 /**
  * Multi-Machine Slot System
- * 5 themed machines with unique symbols, payouts, visuals, and unlock criteria.
+ * 6 themed machines with unique symbols, payouts, visuals, and unlock criteria.
  * Each machine has a different volatility profile and bonus type.
  */
+import { HIGH_ROLLER_MACHINE } from "./highRollerMachine";
 
 // ─── MACHINE DEFINITIONS ───────────────────────────────────────────
 export const MACHINES = [
+  HIGH_ROLLER_MACHINE,
   {
     id: "classic",
     name: "Lucky Classic",

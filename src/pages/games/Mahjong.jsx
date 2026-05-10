@@ -18,6 +18,7 @@ import {
 } from "../../components/mahjong/MahjongEngine";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import MahjongHintButton from "../../components/mahjong/MahjongHintButton";
 import MahjongResetDialog from "../../components/mahjong/MahjongResetDialog";
 import MahjongStarRating from "../../components/mahjong/MahjongStarRating";
@@ -208,8 +209,7 @@ export default function Mahjong() {
   async function recordWin(moveCount, seconds, diffLabel) {
     const email = userEmailRef.current;
     if (!email) return;
-    await base44.entities.GameScore.create({
-      user_email: email,
+    await saveGameScore({
       game_name: "Mahjong",
       score: moveCount,
       duration_seconds: seconds,

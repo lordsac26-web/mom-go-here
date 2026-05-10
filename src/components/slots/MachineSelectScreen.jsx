@@ -16,6 +16,7 @@ const BONUS_LABELS = {
   boxes: "🎁 Mystery Boxes",
   plinko: "📍 Plinko Drop",
   freeSpins: "🎰 Free Spins",
+  both: "💎 Boxes + Plinko",
 };
 
 export default function MachineSelectScreen({ onSelect }) {

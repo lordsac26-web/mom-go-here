@@ -11,6 +11,7 @@ import GridRevealWrapper from "../../components/GridRevealWrapper";
 import MemoryBackgroundPicker, { MEMORY_BACKGROUNDS } from "../../components/MemoryBackgroundPicker";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import MemoryTile from "../../components/memory/MemoryTile";
 import MemoryResetDialog from "../../components/memory/MemoryResetDialog";
 import MemoryStarRating from "../../components/memory/MemoryStarRating";
@@ -181,8 +182,7 @@ export default function MemoryGame() {
   async function recordGameWin(moveCount, seconds, difficulty) {
     const email = userEmailRef.current;
     if (!email) return;
-    await base44.entities.GameScore.create({
-      user_email: email,
+    await saveGameScore({
       game_name: "Memory Match",
       score: moveCount,
       duration_seconds: seconds,

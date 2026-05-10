@@ -11,6 +11,7 @@ import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import YahtzeeResetDialog from "../../components/yahtzee/YahtzeeResetDialog";
 import YahtzeeStatusBar from "../../components/yahtzee/YahtzeeStatusBar";
 import YahtzeeScorecard from "../../components/yahtzee/YahtzeeScorecard";
@@ -131,8 +132,7 @@ export default function Yahtzee() {
   async function recordStats(elapsed) {
     if (!user?.email || statsRecordedRef.current) return;
     statsRecordedRef.current = true;
-    await base44.entities.GameScore.create({
-      user_email: user.email,
+    await saveGameScore({
       game_name: "Yahtzee",
       score: totalScore,
       duration_seconds: elapsed,

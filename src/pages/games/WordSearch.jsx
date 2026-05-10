@@ -13,6 +13,7 @@ import useGridReveal from "../../hooks/useGridReveal";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import useConfetti from "../../hooks/useConfetti";
 import { base44 } from "@/api/base44Client";
+import { saveGameScore } from "@/lib/scoreSaver";
 import { useAuth } from "@/lib/AuthContext";
 import WordSearchResetDialog from "../../components/wordsearch/WordSearchResetDialog";
 import WordSearchHintButton from "../../components/wordsearch/WordSearchHintButton";
@@ -178,8 +179,7 @@ export default function WordSearch() {
       ? Math.round((Date.now() - gameStartRef.current) / 1000)
       : 0;
     setWinTime(elapsed);
-    await base44.entities.GameScore.create({
-      user_email: user.email,
+    await saveGameScore({
       game_name: "Word Search",
       score: words.length,
       duration_seconds: elapsed,
