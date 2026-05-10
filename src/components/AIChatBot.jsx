@@ -94,13 +94,15 @@ export default function AIChatBot() {
 
   // Load chatbot name from profile
   useEffect(() => {
-    base44.auth.me().then(user => {
-      if (user?.email) {
-        base44.entities.UserProfile.filter({ user_email: user.email }).then(profiles => {
-          if (profiles[0]?.chatbot_name) setChatbotName(profiles[0].chatbot_name);
-        });
-      }
-    });
+    base44.auth.me()
+      .then(user => {
+        if (!user?.email) return;
+        return base44.entities.UserProfile.filter({ user_email: user.email });
+      })
+      .then(profiles => {
+        if (profiles?.[0]?.chatbot_name) setChatbotName(profiles[0].chatbot_name);
+      })
+      .catch(() => { /* offline or not authed — keep default name */ });
   }, []);
 
   // Auto-scroll on new messages
@@ -116,34 +118,41 @@ export default function AIChatBot() {
 
   async function initConversation() {
     setLoading(true);
-    const convos = await base44.agents.listConversations({ agent_name: "momHelper" });
-    let convo;
-    if (convos.length > 0) {
-      convo = await base44.agents.getConversation(convos[0].id);
-      setMessages(convo.messages || []);
-    } else {
-      convo = await base44.agents.createConversation({
-        agent_name: "momHelper",
-        metadata: { name: "Chat" },
-      });
-      setMessages([]);
-    }
-    setConversation(convo);
-    conversationRef.current = convo;
-    setLoading(false);
-
-    // Inject any pending game activity messages after init
-    setTimeout(() => {
-      const pending = consumeMessages();
-      if (pending.length > 0 && conversationRef.current) {
-        pending.forEach(async (msg) => {
-          await base44.agents.addMessage(conversationRef.current, {
-            role: "user",
-            content: `[System notification — respond warmly] ${msg.text}`,
-          });
+    try {
+      const convos = await base44.agents.listConversations({ agent_name: "momHelper" });
+      let convo;
+      if (convos.length > 0) {
+        convo = await base44.agents.getConversation(convos[0].id);
+        setMessages(convo.messages || []);
+      } else {
+        convo = await base44.agents.createConversation({
+          agent_name: "momHelper",
+          metadata: { name: "Chat" },
         });
+        setMessages([]);
       }
-    }, 500);
+      setConversation(convo);
+      conversationRef.current = convo;
+
+      // Inject any pending game activity messages after init
+      setTimeout(() => {
+        const pending = consumeMessages();
+        if (pending.length > 0 && conversationRef.current) {
+          pending.forEach(async (msg) => {
+            try {
+              await base44.agents.addMessage(conversationRef.current, {
+                role: "user",
+                content: `[System notification — respond warmly] ${msg.text}`,
+              });
+            } catch { /* ignore */ }
+          });
+        }
+      }, 500);
+    } catch (err) {
+      console.warn("Chat init failed:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

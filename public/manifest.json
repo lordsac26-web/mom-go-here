@@ -1,0 +1,26 @@
+{
+  "name": "Mom, Go Here",
+  "short_name": "Mom Go Here",
+  "description": "A gentle daily companion for seniors — uplifting inspiration, peaceful spiritual reflections, and simple brain games in one calm, easy-to-use app.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1e2e",
+  "theme_color": "#1a1e2e",
+  "categories": ["games", "lifestyle", "entertainment"],
+  "icons": [
+    {
+      "src": "https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://media.base44.com/images/public/69d2319af097365cbf91e620/7fb42bc6a_momgohere.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

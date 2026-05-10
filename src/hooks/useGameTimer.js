@@ -20,18 +20,25 @@ export function useGameTimer() {
       const elapsed = (Date.now() - startRef.current) / 1000 / 60;
       if (elapsed < 0.1) return;
 
-      const today = new Date().toDateString();
-      const existing = await base44.entities.DailyProgress.filter({ user_email: u.email, date: today });
-      if (existing[0]) {
-        await base44.entities.DailyProgress.update(existing[0].id, {
-          minutes_played: (existing[0].minutes_played || 0) + elapsed
-        });
-      } else {
-        await base44.entities.DailyProgress.create({
-          user_email: u.email,
-          date: today,
-          minutes_played: elapsed
-        });
+      // Skip if offline — DailyProgress is "best-effort" tracking
+      if (!navigator.onLine) return;
+
+      try {
+        const today = new Date().toDateString();
+        const existing = await base44.entities.DailyProgress.filter({ user_email: u.email, date: today });
+        if (existing[0]) {
+          await base44.entities.DailyProgress.update(existing[0].id, {
+            minutes_played: (existing[0].minutes_played || 0) + elapsed
+          });
+        } else {
+          await base44.entities.DailyProgress.create({
+            user_email: u.email,
+            date: today,
+            minutes_played: elapsed
+          });
+        }
+      } catch (err) {
+        console.warn("DailyProgress save failed:", err);
       }
     }
 
