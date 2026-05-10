@@ -39,15 +39,27 @@ export default function Layout() {
   const mainRef = useRef(null);
   const scrollMap = useRef({});
 
-  // Tab history management — use individual selectors to avoid useSyncExternalStoreWithSelector edge cases
-  const recordVisit = useTabHistoryStore((s) => s.recordVisit);
-  const getTabTarget = useTabHistoryStore((s) => s.getTabTarget);
-  const activeTab = useTabHistoryStore((s) => s.activeTab);
+  // Tab history management — defer Zustand calls to useEffect to avoid React init issues
+  const [recordVisit, setRecordVisit] = useRef(null);
+  const [getTabTarget, setGetTabTarget] = useRef(null);
+  const [activeTab, setActiveTab] = useRef(null);
+
+  // Initialize Zustand selectors on mount
+  useEffect(() => {
+    const rv = useTabHistoryStore.getState().recordVisit;
+    const gt = useTabHistoryStore.getState().getTabTarget;
+    const at = useTabHistoryStore.getState().activeTab;
+    setRecordVisit.current = rv;
+    setGetTabTarget.current = gt;
+    setActiveTab.current = at;
+  }, []);
 
   // Record every navigation
   useEffect(() => {
-    recordVisit(location.pathname);
-  }, [location.pathname, recordVisit]);
+    if (recordVisit.current) {
+      recordVisit.current(location.pathname);
+    }
+  }, [location.pathname]);
 
   // Whether current page is a sub-page (not a tab root)
   const isSubPage = !TAB_ROOTS.includes(location.pathname);
@@ -56,9 +68,11 @@ export default function Layout() {
   const handleTabClick = useCallback((e, tabRoot) => {
     e.preventDefault();
     tapVibrate();
-    const target = getTabTarget(tabRoot);
-    navigate(target);
-  }, [getTabTarget, navigate, tapVibrate]);
+    if (getTabTarget.current) {
+      const target = getTabTarget.current(tabRoot);
+      navigate(target);
+    }
+  }, [navigate, tapVibrate]);
 
   // Save scroll position when leaving a main tab
   useEffect(() => {
@@ -78,7 +92,17 @@ export default function Layout() {
     }
   }, [location.pathname]);
 
-  const achievementBadge = useAchievementToastStore((s) => s.badge);
+  const [achievementBadge, setAchievementBadge] = useRef(null);
+
+  // Initialize achievement badge from store
+  useEffect(() => {
+    const unsubscribe = useAchievementToastStore.subscribe(
+      (state) => state.badge,
+      (badge) => setAchievementBadge.current = badge
+    );
+    setAchievementBadge.current = useAchievementToastStore.getState().badge;
+    return unsubscribe;
+  }, []);
 
   // Wire up background sync queue — flushes pending offline operations when reconnected
   useSyncQueue();
@@ -134,7 +158,7 @@ export default function Layout() {
 
       <Suspense fallback={null}>
         {/* Achievement Toast */}
-        <AchievementUnlockToast achievement={achievementBadge} />
+        <AchievementUnlockToast achievement={achievementBadge.current} />
 
         {/* Major Achievement Full-Screen Celebration */}
         <MajorAchievementModal />
@@ -156,7 +180,7 @@ export default function Layout() {
               href={item.to}
               onClick={(e) => handleTabClick(e, item.to)}
               className={`flex flex-col items-center justify-center gap-0.5 min-w-[48px] min-h-[48px] px-2 sm:px-3 py-1.5 rounded-xl transition-colors ${
-                activeTab === item.to
+                activeTab.current === item.to
                   ? "text-primary"
                   : "text-muted-foreground"
               }`}
