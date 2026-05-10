@@ -40,24 +40,21 @@ export default function Layout() {
   const scrollMap = useRef({});
 
   // Tab history management — defer Zustand calls to useEffect to avoid React init issues
-  const [recordVisit, setRecordVisit] = useRef(null);
-  const [getTabTarget, setGetTabTarget] = useRef(null);
-  const [activeTab, setActiveTab] = useRef(null);
+  const recordVisitRef = useRef(null);
+  const getTabTargetRef = useRef(null);
+  const activeTabRef = useRef(null);
 
   // Initialize Zustand selectors on mount
   useEffect(() => {
-    const rv = useTabHistoryStore.getState().recordVisit;
-    const gt = useTabHistoryStore.getState().getTabTarget;
-    const at = useTabHistoryStore.getState().activeTab;
-    setRecordVisit.current = rv;
-    setGetTabTarget.current = gt;
-    setActiveTab.current = at;
+    recordVisitRef.current = useTabHistoryStore.getState().recordVisit;
+    getTabTargetRef.current = useTabHistoryStore.getState().getTabTarget;
+    activeTabRef.current = useTabHistoryStore.getState().activeTab;
   }, []);
 
   // Record every navigation
   useEffect(() => {
-    if (recordVisit.current) {
-      recordVisit.current(location.pathname);
+    if (recordVisitRef.current) {
+      recordVisitRef.current(location.pathname);
     }
   }, [location.pathname]);
 
@@ -68,8 +65,8 @@ export default function Layout() {
   const handleTabClick = useCallback((e, tabRoot) => {
     e.preventDefault();
     tapVibrate();
-    if (getTabTarget.current) {
-      const target = getTabTarget.current(tabRoot);
+    if (getTabTargetRef.current) {
+      const target = getTabTargetRef.current(tabRoot);
       navigate(target);
     }
   }, [navigate, tapVibrate]);
@@ -180,7 +177,7 @@ export default function Layout() {
               href={item.to}
               onClick={(e) => handleTabClick(e, item.to)}
               className={`flex flex-col items-center justify-center gap-0.5 min-w-[48px] min-h-[48px] px-2 sm:px-3 py-1.5 rounded-xl transition-colors ${
-                activeTab.current === item.to
+                activeTabRef.current === item.to
                   ? "text-primary"
                   : "text-muted-foreground"
               }`}
