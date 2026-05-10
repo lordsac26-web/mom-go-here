@@ -1,20 +1,21 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, lazy, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen, ChevronLeft } from "lucide-react";
 import { useTabHistoryStore, TAB_ROOTS, getTabForPath } from "../stores/tabHistoryStore";
 import { useAuth } from "@/lib/AuthContext";
-import AIChatBot from "./AIChatBot";
-import GameActivityMonitor from "./GameActivityMonitor";
-import PersistentAudioStream from "./PersistentAudioStream";
 import useHaptics from "../hooks/useHaptics";
-
-import MiniMusicPlayer from "./MiniMusicPlayer";
-import HeaderSoundControls from "./HeaderSoundControls";
-import AchievementUnlockToast from "./AchievementUnlockToast";
-import MajorAchievementModal from "./achievements/MajorAchievementModal";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
-import OfflineBanner from "./OfflineBanner";
 import useSyncQueue from "../hooks/useSyncQueue";
+
+// Lazy-load heavy components to avoid deep import tree evaluation during module init
+const AIChatBot = lazy(() => import("./AIChatBot"));
+const GameActivityMonitor = lazy(() => import("./GameActivityMonitor"));
+const PersistentAudioStream = lazy(() => import("./PersistentAudioStream"));
+const MiniMusicPlayer = lazy(() => import("./MiniMusicPlayer"));
+const HeaderSoundControls = lazy(() => import("./HeaderSoundControls"));
+const AchievementUnlockToast = lazy(() => import("./AchievementUnlockToast"));
+const MajorAchievementModal = lazy(() => import("./achievements/MajorAchievementModal"));
+const OfflineBanner = lazy(() => import("./OfflineBanner"));
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -84,7 +85,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
-
+      <Suspense fallback={null}>
 
       {/* Offline indicator */}
       <OfflineBanner />
@@ -111,8 +112,10 @@ export default function Layout() {
             </Link>
           </div>
           <div className="flex items-center gap-1.5">
-            <HeaderSoundControls />
-            <MiniMusicPlayer />
+            <Suspense fallback={null}>
+              <HeaderSoundControls />
+              <MiniMusicPlayer />
+            </Suspense>
           </div>
         </div>
       </header>
@@ -135,6 +138,8 @@ export default function Layout() {
 
       {/* AI Chat Bot */}
       <AIChatBot />
+
+      </Suspense>
 
       {/* Bottom Nav Bar */}
       <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg pb-[env(safe-area-inset-bottom)] nav-no-select">
