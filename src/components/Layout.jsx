@@ -6,16 +6,18 @@ import { useAuth } from "@/lib/AuthContext";
 import useHaptics from "../hooks/useHaptics";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
+// Eagerly import components that use Zustand hooks — lazy + Suspense causes
+// hook dispatcher conflicts when these components are first rendered
+import PersistentAudioStream from "./PersistentAudioStream";
+import MiniMusicPlayer from "./MiniMusicPlayer";
+import HeaderSoundControls from "./HeaderSoundControls";
+import GameActivityMonitor from "./GameActivityMonitor";
+import AchievementUnlockToast from "./AchievementUnlockToast";
+import OfflineBanner from "./OfflineBanner";
 
-// Lazy-load heavy components to avoid deep import tree evaluation during module init
+// Only truly heavy components get lazy-loaded
 const AIChatBot = lazy(() => import("./AIChatBot"));
-const GameActivityMonitor = lazy(() => import("./GameActivityMonitor"));
-const PersistentAudioStream = lazy(() => import("./PersistentAudioStream"));
-const MiniMusicPlayer = lazy(() => import("./MiniMusicPlayer"));
-const HeaderSoundControls = lazy(() => import("./HeaderSoundControls"));
-const AchievementUnlockToast = lazy(() => import("./AchievementUnlockToast"));
 const MajorAchievementModal = lazy(() => import("./achievements/MajorAchievementModal"));
-const OfflineBanner = lazy(() => import("./OfflineBanner"));
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -114,12 +116,11 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
-      <Suspense fallback={null}>
 
       {/* Offline indicator */}
       <OfflineBanner />
 
-      {/* Persistent audio stream */}
+      {/* Persistent audio stream (no UI, manages audio singleton) */}
       <PersistentAudioStream />
 
       {/* Top Nav — clean header with logo + music player */}
@@ -141,10 +142,8 @@ export default function Layout() {
             </Link>
           </div>
           <div className="flex items-center gap-1.5">
-            <Suspense fallback={null}>
-              <HeaderSoundControls />
-              <MiniMusicPlayer />
-            </Suspense>
+            <HeaderSoundControls />
+            <MiniMusicPlayer />
           </div>
         </div>
       </header>
@@ -156,24 +155,20 @@ export default function Layout() {
         </div>
       </main>
 
-      <Suspense fallback={null}>
-        {/* Game Activity Monitor (invisible) */}
-        <GameActivityMonitor />
-      </Suspense>
+      {/* Game Activity Monitor (invisible) */}
+      <GameActivityMonitor />
 
-      <Suspense fallback={null}>
-        {/* Achievement Toast */}
-        <AchievementUnlockToast achievement={achievementBadgeRef.current} />
+      {/* Achievement Toast */}
+      <AchievementUnlockToast achievement={achievementBadgeRef.current} />
 
-        {/* Major Achievement Full-Screen Celebration */}
+      {/* Major Achievement Full-Screen Celebration (lazy — no Zustand hooks at top level) */}
+      <Suspense fallback={null}>
         <MajorAchievementModal />
       </Suspense>
 
+      {/* AI Chat Bot (lazy — heavy component) */}
       <Suspense fallback={null}>
-        {/* AI Chat Bot */}
         <AIChatBot />
-      </Suspense>
-
       </Suspense>
 
       {/* Bottom Nav Bar */}

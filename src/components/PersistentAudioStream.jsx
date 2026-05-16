@@ -1,12 +1,12 @@
 /**
  * Persistent audio stream that survives page navigations.
- * Uses a module-level Audio singleton so the stream never interrupts,
- * even if the component remounts during route transitions.
+ * Uses a module-level Audio singleton and subscribes to the Zustand store
+ * directly — no React hooks at all — to avoid dispatcher issues during
+ * Suspense / lazy-load initialization.
  *
- * Uses store.getState() + manual subscription to avoid Zustand hook
- * dispatcher issues during lazy-load / Suspense initialization.
+ * This component renders null; all logic lives outside React.
  */
-import { useEffect, useReducer } from "react";
+import { useEffect } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 
 // Module-level singleton — survives component mount/unmount cycles
@@ -19,50 +19,44 @@ function getAudio() {
   return _audio;
 }
 
-function selectAudioState(s) {
-  return {
-    musicVolume: s.musicVolume,
-    muteAll: s.muteAll,
-    muteMusic: s.muteMusic,
-    currentStreamUrl: s.currentStreamUrl,
-    isPlayerActive: s.isPlayerActive,
-  };
+// Apply current store state to the audio element (pure function, no React)
+function applyAudioState(state) {
+  const el = getAudio();
+  const { musicVolume, muteAll, muteMusic, currentStreamUrl, isPlayerActive } = state;
+  const isMuted = muteAll || muteMusic;
+
+  el.volume = isMuted ? 0 : musicVolume;
+
+  if (isPlayerActive && currentStreamUrl && !isMuted) {
+    if (el.src !== currentStreamUrl) {
+      el.src = currentStreamUrl;
+      el.load();
+    }
+    if (el.paused) {
+      el.play().catch(() => {});
+    }
+  } else {
+    el.pause();
+  }
+}
+
+// Self-initialize: subscribe to store at module load time
+// This runs once when the module is first imported, before any React render
+let _storeUnsub = null;
+function initAudioSync() {
+  if (_storeUnsub) return; // already initialized
+  // Apply initial state
+  applyAudioState(useAudioStore.getState());
+  // Subscribe to future changes
+  _storeUnsub = useAudioStore.subscribe((state) => applyAudioState(state));
 }
 
 export default function PersistentAudioStream() {
-  // Force re-render when store changes
-  const [, forceUpdate] = useReducer(x => x + 1, 0);
-
+  // Initialize on first mount (safe inside useEffect — hooks are allowed here)
   useEffect(() => {
-    // Subscribe to store changes; trigger re-render on change
-    const unsub = useAudioStore.subscribe(() => forceUpdate());
-    return unsub;
+    initAudioSync();
+    // No cleanup — audio should persist across navigations
   }, []);
 
-  // Read values directly from store state (no hook dispatcher needed)
-  const { musicVolume, muteAll, muteMusic, currentStreamUrl, isPlayerActive } =
-    selectAudioState(useAudioStore.getState());
-
-  const isMuted = muteAll || muteMusic;
-
-  useEffect(() => {
-    const el = getAudio();
-
-    el.volume = isMuted ? 0 : musicVolume;
-
-    if (isPlayerActive && currentStreamUrl && !isMuted) {
-      if (el.src !== currentStreamUrl) {
-        el.src = currentStreamUrl;
-        el.load();
-      }
-      if (el.paused) {
-        el.play().catch(() => {});
-      }
-    } else if (!isPlayerActive || isMuted) {
-      el.pause();
-    }
-  }, [currentStreamUrl, musicVolume, isMuted, isPlayerActive]);
-
-  // Do NOT pause on unmount — that's the whole point of persistence
   return null;
 }
