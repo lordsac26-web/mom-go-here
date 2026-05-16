@@ -10,24 +10,20 @@ const GAME_PATHS = [
 ];
 
 /**
- * Invisible component that monitors game activity.
- * - Starts a session timer when user is on a game page
- * - Periodically checks play time for wellness reminders
+ * Invisible monitor — uses getState() instead of hook selectors to
+ * avoid duplicate-React / null-dispatcher crashes.
  */
 export default function GameActivityMonitor() {
   const location = useLocation();
   const intervalRef = useRef(null);
-  const startSession = useGameActivityStore((s) => s.startSession);
-  const checkPlayTime = useGameActivityStore((s) => s.checkPlayTime);
 
   const isOnGamePage = GAME_PATHS.some((p) => location.pathname.startsWith(p));
 
   useEffect(() => {
     if (isOnGamePage) {
-      startSession();
-      // Check play time every 60 seconds
+      useGameActivityStore.getState().startSession();
       intervalRef.current = setInterval(() => {
-        checkPlayTime();
+        useGameActivityStore.getState().checkPlayTime();
       }, 60000);
     }
 
@@ -37,7 +33,7 @@ export default function GameActivityMonitor() {
         intervalRef.current = null;
       }
     };
-  }, [isOnGamePage, startSession, checkPlayTime]);
+  }, [isOnGamePage]);
 
-  return null; // invisible
+  return null;
 }

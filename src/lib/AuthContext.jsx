@@ -1,7 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
-import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
 
@@ -21,18 +20,19 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      
-      const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token,
-        interceptResponses: true
-      });
-      
+
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const headers = { 'X-App-Id': appParams.appId };
+        if (appParams.token) headers['Authorization'] = `Bearer ${appParams.token}`;
+        const resp = await fetch(`/api/apps/public/prod/public-settings/by-id/${appParams.appId}`, { headers });
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          const err = new Error(data?.message || `HTTP ${resp.status}`);
+          err.status = resp.status;
+          err.data = data;
+          throw err;
+        }
+        const publicSettings = await resp.json();
         setAppPublicSettings(publicSettings);
         
         if (appParams.token) {

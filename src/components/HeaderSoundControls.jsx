@@ -1,20 +1,43 @@
+import { useState, useEffect } from "react";
 import { Volume2, VolumeX, Music } from "lucide-react";
 import { useAudioStore } from "../stores/audioStore";
 import VolumePopover from "./VolumePopover";
 
+/**
+ * Uses vanilla Zustand subscribe() instead of hook selectors to avoid
+ * the duplicate-React / null-dispatcher crash that hits useSyncExternalStore.
+ */
 export default function HeaderSoundControls() {
-  const muteAll = useAudioStore((s) => s.muteAll);
-  const muteMusic = useAudioStore((s) => s.muteMusic);
-  const sfxVolume = useAudioStore((s) => s.sfxVolume);
-  const musicVolume = useAudioStore((s) => s.musicVolume);
-  const toggleMuteAll = useAudioStore((s) => s.toggleMuteAll);
-  const toggleMuteMusic = useAudioStore((s) => s.toggleMuteMusic);
-  const setSfxVolume = useAudioStore((s) => s.setSfxVolume);
-  const setMusicVolume = useAudioStore((s) => s.setMusicVolume);
+  const [state, setState] = useState(() => {
+    const s = useAudioStore.getState();
+    return {
+      muteAll: s.muteAll,
+      muteMusic: s.muteMusic,
+      sfxVolume: s.sfxVolume,
+      musicVolume: s.musicVolume,
+    };
+  });
+
+  useEffect(() => {
+    const unsub = useAudioStore.subscribe((s) =>
+      setState({
+        muteAll: s.muteAll,
+        muteMusic: s.muteMusic,
+        sfxVolume: s.sfxVolume,
+        musicVolume: s.musicVolume,
+      })
+    );
+    return unsub;
+  }, []);
+
+  const { muteAll, muteMusic, sfxVolume, musicVolume } = state;
+  const toggleMuteAll = () => useAudioStore.getState().toggleMuteAll();
+  const toggleMuteMusic = () => useAudioStore.getState().toggleMuteMusic();
+  const setSfxVolume = (v) => useAudioStore.getState().setSfxVolume(v);
+  const setMusicVolume = (v) => useAudioStore.getState().setMusicVolume(v);
 
   return (
     <div className="flex items-center gap-1">
-      {/* SFX toggle + volume popover */}
       <VolumePopover
         volume={sfxVolume}
         onVolumeChange={setSfxVolume}
@@ -34,7 +57,6 @@ export default function HeaderSoundControls() {
         </button>
       </VolumePopover>
 
-      {/* Music toggle + volume popover */}
       <VolumePopover
         volume={musicVolume}
         onVolumeChange={setMusicVolume}

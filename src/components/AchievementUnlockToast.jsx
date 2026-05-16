@@ -4,13 +4,13 @@ import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
 /**
  * Renders a floating toast when an achievement is unlocked.
- * Pass `achievement` prop — when it changes, the toast shows and auto-hides.
+ * Uses getState() instead of hook selector to avoid duplicate-React dispatcher crash.
  */
 export default function AchievementUnlockToast({ achievement }) {
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(null);
   const lastTsRef = useRef(null);
-  const clearBadge = useAchievementToastStore((s) => s.clearBadge);
+  const clearBadge = useAchievementToastStore.getState().clearBadge;
 
   useEffect(() => {
     if (!achievement || !achievement._ts) return;
