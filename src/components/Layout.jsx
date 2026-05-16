@@ -5,7 +5,7 @@ import { useTabHistoryStore, TAB_ROOTS, getTabForPath } from "../stores/tabHisto
 import { useAuth } from "@/lib/AuthContext";
 import useHaptics from "../hooks/useHaptics";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
-import useSyncQueue from "../hooks/useSyncQueue";
+
 
 // Lazy-load heavy components to avoid deep import tree evaluation during module init
 const AIChatBot = lazy(() => import("./AIChatBot"));
@@ -102,7 +102,15 @@ export default function Layout() {
   }, []);
 
   // Wire up background sync queue — flushes pending offline operations when reconnected
-  useSyncQueue();
+  useEffect(() => {
+    // Dynamic import to avoid module-level evaluation before React initializes
+    import("@/lib/syncQueue").then(({ default: syncQueue }) => {
+      syncQueue.flush();
+      const handleOnline = () => setTimeout(() => syncQueue.flush(), 1500);
+      window.addEventListener("online", handleOnline);
+      return () => window.removeEventListener("online", handleOnline);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
