@@ -89,15 +89,15 @@ export default function Layout() {
     }
   }, [location.pathname]);
 
-  const [achievementBadge, setAchievementBadge] = useRef(null);
+  const achievementBadgeRef = useRef(null);
 
   // Initialize achievement badge from store
   useEffect(() => {
+    achievementBadgeRef.current = useAchievementToastStore.getState().badge;
     const unsubscribe = useAchievementToastStore.subscribe(
       (state) => state.badge,
-      (badge) => setAchievementBadge.current = badge
+      (badge) => { achievementBadgeRef.current = badge; }
     );
-    setAchievementBadge.current = useAchievementToastStore.getState().badge;
     return unsubscribe;
   }, []);
 
@@ -155,7 +155,7 @@ export default function Layout() {
 
       <Suspense fallback={null}>
         {/* Achievement Toast */}
-        <AchievementUnlockToast achievement={achievementBadge.current} />
+        <AchievementUnlockToast achievement={achievementBadgeRef.current} />
 
         {/* Major Achievement Full-Screen Celebration */}
         <MajorAchievementModal />
