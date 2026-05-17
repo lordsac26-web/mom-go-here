@@ -1,16 +1,27 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 import useHaptics from "@/hooks/useHaptics";
 
 /**
  * Full-screen celebration overlay for MAJOR achievement unlocks.
- * Triggers a spring-in modal, animated sparkle particles, and a
- * triple-pulse haptic pattern when it opens.
+ * Uses getState() + subscribe instead of hook selectors to avoid the
+ * null-dispatcher crash from the SDK's bundled React chunk.
  */
 export default function MajorAchievementModal() {
-  const majorBadge = useAchievementToastStore((s) => s.majorBadge);
-  const clearMajor = useAchievementToastStore((s) => s.clearMajorBadge);
+  const [majorBadge, setMajorBadge] = useState(
+    () => useAchievementToastStore.getState().majorBadge
+  );
+
+  useEffect(() => {
+    const unsub = useAchievementToastStore.subscribe(
+      (s) => s.majorBadge,
+      (val) => setMajorBadge(val)
+    );
+    return unsub;
+  }, []);
+
+  const clearMajor = () => useAchievementToastStore.getState().clearMajorBadge();
   const haptics = useHaptics();
 
   // Fire haptic pattern when a new major badge appears
