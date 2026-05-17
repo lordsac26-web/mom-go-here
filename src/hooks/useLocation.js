@@ -1,66 +1,72 @@
-import { useState, useCallback } from 'react';
+import { useReducer, useCallback } from 'react';
 
 /**
- * useLocation hook — Request geolocation and get user coordinates
- * Returns: { location, requestLocation, hasPermission, loading, error, city }
+ * useLocation hook — Request geolocation and get user coordinates.
+ * Uses useReducer instead of multiple useState calls to avoid null-dispatcher
+ * crashes from the SDK's bundled React chunk.
  */
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "set_location": return { ...state, location: action.location, hasPermission: true };
+    case "set_city": return { ...state, city: action.city };
+    case "loading": return { ...state, loading: true, error: null };
+    case "error": return { ...state, loading: false, error: action.error, hasPermission: false };
+    case "done": return { ...state, loading: false };
+    default: return state;
+  }
+}
+
 export function useLocation(savedLocation) {
-  const [location, setLocation] = useState(
-    savedLocation?.latitude && savedLocation?.longitude
+  const [state, dispatch] = useReducer(reducer, {
+    location: savedLocation?.latitude && savedLocation?.longitude
       ? { latitude: savedLocation.latitude, longitude: savedLocation.longitude }
-      : null
-  );
-  const [city, setCity] = useState(savedLocation?.city || null);
-  const [hasPermission, setHasPermission] = useState(
-    !!(savedLocation?.latitude && savedLocation?.longitude)
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+      : null,
+    city: savedLocation?.city || null,
+    hasPermission: !!(savedLocation?.latitude && savedLocation?.longitude),
+    loading: false,
+    error: null,
+  });
 
   const requestLocation = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    dispatch({ type: "loading" });
     try {
       const position = await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: false,
           timeout: 10000,
-          maximumAge: 3600000, // Cache 1 hour
+          maximumAge: 3600000,
         });
       });
 
       const { latitude, longitude } = position.coords;
-      setLocation({ latitude, longitude });
-      setHasPermission(true);
+      dispatch({ type: "set_location", location: { latitude, longitude } });
 
-      // Try to reverse geocode to get city name + state
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
         );
         const data = await res.json();
         const place = data.address?.city || data.address?.town || data.address?.village || data.address?.hamlet || data.address?.county || 'Unknown';
-        const state = data.address?.state || '';
-        // Include state for disambiguation (e.g. "Greene County, New York")
-        const cityName = state ? `${place}, ${state}` : place;
-        setCity(cityName);
-      } catch (e) {
-        // Reverse geocoding failed, just use coordinates
+        const stateName = data.address?.state || '';
+        const cityName = stateName ? `${place}, ${stateName}` : place;
+        dispatch({ type: "set_city", city: cityName });
+      } catch (_) {
+        // Reverse geocoding failed — coords still saved
       }
     } catch (err) {
-      setError(err.message || 'Location permission denied');
-      setHasPermission(false);
+      dispatch({ type: "error", error: err.message || 'Location permission denied' });
     } finally {
-      setLoading(false);
+      dispatch({ type: "done" });
     }
   }, []);
 
   return {
-    location,
-    city,
+    location: state.location,
+    city: state.city,
     requestLocation,
-    hasPermission,
-    loading,
-    error,
+    hasPermission: state.hasPermission,
+    loading: state.loading,
+    error: state.error,
   };
 }

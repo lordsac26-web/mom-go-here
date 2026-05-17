@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -30,8 +30,19 @@ const RELIGIONS = [
 const MAX_NAME_LENGTH = 50;
 
 function ChatBubbleSettings() {
-  const chatBubbleEnabled = useUIStore((state) => state.chatBubbleEnabled);
-  const toggleChatBubble = useUIStore((state) => state.toggleChatBubble);
+  const [chatBubbleEnabled, setChatBubbleEnabled] = useState(
+    () => useUIStore.getState().chatBubbleEnabled
+  );
+
+  useEffect(() => {
+    const unsub = useUIStore.subscribe(
+      (s) => s.chatBubbleEnabled,
+      (val) => setChatBubbleEnabled(val)
+    );
+    return unsub;
+  }, []);
+
+  const toggleChatBubble = () => useUIStore.getState().toggleChatBubble();
 
   return (
     <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
