@@ -1,26 +1,38 @@
+import { useState, useEffect } from 'react';
 import { useAudioStore } from '@/stores/audioStore';
 import { Volume2 } from 'lucide-react';
 import { useGameAudio } from '@/hooks/useGameAudio';
 import useHaptics from '@/hooks/useHaptics';
 import VolumeSlider from './VolumeSlider';
 
-
 /**
  * Audio settings panel for volume sliders and mute toggles.
- * Appears in the Settings page.
+ * Uses getState() + subscribe to avoid the null-dispatcher crash from
+ * the SDK's bundled React chunk conflicting with Zustand's hook selector.
  */
 export default function AudioSettings() {
   const { uiClickSound } = useGameAudio();
   const { tapVibrate } = useHaptics();
-  const sfxVolume = useAudioStore((state) => state.sfxVolume);
-  const musicVolume = useAudioStore((state) => state.musicVolume);
-  const muteAll = useAudioStore((state) => state.muteAll);
-  const muteMusic = useAudioStore((state) => state.muteMusic);
 
-  const setSfxVolume = useAudioStore((state) => state.setSfxVolume);
-  const setMusicVolume = useAudioStore((state) => state.setMusicVolume);
-  const toggleMuteAll = useAudioStore((state) => state.toggleMuteAll);
-  const toggleMuteMusic = useAudioStore((state) => state.toggleMuteMusic);
+  const [sfxVolume, setSfxVolumeState] = useState(() => useAudioStore.getState().sfxVolume);
+  const [musicVolume, setMusicVolumeState] = useState(() => useAudioStore.getState().musicVolume);
+  const [muteAll, setMuteAll] = useState(() => useAudioStore.getState().muteAll);
+  const [muteMusic, setMuteMusic] = useState(() => useAudioStore.getState().muteMusic);
+
+  useEffect(() => {
+    const unsub = useAudioStore.subscribe((s) => {
+      setSfxVolumeState(s.sfxVolume);
+      setMusicVolumeState(s.musicVolume);
+      setMuteAll(s.muteAll);
+      setMuteMusic(s.muteMusic);
+    });
+    return unsub;
+  }, []);
+
+  const setSfxVolume = (v) => useAudioStore.getState().setSfxVolume(v);
+  const setMusicVolume = (v) => useAudioStore.getState().setMusicVolume(v);
+  const toggleMuteAll = () => useAudioStore.getState().toggleMuteAll();
+  const toggleMuteMusic = () => useAudioStore.getState().toggleMuteMusic();
 
   return (
     <div className="bg-card border-2 border-primary rounded-2xl p-6 space-y-6">
