@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useAudioStore } from "@/stores/audioStore";
 import {
   getAudioCtx, getMaster, noiseBuffer,
@@ -31,8 +31,10 @@ function trackVol(trackKey) {
   return prefs?.tracks?.[trackKey]?.volume ?? 0.7;
 }
 
+// Module-level ref — avoids useRef null-dispatcher crash from Base44 SDK React conflict
+let _spinOsc = null;
+
 export function useSlotSounds() {
-  const spinOscRef = useRef(null);
 
   const ok = () => {
     const s = useAudioStore.getState();
@@ -88,7 +90,7 @@ export function useSlotSounds() {
     noise.connect(filter).connect(ng).connect(dest);
     noise.start(now);
 
-    spinOscRef.current = { osc, g, noise, ng, filter, ctx, dest };
+    _spinOsc = { osc, g, noise, ng, filter, ctx, dest };
   }, []);
 
   // ── Reel Spin Stop: bouncy snap ──
@@ -96,14 +98,14 @@ export function useSlotSounds() {
     if (!ok() || !trackEnabled("reelSpin")) return;
     const v = globalVol() * trackVol("reelSpin");
 
-    if (spinOscRef.current) {
-      const { osc, g, noise, ng, ctx } = spinOscRef.current;
+    if (_spinOsc) {
+      const { osc, g, noise, ng, ctx } = _spinOsc;
       const now = ctx.currentTime;
       g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       ng.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc.stop(now + 0.2);
       noise.stop(now + 0.2);
-      spinOscRef.current = null;
+      _spinOsc = null;
     }
 
     playBoing({ pitch: 350, volume: 0.12 * v });
