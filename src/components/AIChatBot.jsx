@@ -4,6 +4,7 @@ import { X, MessageCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/stores/uiStore";
 import { useGameActivityStore } from "@/stores/gameActivityStore";
+
 import ChatBubbleMessage from "./chat/ChatBubbleMessage";
 import TypingIndicator from "./chat/TypingIndicator";
 import ChatEmptyState from "./chat/ChatEmptyState";
@@ -88,9 +89,26 @@ export default function AIChatBot() {
   const scrollRef = useRef(null);
   const conversationRef = useRef(null);
 
-  const chatBubbleEnabled = useUIStore((s) => s.chatBubbleEnabled);
-  const unreadCount = useGameActivityStore((s) => s.unreadCount);
-  const consumeMessages = useGameActivityStore((s) => s.consumeMessages);
+  const [chatBubbleEnabled, setChatBubbleEnabled] = useState(
+    () => useUIStore.getState().chatBubbleEnabled
+  );
+  const [unreadCount, setUnreadCount] = useState(
+    () => useGameActivityStore.getState().unreadCount
+  );
+
+  useEffect(() => {
+    const unsubUI = useUIStore.subscribe(
+      (s) => s.chatBubbleEnabled,
+      (val) => setChatBubbleEnabled(val)
+    );
+    const unsubActivity = useGameActivityStore.subscribe(
+      (s) => s.unreadCount,
+      (val) => setUnreadCount(val)
+    );
+    return () => { unsubUI(); unsubActivity(); };
+  }, []);
+
+  const consumeMessages = () => useGameActivityStore.getState().consumeMessages();
 
   // Load chatbot name from profile
   useEffect(() => {
