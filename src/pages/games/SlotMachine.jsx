@@ -179,7 +179,8 @@ export default function SlotMachine() {
   const [plinkoBonus, setPlinkoBonus] = useState(null);
   const [freeSpinsBonus, setFreeSpinsBonus] = useState(null);
   const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
-  const { stats, recordSpin, recordWin, recordLoss, newBadge } = useSlotAchievements();
+  const [newBadge, setNewBadge] = useState(null);
+  const { stats, recordSpin, recordWin, recordLoss } = useSlotAchievements(setNewBadge);
   const [jackpotAmount, setJackpotAmount] = useState(0);
   const [jackpotWin, setJackpotWin] = useState(null);
   const spinCountRef = useRef(0);

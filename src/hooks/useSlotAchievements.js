@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useCallback } from "react";
 
 const STORAGE_KEY = "slots_stats";
 
@@ -49,87 +49,84 @@ function defaultStats() {
   };
 }
 
+// Module-level state — avoids useState/useRef null-dispatcher crash from Base44 SDK React conflict
+let _stats = loadStats() || defaultStats();
+let _badgeQueue = [];
+let _showing = false;
+let _listeners = [];
+
+function notifyListeners() {
+  _listeners.forEach(fn => fn({ ..._stats }));
+}
+
+function subscribe(fn) {
+  _listeners.push(fn);
+  return () => { _listeners = _listeners.filter(l => l !== fn); };
+}
+
+function saveStats(updated) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
+}
+
+function checkAchievements(updated, onBadge) {
+  for (const ach of ACHIEVEMENTS) {
+    if (!updated.unlockedKeys.includes(ach.key) && ach.check(updated)) {
+      updated.unlockedKeys.push(ach.key);
+      _badgeQueue.push(ach);
+    }
+  }
+  if (_badgeQueue.length > 0 && !_showing) showNextBadge(onBadge);
+  return updated;
+}
+
+function showNextBadge(onBadge) {
+  if (_badgeQueue.length === 0) { _showing = false; return; }
+  _showing = true;
+  const next = _badgeQueue.shift();
+  if (onBadge) onBadge(next);
+  setTimeout(() => {
+    if (onBadge) onBadge(null);
+    setTimeout(() => showNextBadge(onBadge), 300);
+  }, 2500);
+}
+
 export { ACHIEVEMENTS };
 
-export default function useSlotAchievements() {
-  const [stats, setStats] = useState(() => loadStats() || defaultStats());
-  const [newBadge, setNewBadge] = useState(null);
-  const badgeQueueRef = useRef([]);
-  const showingRef = useRef(false);
-
-  const saveStats = useCallback((updated) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch {}
-  }, []);
-
-  const showNextBadge = useCallback(() => {
-    if (badgeQueueRef.current.length === 0) {
-      showingRef.current = false;
-      return;
-    }
-    showingRef.current = true;
-    const next = badgeQueueRef.current.shift();
-    setNewBadge(next);
-    setTimeout(() => {
-      setNewBadge(null);
-      setTimeout(() => showNextBadge(), 300);
-    }, 2500);
-  }, []);
-
-  const checkAchievements = useCallback((updated) => {
-    const newUnlocks = [];
-    for (const ach of ACHIEVEMENTS) {
-      if (!updated.unlockedKeys.includes(ach.key) && ach.check(updated)) {
-        updated.unlockedKeys.push(ach.key);
-        newUnlocks.push(ach);
-      }
-    }
-    if (newUnlocks.length > 0) {
-      badgeQueueRef.current.push(...newUnlocks);
-      if (!showingRef.current) showNextBadge();
-    }
-    return updated;
-  }, [showNextBadge]);
-
+export default function useSlotAchievements(onBadge) {
   const recordSpin = useCallback((betAmount) => {
-    setStats(prev => {
-      const updated = {
-        ...prev,
-        totalSpins: prev.totalSpins + 1,
-        totalSpent: prev.totalSpent + betAmount,
-        maxBet: Math.max(prev.maxBet, betAmount),
-      };
-      const checked = checkAchievements(updated);
-      saveStats(checked);
-      return checked;
-    });
-  }, [checkAchievements, saveStats]);
+    _stats = {
+      ..._stats,
+      totalSpins: _stats.totalSpins + 1,
+      totalSpent: _stats.totalSpent + betAmount,
+      maxBet: Math.max(_stats.maxBet, betAmount),
+    };
+    _stats = checkAchievements(_stats, onBadge);
+    saveStats(_stats);
+    notifyListeners();
+  }, [onBadge]);
 
   const recordWin = useCallback((winAmount, lineWins, hasScatter) => {
-    setStats(prev => {
-      const newStreak = prev.currentWinStreak + 1;
-      const updated = {
-        ...prev,
-        totalWins: prev.totalWins + 1,
-        totalEarned: prev.totalEarned + winAmount,
-        biggestWin: Math.max(prev.biggestWin, winAmount),
-        scatterWins: prev.scatterWins + (hasScatter ? 1 : 0),
-        maxLinesWon: Math.max(prev.maxLinesWon, lineWins),
-        currentWinStreak: newStreak,
-        bestWinStreak: Math.max(prev.bestWinStreak, newStreak),
-      };
-      const checked = checkAchievements(updated);
-      saveStats(checked);
-      return checked;
-    });
-  }, [checkAchievements, saveStats]);
+    const newStreak = _stats.currentWinStreak + 1;
+    _stats = {
+      ..._stats,
+      totalWins: _stats.totalWins + 1,
+      totalEarned: _stats.totalEarned + winAmount,
+      biggestWin: Math.max(_stats.biggestWin, winAmount),
+      scatterWins: _stats.scatterWins + (hasScatter ? 1 : 0),
+      maxLinesWon: Math.max(_stats.maxLinesWon, lineWins),
+      currentWinStreak: newStreak,
+      bestWinStreak: Math.max(_stats.bestWinStreak, newStreak),
+    };
+    _stats = checkAchievements(_stats, onBadge);
+    saveStats(_stats);
+    notifyListeners();
+  }, [onBadge]);
 
   const recordLoss = useCallback(() => {
-    setStats(prev => {
-      const updated = { ...prev, currentWinStreak: 0 };
-      saveStats(updated);
-      return updated;
-    });
-  }, [saveStats]);
+    _stats = { ..._stats, currentWinStreak: 0 };
+    saveStats(_stats);
+    notifyListeners();
+  }, []);
 
-  return { stats, recordSpin, recordWin, recordLoss, newBadge, ACHIEVEMENTS };
+  return { stats: _stats, recordSpin, recordWin, recordLoss, ACHIEVEMENTS, subscribe };
 }
