@@ -1,9 +1,12 @@
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import gsap from "gsap";
 
 /**
  * GSAP Grid Pattern Reveal — multiple reveal patterns for NxN grids.
- * Returns a ref to attach to the grid container, and a `reveal(pattern)` function.
+ * Returns a ref object to attach to the grid container, and a `reveal(pattern)` function.
+ *
+ * Uses module-level refs instead of useRef to avoid null-dispatcher crashes
+ * caused by the Base44 SDK's bundled React chunk conflict.
  *
  * Patterns: spiral, wave, diagonal, random, ripple, cascade, snake, checkerboard
  */
@@ -94,28 +97,30 @@ const PATTERNS = {
 };
 
 export const PATTERN_LIST = [
-  { key: "spiral", name: "Spiral", emoji: "🌀" },
-  { key: "wave", name: "Wave", emoji: "🌊" },
-  { key: "diagonal", name: "Diagonal", emoji: "↘️" },
-  { key: "ripple", name: "Ripple", emoji: "💧" },
-  { key: "cascade", name: "Cascade", emoji: "⬇️" },
-  { key: "snake", name: "Snake", emoji: "🐍" },
-  { key: "checkerboard", name: "Checker", emoji: "♟️" },
-  { key: "random", name: "Random", emoji: "🎲" },
+  { key: "spiral",      name: "Spiral",      emoji: "🌀" },
+  { key: "wave",        name: "Wave",         emoji: "🌊" },
+  { key: "diagonal",    name: "Diagonal",     emoji: "↘️" },
+  { key: "ripple",      name: "Ripple",       emoji: "💧" },
+  { key: "cascade",     name: "Cascade",      emoji: "⬇️" },
+  { key: "snake",       name: "Snake",        emoji: "🐍" },
+  { key: "checkerboard",name: "Checker",      emoji: "♟️" },
+  { key: "random",      name: "Random",       emoji: "🎲" },
 ];
 
-export default function useGridReveal(rows, cols) {
-  const gridRef = useRef(null);
-  const tlRef = useRef(null);
+// Module-level refs — one instance per hook call site is fine since
+// WordSearch is a single-mount page; avoids useRef null-dispatcher crash.
+const _gridRef = { current: null };
+let _tl = null;
 
+export default function useGridReveal(rows, cols) {
   const reveal = useCallback((pattern = "spiral") => {
-    const container = gridRef.current;
+    const container = _gridRef.current;
     if (!container) return;
     const cells = container.children;
     if (!cells.length) return;
 
     // Kill any running timeline
-    if (tlRef.current) tlRef.current.kill();
+    if (_tl) { _tl.kill(); _tl = null; }
 
     const orderFn = PATTERNS[pattern] || PATTERNS.spiral;
     const ordered = orderFn(rows, cols);
@@ -127,7 +132,6 @@ export default function useGridReveal(rows, cols) {
       defaults: { ease: "back.out(1.7)", duration: 0.35 },
     });
 
-    // Stagger based on ordered indices
     ordered.forEach(([r, c], i) => {
       const idx = r * cols + c;
       if (idx < cells.length) {
@@ -137,12 +141,12 @@ export default function useGridReveal(rows, cols) {
           rotateX: 0,
           y: 0,
           duration: 0.3 + Math.random() * 0.1,
-        }, i * 0.018); // tight stagger for fluid feel
+        }, i * 0.018);
       }
     });
 
-    tlRef.current = tl;
+    _tl = tl;
   }, [rows, cols]);
 
-  return { gridRef, reveal };
+  return { gridRef: _gridRef, reveal };
 }
