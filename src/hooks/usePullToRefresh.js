@@ -1,10 +1,20 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useEffect, useReducer } from "react";
 
 const THRESHOLD = 80;
 
+// useReducer instead of useState — uses the app's React import directly,
+// avoiding the null-dispatcher crash from the SDK's bundled React chunk.
+function reducer(state, action) {
+  switch (action.type) {
+    case "pull": return { ...state, pullDistance: action.d };
+    case "start_refresh": return { pullDistance: THRESHOLD, refreshing: true };
+    case "end_refresh": return { pullDistance: 0, refreshing: false };
+    default: return state;
+  }
+}
+
 export default function usePullToRefresh(onRefresh) {
-  const [pullDistance, setPullDistance] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+  const [state, dispatch] = useReducer(reducer, { pullDistance: 0, refreshing: false });
   const containerRef = useRef(null);
   const startYRef = useRef(0);
   const pullingRef = useRef(false);
@@ -12,9 +22,8 @@ export default function usePullToRefresh(onRefresh) {
   const refreshingRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
 
-  // Keep refs fresh without re-registering listeners
+  // Keep callback ref fresh
   useEffect(() => { onRefreshRef.current = onRefresh; }, [onRefresh]);
-  useEffect(() => { refreshingRef.current = refreshing; }, [refreshing]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -33,22 +42,24 @@ export default function usePullToRefresh(onRefresh) {
       if (diff > 0) {
         const d = Math.min(diff * 0.5, 120);
         pullDistRef.current = d;
-        setPullDistance(d);
+        dispatch({ type: "pull", d });
       }
     }
 
     async function handleTouchEnd() {
       if (pullDistRef.current >= THRESHOLD && !refreshingRef.current) {
-        setRefreshing(true);
         refreshingRef.current = true;
-        setPullDistance(THRESHOLD);
+        dispatch({ type: "start_refresh" });
         await onRefreshRef.current();
-        setRefreshing(false);
         refreshingRef.current = false;
+        dispatch({ type: "end_refresh" });
+      } else {
+        pullingRef.current = false;
+        pullDistRef.current = 0;
+        dispatch({ type: "pull", d: 0 });
       }
       pullingRef.current = false;
       pullDistRef.current = 0;
-      setPullDistance(0);
     }
 
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -59,7 +70,7 @@ export default function usePullToRefresh(onRefresh) {
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
     };
-  }, []); // register once — no stale closures thanks to refs
+  }, []);
 
-  return { containerRef, pullDistance, refreshing };
+  return { containerRef, pullDistance: state.pullDistance, refreshing: state.refreshing };
 }
