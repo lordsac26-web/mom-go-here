@@ -15,16 +15,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Force all packages (including @base44/sdk) to use the app's single React copy
-      'react': path.resolve(__dirname, '../node_modules/react'),
-      'react-dom': path.resolve(__dirname, '../node_modules/react-dom'),
     },
     // Deduplicate React across all chunks and dependencies
-    dedupe: ['react', 'react-dom', 'react-router-dom', 'scheduler'],
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'zustand', 'scheduler'],
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
-    // Force pre-bundling to use a single React instance
-    force: false,
+    include: ['react', 'react-dom', 'zustand'],
   },
 });
