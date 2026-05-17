@@ -36,8 +36,7 @@ function ChatBubbleSettings() {
 
   useEffect(() => {
     const unsub = useUIStore.subscribe(
-      (s) => s.chatBubbleEnabled,
-      (val) => setChatBubbleEnabled(val)
+      (s) => setChatBubbleEnabled(s.chatBubbleEnabled)
     );
     return unsub;
   }, []);

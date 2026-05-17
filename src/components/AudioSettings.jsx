@@ -26,6 +26,12 @@ export default function AudioSettings() {
       setMuteAll(s.muteAll);
       setMuteMusic(s.muteMusic);
     });
+    // Sync initial state in case store already differs
+    const s = useAudioStore.getState();
+    setSfxVolumeState(s.sfxVolume);
+    setMusicVolumeState(s.musicVolume);
+    setMuteAll(s.muteAll);
+    setMuteMusic(s.muteMusic);
     return unsub;
   }, []);
 

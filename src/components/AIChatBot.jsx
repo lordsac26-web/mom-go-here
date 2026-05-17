@@ -98,12 +98,10 @@ export default function AIChatBot() {
 
   useEffect(() => {
     const unsubUI = useUIStore.subscribe(
-      (s) => s.chatBubbleEnabled,
-      (val) => setChatBubbleEnabled(val)
+      (s) => setChatBubbleEnabled(s.chatBubbleEnabled)
     );
     const unsubActivity = useGameActivityStore.subscribe(
-      (s) => s.unreadCount,
-      (val) => setUnreadCount(val)
+      (s) => setUnreadCount(s.unreadCount)
     );
     return () => { unsubUI(); unsubActivity(); };
   }, []);

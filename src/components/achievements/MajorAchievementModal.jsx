@@ -15,8 +15,7 @@ export default function MajorAchievementModal() {
 
   useEffect(() => {
     const unsub = useAchievementToastStore.subscribe(
-      (s) => s.majorBadge,
-      (val) => setMajorBadge(val)
+      (s) => setMajorBadge(s.majorBadge)
     );
     return unsub;
   }, []);
