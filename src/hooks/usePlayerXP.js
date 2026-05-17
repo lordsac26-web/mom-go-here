@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import syncQueue from "@/lib/syncQueue";
 
@@ -8,15 +8,13 @@ import syncQueue from "@/lib/syncQueue";
  * XP awards:
  *   Win  = 50 XP
  *   Loss = 10 XP (participation)
- *
- * Curve: Each level requires progressively more XP.
- *   Early levels (1-8)   : Quick, rewarding — keeps new players engaged
- *   Mid levels (9-16)    : Moderate grind — core gameplay loop
- *   Late levels (17-25)  : Exponential — prestige / dedication territory
  */
 
 const XP_WIN = 50;
 const XP_LOSS = 10;
+
+// Module-level busy flag — no useRef needed
+let _busy = false;
 
 export const LEVEL_TABLE = [
   { level: 1,  xp: 0,       title: "Beginner",        emoji: "🌱" },
@@ -62,16 +60,10 @@ export function getLevelInfo(totalXP) {
   return { ...current, totalXP, xpIntoLevel, xpForNextLevel, progress, next };
 }
 
-/**
- * Hook to award XP. Call awardXP("win") or awardXP("loss").
- * Handles fetching/creating the PlayerXP record and updating it.
- */
 export function usePlayerXP() {
-  const busyRef = useRef(false);
-
   const awardXP = useCallback(async (outcome) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
+    if (_busy) return;
+    _busy = true;
 
     const xpAmount = outcome === "win" ? XP_WIN : XP_LOSS;
 
@@ -80,7 +72,7 @@ export function usePlayerXP() {
       if (!user?.email) return;
 
       const records = await base44.entities.PlayerXP.filter({ user_email: user.email });
-      let record = records[0];
+      const record = records[0];
 
       if (!record) {
         await syncQueue.safeCreate("PlayerXP", {
@@ -97,13 +89,11 @@ export function usePlayerXP() {
         });
       }
     } catch (err) {
-      // Offline and the filter/auth itself failed — silently drop
-      // (the XP will be awarded next time the user plays online)
       if (navigator.onLine) {
         console.error("Failed to award XP:", err);
       }
     } finally {
-      busyRef.current = false;
+      _busy = false;
     }
   }, []);
 

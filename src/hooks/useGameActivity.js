@@ -1,30 +1,28 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useGameActivityStore } from "@/stores/gameActivityStore";
 import { usePlayerXP } from "./usePlayerXP";
 import { useAchievements } from "./useAchievements";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 import { useDailyMissions } from "./useDailyMissions";
 
-export function useGameActivity() {
-  const recordWin = useGameActivityStore((s) => s.recordWin);
-  const recordLoss = useGameActivityStore((s) => s.recordLoss);
-  // Read streak directly from store at call time to avoid stale closure
-  const getStreak = useCallback(() => useGameActivityStore.getState().currentStreak, []);
+// Module-level guard — prevents double-fire across any render cycle
+let _busy = false;
 
+export function useGameActivity() {
   const { awardXP } = usePlayerXP();
-  const showBadge = useAchievementToastStore((s) => s.showBadge);
-  const { checkAchievements } = useAchievements((badge) => showBadge(badge));
+  const { checkAchievements } = useAchievements((badge) => {
+    useAchievementToastStore.getState().showBadge(badge);
+  });
   const { reportMissionProgress } = useDailyMissions();
 
-  // Guard against double-fire within the same event
-  const busyRef = useRef(false);
-
   const reportWin = useCallback((gameName) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    recordWin(gameName || "Game");
+    if (_busy) return;
+    _busy = true;
+
+    // All store calls via getState() — no hook selectors
+    useGameActivityStore.getState().recordWin(gameName || "Game");
     awardXP("win");
-    // Report to daily missions as a single batch
+
     const batch = [
       { type: "win_any" },
       { type: "play_any" },
@@ -34,27 +32,30 @@ export function useGameActivity() {
       batch.push({ type: "play_specific", extra: gameName });
     }
     reportMissionProgress(batch);
-    // Read streak at call-time, not at render-time
+
     setTimeout(() => {
-      checkAchievements(getStreak());
-      busyRef.current = false;
+      const streak = useGameActivityStore.getState().currentStreak;
+      checkAchievements(streak);
+      _busy = false;
     }, 1500);
-  }, [recordWin, awardXP, checkAchievements, getStreak, reportMissionProgress]);
+  }, [awardXP, checkAchievements, reportMissionProgress]);
 
   const reportLoss = useCallback((gameName) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    recordLoss();
+    if (_busy) return;
+    _busy = true;
+
+    useGameActivityStore.getState().recordLoss();
     awardXP("loss");
-    // Losses still count as "play" — batch call
+
     const batch = [{ type: "play_any" }];
     if (gameName) batch.push({ type: "play_specific", extra: gameName });
     reportMissionProgress(batch);
+
     setTimeout(() => {
       checkAchievements(0);
-      busyRef.current = false;
+      _busy = false;
     }, 1500);
-  }, [recordLoss, awardXP, checkAchievements, reportMissionProgress]);
+  }, [awardXP, checkAchievements, reportMissionProgress]);
 
   return { reportWin, reportLoss };
 }

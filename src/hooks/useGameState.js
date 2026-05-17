@@ -1,59 +1,49 @@
-import { useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useGameStore } from "../stores/gameStore";
 
 /**
  * Convenience hook combining common game state operations.
- * Reduces boilerplate in game components.
+ * Uses useState + subscribe pattern instead of hook selectors
+ * to avoid null-dispatcher crashes in the Base44 SDK React context.
  */
 export function useGameState() {
-  const currentRound = useGameStore((state) => state.currentRound);
-  const activePlayers = useGameStore((state) => state.activePlayers);
-  const gameStatus = useGameStore((state) => state.gameStatus);
-  const rollingStatus = useGameStore((state) => state.rollingStatus);
-  const gameHistory = useGameStore((state) => state.gameHistory);
+  const [state, setState] = useState(() => useGameStore.getState());
 
-  const setRollingStatus = useGameStore((state) => state.setRollingStatus);
-  const updatePlayerScore = useGameStore((state) => state.updatePlayerScore);
-  const setPlayerScore = useGameStore((state) => state.setPlayerScore);
-  const addHistoryEntry = useGameStore((state) => state.addHistoryEntry);
-  const nextRound = useGameStore((state) => state.nextRound);
-  const setGameStatus = useGameStore((state) => state.setGameStatus);
-  const resetGame = useGameStore((state) => state.resetGame);
-  const initializeGame = useGameStore((state) => state.initializeGame);
+  useEffect(() => {
+    const unsub = useGameStore.subscribe((s) => setState({ ...s }));
+    return unsub;
+  }, []);
 
-  const currentPlayer = useGameStore((state) => state.getCurrentPlayer());
-  const leaderboard = useGameStore((state) => state.getLeaderboard());
+  const currentRound    = state.currentRound;
+  const activePlayers   = state.activePlayers;
+  const gameStatus      = state.gameStatus;
+  const rollingStatus   = state.rollingStatus;
+  const gameHistory     = state.gameHistory;
+  const currentPlayer   = useGameStore.getState().getCurrentPlayer();
+  const leaderboard     = useGameStore.getState().getLeaderboard();
 
-  // Helper: Start player roll
-  const startPlayerRoll = useCallback(
-    (playerId) => {
-      setRollingStatus(playerId, true);
-    },
-    [setRollingStatus]
-  );
+  const startPlayerRoll = useCallback((playerId) => {
+    useGameStore.getState().setRollingStatus(playerId, true);
+  }, []);
 
-  // Helper: Complete player roll and log it
-  const completePlayerRoll = useCallback(
-    (playerId, playerName, result, score) => {
-      setRollingStatus(playerId, false);
-      addHistoryEntry({
-        round: currentRound,
-        playerId,
-        playerName,
-        action: "roll",
-        result,
-      });
-      if (score !== undefined) {
-        updatePlayerScore(playerId, score);
-      }
-    },
-    [currentRound, setRollingStatus, addHistoryEntry, updatePlayerScore]
-  );
+  const completePlayerRoll = useCallback((playerId, playerName, result, score) => {
+    const store = useGameStore.getState();
+    store.setRollingStatus(playerId, false);
+    store.addHistoryEntry({
+      round: useGameStore.getState().currentRound,
+      playerId,
+      playerName,
+      action: "roll",
+      result,
+    });
+    if (score !== undefined) {
+      store.updatePlayerScore(playerId, score);
+    }
+  }, []);
 
-  // Helper: Advance to next turn/round
   const advanceTurn = useCallback(() => {
-    nextRound();
-  }, [nextRound]);
+    useGameStore.getState().nextRound();
+  }, []);
 
   return {
     // State
@@ -66,14 +56,14 @@ export function useGameState() {
     leaderboard,
 
     // Actions
-    initializeGame,
+    initializeGame:     useGameStore.getState().initializeGame,
     startPlayerRoll,
     completePlayerRoll,
     advanceTurn,
-    updatePlayerScore,
-    setPlayerScore,
-    addHistoryEntry,
-    setGameStatus,
-    resetGame,
+    updatePlayerScore:  (id, s) => useGameStore.getState().updatePlayerScore(id, s),
+    setPlayerScore:     (id, s) => useGameStore.getState().setPlayerScore(id, s),
+    addHistoryEntry:    (e)     => useGameStore.getState().addHistoryEntry(e),
+    setGameStatus:      (s)     => useGameStore.getState().setGameStatus(s),
+    resetGame:          ()      => useGameStore.getState().resetGame(),
   };
 }

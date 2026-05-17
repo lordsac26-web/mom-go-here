@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 
 const BADGE_DEFINITIONS = [
-  { key: "daily_3", label: "Faithful Start", emoji: "🌱", desc: "3-day Daily streak", type: "daily", threshold: 3 },
-  { key: "daily_7", label: "Weekly Devotion", emoji: "📖", desc: "7-day Daily streak", type: "daily", threshold: 7 },
-  { key: "daily_14", label: "Steadfast Spirit", emoji: "🔥", desc: "14-day Daily streak", type: "daily", threshold: 14 },
-  { key: "daily_30", label: "Month of Faith", emoji: "⭐", desc: "30-day Daily streak", type: "daily", threshold: 30 },
-  { key: "daily_60", label: "Devoted Heart", emoji: "💎", desc: "60-day Daily streak", type: "daily", threshold: 60 },
-  { key: "daily_100", label: "Century of Light", emoji: "👑", desc: "100-day Daily streak", type: "daily", threshold: 100 },
-  { key: "memories_3", label: "Memory Keeper", emoji: "📝", desc: "3-day Memories streak", type: "memories", threshold: 3 },
-  { key: "memories_7", label: "Weekly Chronicler", emoji: "📔", desc: "7-day Memories streak", type: "memories", threshold: 7 },
-  { key: "memories_14", label: "Storyteller", emoji: "📚", desc: "14-day Memories streak", type: "memories", threshold: 14 },
-  { key: "memories_30", label: "Memory Master", emoji: "🏆", desc: "30-day Memories streak", type: "memories", threshold: 30 },
-  { key: "both_7", label: "Balanced Soul", emoji: "☯️", desc: "7-day streak on both", type: "both", threshold: 7 },
-  { key: "both_30", label: "Harmony Champion", emoji: "🌟", desc: "30-day streak on both", type: "both", threshold: 30 },
+  { key: "daily_3",     label: "Faithful Start",      emoji: "🌱", desc: "3-day Daily streak",         type: "daily",    threshold: 3 },
+  { key: "daily_7",     label: "Weekly Devotion",      emoji: "📖", desc: "7-day Daily streak",         type: "daily",    threshold: 7 },
+  { key: "daily_14",    label: "Steadfast Spirit",     emoji: "🔥", desc: "14-day Daily streak",        type: "daily",    threshold: 14 },
+  { key: "daily_30",    label: "Month of Faith",       emoji: "⭐", desc: "30-day Daily streak",        type: "daily",    threshold: 30 },
+  { key: "daily_60",    label: "Devoted Heart",        emoji: "💎", desc: "60-day Daily streak",        type: "daily",    threshold: 60 },
+  { key: "daily_100",   label: "Century of Light",     emoji: "👑", desc: "100-day Daily streak",       type: "daily",    threshold: 100 },
+  { key: "memories_3",  label: "Memory Keeper",        emoji: "📝", desc: "3-day Memories streak",      type: "memories", threshold: 3 },
+  { key: "memories_7",  label: "Weekly Chronicler",    emoji: "📔", desc: "7-day Memories streak",      type: "memories", threshold: 7 },
+  { key: "memories_14", label: "Storyteller",          emoji: "📚", desc: "14-day Memories streak",     type: "memories", threshold: 14 },
+  { key: "memories_30", label: "Memory Master",        emoji: "🏆", desc: "30-day Memories streak",     type: "memories", threshold: 30 },
+  { key: "both_7",      label: "Balanced Soul",        emoji: "☯️", desc: "7-day streak on both",       type: "both",     threshold: 7 },
+  { key: "both_30",     label: "Harmony Champion",     emoji: "🌟", desc: "30-day streak on both",      type: "both",     threshold: 30 },
 ];
 
 export { BADGE_DEFINITIONS };
@@ -44,9 +44,9 @@ function computeNewBadges(dailyStreak, memoriesStreak, existingBadges) {
   for (const badge of BADGE_DEFINITIONS) {
     if (earned.has(badge.key)) continue;
     let qualifies = false;
-    if (badge.type === "daily" && dailyStreak >= badge.threshold) qualifies = true;
+    if (badge.type === "daily"    && dailyStreak >= badge.threshold) qualifies = true;
     if (badge.type === "memories" && memoriesStreak >= badge.threshold) qualifies = true;
-    if (badge.type === "both" && dailyStreak >= badge.threshold && memoriesStreak >= badge.threshold) qualifies = true;
+    if (badge.type === "both"     && dailyStreak >= badge.threshold && memoriesStreak >= badge.threshold) qualifies = true;
     if (qualifies) {
       earned.add(badge.key);
       newlyEarned.push(badge);
@@ -56,17 +56,34 @@ function computeNewBadges(dailyStreak, memoriesStreak, existingBadges) {
   return { allBadges: [...earned], newlyEarned };
 }
 
+// Module-level set to track which (email+pageType) combos have already recorded today
+const _recorded = new Set();
+
 export default function useStreakTracker(userEmail, pageType) {
   const [streakData, setStreakData] = useState(null);
   const [newBadges, setNewBadges] = useState([]);
   const [loading, setLoading] = useState(true);
-  const recordedRef = useRef(false);
 
   useEffect(() => {
-    if (!userEmail || recordedRef.current) return;
-    recordedRef.current = true;
+    if (!userEmail) return;
+
+    // Key is per-user per-pageType per-day so it resets naturally each day
+    const today = new Date().toISOString().split("T")[0];
+    const key = `${userEmail}:${pageType}:${today}`;
+    if (_recorded.has(key)) {
+      // Already recorded this session — just fetch current data for display
+      base44.entities.EngagementStreak.filter({ user_email: userEmail })
+        .then(rows => {
+          if (rows[0]) setStreakData(rows[0]);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+
+    _recorded.add(key);
     recordVisit();
-  }, [userEmail]);
+  }, [userEmail, pageType]);
 
   async function recordVisit() {
     const today = new Date().toISOString().split("T")[0];
@@ -91,23 +108,22 @@ export default function useStreakTracker(userEmail, pageType) {
 
     if (!dates.includes(today)) {
       dates.push(today);
-      // Keep last 120 days max
       const cutoff = new Date(Date.now() - 120 * 86400000).toISOString().split("T")[0];
       const trimmed = dates.filter(d => d >= cutoff);
 
-      const dailyDates = pageType === "daily" ? trimmed : (record.daily_dates || []);
-      const memDates = pageType === "memories" ? trimmed : (record.memories_dates || []);
+      const dailyDates   = pageType === "daily"    ? trimmed : (record.daily_dates    || []);
+      const memDates     = pageType === "memories"  ? trimmed : (record.memories_dates || []);
 
-      const dailyStreak = computeStreak(dailyDates);
-      const memStreak = computeStreak(memDates);
+      const dailyStreak  = computeStreak(dailyDates);
+      const memStreak    = computeStreak(memDates);
       const { allBadges, newlyEarned } = computeNewBadges(dailyStreak, memStreak, record.badges);
 
       const update = {
         [field]: trimmed,
-        daily_current_streak: dailyStreak,
-        daily_best_streak: Math.max(record.daily_best_streak || 0, dailyStreak),
+        daily_current_streak:   dailyStreak,
+        daily_best_streak:      Math.max(record.daily_best_streak    || 0, dailyStreak),
         memories_current_streak: memStreak,
-        memories_best_streak: Math.max(record.memories_best_streak || 0, memStreak),
+        memories_best_streak:   Math.max(record.memories_best_streak || 0, memStreak),
         badges: allBadges,
       };
 
@@ -115,11 +131,10 @@ export default function useStreakTracker(userEmail, pageType) {
       record = { ...record, ...update };
       setNewBadges(newlyEarned);
     } else {
-      // Already visited today, just recompute streaks for display
+      // Already visited today — recompute for display only
       const dailyStreak = computeStreak(record.daily_dates || []);
-      const memStreak = computeStreak(record.memories_dates || []);
-      record.daily_current_streak = dailyStreak;
-      record.memories_current_streak = memStreak;
+      const memStreak   = computeStreak(record.memories_dates || []);
+      record = { ...record, daily_current_streak: dailyStreak, memories_current_streak: memStreak };
     }
 
     setStreakData(record);

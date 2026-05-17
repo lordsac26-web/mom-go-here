@@ -5,11 +5,11 @@ const AUTO_SAVE_INTERVAL = 60000; // 60 seconds
 
 /**
  * Hook for saving and loading game state to/from the SavedGame entity.
- * 
- * @param {string} gameName - Unique game identifier (e.g. "solitaire")
+ *
+ * @param {string} gameName    - Unique game identifier (e.g. "solitaire")
  * @param {string} displayName - Human-readable name (e.g. "Solitaire")
- * @param {string} emoji - Emoji for display (e.g. "♠️")
- * @param {object} options - { autoSave: boolean, getState: () => object, onLoad: (state) => void }
+ * @param {string} emoji       - Emoji for display (e.g. "♠️")
+ * @param {object} options     - { autoSave: boolean, getState: () => object, onLoad: (state) => void }
  */
 export default function useSaveGame(gameName, displayName, emoji, options = {}) {
   const { autoSave = true, getState, onLoad } = options;
@@ -17,8 +17,16 @@ export default function useSaveGame(gameName, displayName, emoji, options = {}) 
   const [lastSaved, setLastSaved] = useState(null);
   const [savedGame, setSavedGame] = useState(null);
   const [loadingSave, setLoadingSave] = useState(true);
-  const userRef = useRef(null);
+
+  // Refs to avoid stale closures inside intervals and callbacks
+  const savedGameRef = useRef(null);
+  const userEmailRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
+
+  // Keep savedGameRef in sync with state so auto-save always upserts correctly
+  useEffect(() => {
+    savedGameRef.current = savedGame;
+  }, [savedGame]);
 
   // Load existing save on mount
   useEffect(() => {
@@ -31,7 +39,7 @@ export default function useSaveGame(gameName, displayName, emoji, options = {}) 
   async function loadExistingSave() {
     setLoadingSave(true);
     const user = await base44.auth.me();
-    userRef.current = user;
+    userEmailRef.current = user?.email || null;
     if (!user?.email) { setLoadingSave(false); return; }
 
     const saves = await base44.entities.SavedGame.filter(
@@ -45,24 +53,25 @@ export default function useSaveGame(gameName, displayName, emoji, options = {}) 
     setLoadingSave(false);
   }
 
-  // Auto-save timer
+  // Auto-save timer — uses refs so it always has current data
   useEffect(() => {
     if (!autoSave || !getState) return;
     autoSaveTimerRef.current = setInterval(() => {
-      saveGame("auto");
+      _doSave("auto");
     }, AUTO_SAVE_INTERVAL);
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
-  }, [autoSave, getState, gameName]);
+  }, [autoSave, getState]);
 
-  const saveGame = useCallback(async (saveType = "manual") => {
-    if (!getState || !userRef.current?.email) return;
+  // Internal save — reads from refs to avoid stale closure
+  async function _doSave(saveType = "manual") {
+    if (!getState || !userEmailRef.current) return;
     setSaving(true);
 
     const state = getState();
     const saveData = {
-      user_email: userRef.current.email,
+      user_email: userEmailRef.current,
       game_name: gameName,
       display_name: displayName,
       save_type: saveType,
@@ -75,30 +84,37 @@ export default function useSaveGame(gameName, displayName, emoji, options = {}) 
       thumbnail_emoji: emoji,
     };
 
-    // Upsert: update existing or create new
-    if (savedGame?.id) {
-      await base44.entities.SavedGame.update(savedGame.id, saveData);
-      setSavedGame({ ...savedGame, ...saveData });
+    const existing = savedGameRef.current;
+    if (existing?.id) {
+      await base44.entities.SavedGame.update(existing.id, saveData);
+      const updated = { ...existing, ...saveData };
+      setSavedGame(updated);
+      savedGameRef.current = updated;
     } else {
       const created = await base44.entities.SavedGame.create(saveData);
       setSavedGame(created);
+      savedGameRef.current = created;
     }
     setLastSaved(new Date());
     setSaving(false);
-  }, [getState, gameName, displayName, emoji, savedGame]);
+  }
+
+  const saveGame = useCallback((saveType = "manual") => _doSave(saveType), [getState, gameName, displayName, emoji]);
 
   const loadGame = useCallback(() => {
-    if (!savedGame?.game_state || !onLoad) return false;
-    onLoad(savedGame.game_state);
+    if (!savedGameRef.current?.game_state || !onLoad) return false;
+    onLoad(savedGameRef.current.game_state);
     return true;
-  }, [savedGame, onLoad]);
+  }, [onLoad]);
 
   const deleteSave = useCallback(async () => {
-    if (!savedGame?.id) return;
-    await base44.entities.SavedGame.delete(savedGame.id);
+    const existing = savedGameRef.current;
+    if (!existing?.id) return;
+    await base44.entities.SavedGame.delete(existing.id);
     setSavedGame(null);
+    savedGameRef.current = null;
     setLastSaved(null);
-  }, [savedGame]);
+  }, []);
 
   return {
     saving,

@@ -12,6 +12,9 @@ const GAME_PATHS = [
 /**
  * Invisible monitor — uses getState() instead of hook selectors to
  * avoid duplicate-React / null-dispatcher crashes.
+ *
+ * Fix #12: resets sessionStartTime when leaving a game page so
+ * wellness-reminder timing is accurate per game session.
  */
 export default function GameActivityMonitor() {
   const location = useLocation();
@@ -21,7 +24,10 @@ export default function GameActivityMonitor() {
 
   useEffect(() => {
     if (isOnGamePage) {
+      // Reset so each game session gets its own timer
+      useGameActivityStore.getState().resetSession();
       useGameActivityStore.getState().startSession();
+
       intervalRef.current = setInterval(() => {
         useGameActivityStore.getState().checkPlayTime();
       }, 60000);
@@ -31,6 +37,10 @@ export default function GameActivityMonitor() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
+      }
+      // Reset session timer when leaving any game page
+      if (isOnGamePage) {
+        useGameActivityStore.getState().resetSession();
       }
     };
   }, [isOnGamePage]);

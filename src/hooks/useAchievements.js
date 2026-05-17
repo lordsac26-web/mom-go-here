@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import ACHIEVEMENTS from "../components/achievementDefinitions";
 import { isMajorAchievement } from "../components/achievements/majorAchievements";
@@ -6,24 +6,19 @@ import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
 /**
  * Hook to check and unlock achievements after each game event.
- * Gathers player stats from GameScore + PlayerXP + DailyLoginBonus +
- * DailyWheelSpin + EngagementStreak + SolitaireStats + current streak,
- * then checks each achievement definition.
- *
- * Returns: { checkAchievements(currentStreak) } — call after win/loss
- * The `onUnlock` callback is used to show toasts.
+ * Uses module-level busy flag and session cache to avoid useRef
+ * (which crashes in the Base44 SDK React context).
  */
 
-// Module-level session cache to avoid re-checking already-earned achievements
+// Module-level state — safe from null-dispatcher crashes
+let _busy = false;
 let sessionEarnedKeys = new Set();
 let lastEmail = null;
 
 export function useAchievements(onUnlock) {
-  const busyRef = useRef(false);
-
   const checkAchievements = useCallback(async (currentStreak) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
+    if (_busy) return;
+    _busy = true;
 
     try {
       const user = await base44.auth.me();
@@ -57,7 +52,6 @@ export function useAchievements(onUnlock) {
       const level = xpRecord?.level || 1;
       const distinctGames = new Set(scores.map(s => s.game_name)).size;
 
-      // Best streak: use current session streak
       const bestStreak = Math.max(currentStreak || 0, 0);
 
       // ── Daily login streak ──
@@ -140,7 +134,7 @@ export function useAchievements(onUnlock) {
     } catch (err) {
       console.error("Achievement check failed:", err);
     } finally {
-      busyRef.current = false;
+      _busy = false;
     }
   }, [onUnlock]);
 
