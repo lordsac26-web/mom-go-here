@@ -1,4 +1,5 @@
-import { useReducer, useCallback } from 'react';
+import * as React from "react";
+const { useReducer, useCallback } = React;
 
 /**
  * useLocation hook — Request geolocation and get user coordinates.

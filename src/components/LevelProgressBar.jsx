@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import * as React from "react";
+const { useState, useEffect } = React;
 import { base44 } from "@/api/base44Client";
 import { getLevelInfo, LEVEL_TABLE } from "../hooks/usePlayerXP";
 import { motion } from "framer-motion";

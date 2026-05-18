@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import * as React from "react";
+const { useState, useEffect, useRef, useCallback } = React;
 import { base44 } from "@/api/base44Client";
 
 const AUTO_SAVE_INTERVAL = 60000; // 60 seconds

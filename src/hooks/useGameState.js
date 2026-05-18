@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import * as React from "react";
+const { useState, useEffect, useCallback } = React;
 import { useGameStore } from "../stores/gameStore";
 
 /**

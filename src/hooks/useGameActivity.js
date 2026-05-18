@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import * as React from "react";
+const { useCallback } = React;
 import { useGameActivityStore } from "@/stores/gameActivityStore";
 import { usePlayerXP } from "./usePlayerXP";
 import { useAchievements } from "./useAchievements";

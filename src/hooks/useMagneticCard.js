@@ -1,4 +1,5 @@
-import { useRef, useEffect, useCallback } from "react";
+import * as React from "react";
+const { useRef, useEffect, useCallback } = React;
 import gsap from "gsap";
 
 /**

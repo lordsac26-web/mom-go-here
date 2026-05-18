@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import * as React from "react";
+const { useState, useEffect, useRef } = React;
 import gsap from "gsap";
 import { base44 } from "@/api/base44Client";
 import { useDailyMissions } from "../hooks/useDailyMissions";

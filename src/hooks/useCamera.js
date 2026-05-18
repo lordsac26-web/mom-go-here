@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import * as React from "react";
+const { useRef, useState } = React;
 
 /**
  * useCamera hook — Request camera permission and capture photos

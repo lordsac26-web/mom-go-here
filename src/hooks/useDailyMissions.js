@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import * as React from "react";
+const { useCallback } = React;
 import { base44 } from "@/api/base44Client";
 import { getLevelInfo } from "./usePlayerXP";
 import { pickRandomMissions } from "../components/missions/missionDefinitions";
