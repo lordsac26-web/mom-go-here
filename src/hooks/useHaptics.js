@@ -1,13 +1,19 @@
-import { useAudioStore } from '@/stores/audioStore';
-
 /**
  * Lightweight haptic feedback via the Vibration API.
  * Falls back silently on unsupported devices.
  * 
  * Exported as a plain object (not a hook) to avoid React dispatcher issues.
  */
+function isMuted() {
+  try {
+    const stored = localStorage.getItem('momgohere-audio');
+    if (stored) return JSON.parse(stored)?.state?.muteAll === true;
+  } catch {}
+  return false;
+}
+
 function vibrate(pattern) {
-  if (useAudioStore.getState().muteAll) return;
+  if (isMuted()) return;
   if (navigator.vibrate) {
     try {
       navigator.vibrate(pattern);
