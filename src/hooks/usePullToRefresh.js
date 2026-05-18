@@ -1,31 +1,21 @@
-import { useRef, useEffect, useReducer } from "react";
+import * as React from "react";
 
 const THRESHOLD = 80;
 
-// useReducer instead of useState — uses the app's React import directly,
-// avoiding the null-dispatcher crash from the SDK's bundled React chunk.
-function reducer(state, action) {
-  switch (action.type) {
-    case "pull": return { ...state, pullDistance: action.d };
-    case "start_refresh": return { pullDistance: THRESHOLD, refreshing: true };
-    case "end_refresh": return { pullDistance: 0, refreshing: false };
-    default: return state;
-  }
-}
-
 export default function usePullToRefresh(onRefresh) {
-  const [state, dispatch] = useReducer(reducer, { pullDistance: 0, refreshing: false });
-  const containerRef = useRef(null);
-  const startYRef = useRef(0);
-  const pullingRef = useRef(false);
-  const pullDistRef = useRef(0);
-  const refreshingRef = useRef(false);
-  const onRefreshRef = useRef(onRefresh);
+  // Import useState/useRef directly from React module to bypass SDK dispatcher conflict
+  const [pullDistance, setPullDistance] = React.useState(0);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const containerRef = React.useRef(null);
+  const startYRef = React.useRef(0);
+  const pullingRef = React.useRef(false);
+  const pullDistRef = React.useRef(0);
+  const refreshingRef = React.useRef(false);
+  const onRefreshRef = React.useRef(onRefresh);
 
-  // Keep callback ref fresh
-  useEffect(() => { onRefreshRef.current = onRefresh; }, [onRefresh]);
+  onRefreshRef.current = onRefresh;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
@@ -42,21 +32,21 @@ export default function usePullToRefresh(onRefresh) {
       if (diff > 0) {
         const d = Math.min(diff * 0.5, 120);
         pullDistRef.current = d;
-        dispatch({ type: "pull", d });
+        setPullDistance(d);
       }
     }
 
     async function handleTouchEnd() {
       if (pullDistRef.current >= THRESHOLD && !refreshingRef.current) {
         refreshingRef.current = true;
-        dispatch({ type: "start_refresh" });
+        setRefreshing(true);
+        setPullDistance(THRESHOLD);
         await onRefreshRef.current();
         refreshingRef.current = false;
-        dispatch({ type: "end_refresh" });
+        setRefreshing(false);
+        setPullDistance(0);
       } else {
-        pullingRef.current = false;
-        pullDistRef.current = 0;
-        dispatch({ type: "pull", d: 0 });
+        setPullDistance(0);
       }
       pullingRef.current = false;
       pullDistRef.current = 0;
@@ -72,5 +62,5 @@ export default function usePullToRefresh(onRefresh) {
     };
   }, []);
 
-  return { containerRef, pullDistance: state.pullDistance, refreshing: state.refreshing };
+  return { containerRef, pullDistance, refreshing };
 }
