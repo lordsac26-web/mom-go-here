@@ -9,6 +9,16 @@ export function registerServiceWorker() {
     return;
   }
 
+  // Never run a service worker in dev/preview — it caches stale Vite chunks
+  // and causes null-dispatcher React hook crashes.
+  if (import.meta.env.DEV) {
+    // Unregister any previously cached dev SW so stale caches are cleared
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister());
+    });
+    return;
+  }
+
   navigator.serviceWorker
     .register('/sw.js', { scope: '/' })
     .then((registration) => {
