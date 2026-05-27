@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import GameBackButton from "../GameBackButton";
 
 const UPPER_BONUS_TARGET = 63;
@@ -10,10 +11,10 @@ function formatTime(seconds) {
 }
 
 function getRating(score) {
-  if (score >= 300) return { stars: 3, label: "Legendary! 🏆", emoji: "🏆" };
-  if (score >= 225) return { stars: 2, label: "Great Game! 🌟", emoji: "🌟" };
-  if (score >= 150) return { stars: 1, label: "Nice Job! 👍", emoji: "👍" };
-  return { stars: 0, label: "Keep Practicing! 💪", emoji: "💪" };
+  if (score >= 300) return { stars: 3, label: "Legendary!", emoji: "🏆", color: "from-yellow-500 to-amber-600" };
+  if (score >= 225) return { stars: 2, label: "Great Game!", emoji: "🌟", color: "from-blue-500 to-indigo-600" };
+  if (score >= 150) return { stars: 1, label: "Nice Job!", emoji: "👍", color: "from-emerald-500 to-teal-600" };
+  return { stars: 0, label: "Keep Practicing!", emoji: "💪", color: "from-gray-600 to-gray-700" };
 }
 
 export default function YahtzeeGameOver({
@@ -23,59 +24,111 @@ export default function YahtzeeGameOver({
   const rating = getRating(totalScore);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <div className="text-8xl mb-3">🎲</div>
-      <h1 className="text-4xl font-black text-primary mb-1">Game Complete!</h1>
-      <p className="text-xl text-muted-foreground mb-4">{rating.label}</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
+      {/* Trophy animation */}
+      <motion.div
+        initial={{ scale: 0, rotate: -20 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        className="text-8xl mb-2"
+      >
+        🎲
+      </motion.div>
 
-      {/* Star rating */}
-      <div className="flex gap-1 mb-4">
-        {[1, 2, 3].map(i => (
-          <span key={i} className={`text-3xl ${i <= rating.stars ? "opacity-100" : "opacity-20"}`}>⭐</span>
+      <motion.h1
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="text-5xl font-black text-white mb-1"
+      >
+        Game Complete!
+      </motion.h1>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="text-xl text-red-300 mb-3"
+      >
+        {rating.emoji} {rating.label}
+      </motion.p>
+
+      {/* Stars */}
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.4, type: "spring" }}
+        className="flex gap-2 text-5xl mb-5"
+      >
+        {[1, 2, 3].map(n => (
+          <span key={n} className={n <= rating.stars ? "text-yellow-400" : "text-gray-700"}>★</span>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Score breakdown */}
-      <div className="bg-card border-2 border-border rounded-2xl p-4 w-full max-w-xs mb-4 text-left space-y-2">
-        <div className="flex justify-between">
-          <span className="text-foreground font-bold">Upper Section</span>
-          <span className="text-foreground font-black">{upperSubtotal}</span>
+      {/* Big score */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.5, type: "spring" }}
+        className={`bg-gradient-to-r ${rating.color} rounded-2xl px-8 py-4 mb-4 shadow-xl`}
+      >
+        <div className="text-6xl font-black text-white">{totalScore}</div>
+        <div className="text-sm font-bold text-white/80 uppercase tracking-widest">Final Score</div>
+      </motion.div>
+
+      {/* Breakdown card */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6 }}
+        className="bg-white/10 border border-white/20 rounded-2xl p-4 w-full max-w-xs mb-5 text-left space-y-2"
+      >
+        <div className="flex justify-between text-white">
+          <span className="font-bold">Upper Section</span>
+          <span className="font-black">{upperSubtotal}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground text-sm">Upper Bonus {upperBonusEarned ? "✅" : `(need ${UPPER_BONUS_TARGET})`}</span>
-          <span className={`font-black ${upperBonusEarned ? "text-green-400" : "text-muted-foreground"}`}>
+          <span className="text-white/60 text-sm">Bonus {upperBonusEarned ? "✅" : `(need ${UPPER_BONUS_TARGET})`}</span>
+          <span className={`font-black text-sm ${upperBonusEarned ? "text-green-400" : "text-white/40"}`}>
             {upperBonusEarned ? `+${UPPER_BONUS_VALUE}` : "0"}
           </span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-foreground font-bold">Lower Section</span>
-          <span className="text-foreground font-black">{lowerSubtotal}</span>
+        <div className="flex justify-between text-white">
+          <span className="font-bold">Lower Section</span>
+          <span className="font-black">{lowerSubtotal}</span>
         </div>
         {yahtzeeBonus > 0 && (
           <div className="flex justify-between">
-            <span className="text-yellow-400 font-bold">Yahtzee Bonus</span>
+            <span className="text-yellow-400 font-bold">🎲 Yahtzee Bonus</span>
             <span className="text-yellow-400 font-black">+{yahtzeeBonus}</span>
           </div>
         )}
-        <div className="border-t border-border pt-2 flex justify-between">
-          <span className="text-primary font-black text-lg">Total</span>
-          <span className="text-primary font-black text-2xl">{totalScore}</span>
-        </div>
         {winTime != null && (
-          <div className="flex justify-between text-muted-foreground text-sm">
-            <span>Time</span>
-            <span>⏱ {formatTime(winTime)}</span>
+          <div className="flex justify-between text-white/50 text-sm">
+            <span>⏱ Time</span>
+            <span>{formatTime(winTime)}</span>
           </div>
         )}
-      </div>
+        <div className="border-t border-white/20 pt-2 flex justify-between">
+          <span className="text-yellow-400 font-black text-lg">Total</span>
+          <span className="text-yellow-400 font-black text-2xl">{totalScore}</span>
+        </div>
+      </motion.div>
 
-      <button
-        onClick={onPlayAgain}
-        className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4"
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.7 }}
+        className="space-y-3 w-full max-w-xs"
       >
-        🔄 Play Again
-      </button>
-      <GameBackButton />
+        <button
+          onClick={onPlayAgain}
+          className="w-full bg-gradient-to-r from-red-500 to-orange-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-red-400"
+        >
+          🔄 Play Again
+        </button>
+        <GameBackButton />
+      </motion.div>
     </div>
   );
 }

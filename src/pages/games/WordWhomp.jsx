@@ -291,11 +291,11 @@ export default function WordWhomp() {
   }
 
   return (
-    <div className="min-h-screen px-2 py-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-amber-950 via-yellow-950 to-amber-950 px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-1 mb-2">
         <GameBackButton />
-        <div className="text-xl sm:text-2xl font-black text-primary">
+        <div className="text-xl sm:text-2xl font-black text-yellow-300">
           <BeeFlightTitle text="🐝 Buzz Word" size="text-xl" />
         </div>
         <div className="flex gap-1.5">

@@ -603,25 +603,41 @@ export default function Solitaire() {
     return false;
   }
 
-  if (won) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] text-center select-none">
-      <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-4">You Won!</h1>
-      {winTime != null && (
-        <p className="text-2xl font-bold text-muted-foreground mb-2">
-          ⏱️ Time: {Math.floor(winTime / 60)}:{(winTime % 60).toString().padStart(2, "0")}
-        </p>
-      )}
-      <p className="text-xl text-muted-foreground mb-6">
-        Completed in {moves} moves
-      </p>
-      <button onClick={doReset}
-        className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-        🔄 New Game
-      </button>
-      <GameBackButton />
-    </div>
-  );
+  if (won) {
+    const winMinutes = winTime != null ? Math.floor(winTime / 60) : null;
+    const winSecs = winTime != null ? (winTime % 60).toString().padStart(2, "0") : null;
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-950 via-emerald-900 to-green-950 flex flex-col items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] text-center select-none">
+        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
+        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+          className="text-5xl font-black text-yellow-300 mb-4">You Won!</motion.h1>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
+          className="bg-black/30 border border-yellow-500/30 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
+          <div className="grid grid-cols-2 gap-4">
+            {winTime != null && (
+              <div>
+                <div className="text-3xl font-black text-white">{winMinutes}:{winSecs}</div>
+                <div className="text-xs text-yellow-300/70 uppercase tracking-wide">Time</div>
+              </div>
+            )}
+            <div>
+              <div className="text-3xl font-black text-white">{moves}</div>
+              <div className="text-xs text-yellow-300/70 uppercase tracking-wide">Moves</div>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
+          className="space-y-3 w-full max-w-xs">
+          <button onClick={doReset}
+            className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-black text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-yellow-400">
+            🔄 New Game
+          </button>
+          <GameBackButton />
+        </motion.div>
+      </div>
+    );
+  }
 
   const wasteTop = game.waste.length ? game.waste[game.waste.length - 1] : null;
   const SUIT_ORDER = ["♠", "♥", "♦", "♣"];

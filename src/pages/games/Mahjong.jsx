@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
@@ -323,37 +323,49 @@ export default function Mahjong() {
     setStuck(false);
   }
 
+  const MAHJONG_DIFF_COLORS = ["from-emerald-600 to-teal-800", "from-blue-600 to-indigo-800", "from-red-600 to-rose-800"];
+  const MAHJONG_DIFF_BORDERS = ["border-emerald-400", "border-blue-400", "border-rose-400"];
+  const MAHJONG_DIFF_EMOJIS = ["😊", "🏯", "🀄"];
+
   // ── Difficulty selection ──
   if (difficulty === null) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
-        <div className="text-8xl mb-4">🀄</div>
-        <h1 className="text-4xl font-black text-primary mb-2 text-center">Mahjong Solitaire</h1>
-        <p className="text-xl text-muted-foreground text-center mb-2">Match free tiles to clear the board</p>
-        <p className="text-base text-muted-foreground text-center mb-8 max-w-sm">
-          Only tiles with an open left or right side and nothing on top can be selected. Match identical tiles to remove them.
-        </p>
-        <div className="space-y-4 w-full max-w-sm">
-          {DIFFICULTY_OPTIONS.map(d => {
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24">
+        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 18 }} className="text-8xl mb-2 select-none">🀄</motion.div>
+        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}
+          className="text-5xl font-black text-white mb-1 tracking-tight">Mahjong</motion.h1>
+        <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }}
+          className="text-lg text-red-300 mb-2 text-center">Match free tiles to clear the board</motion.p>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          className="text-sm text-red-400/70 text-center mb-6 max-w-xs">
+          Tiles with an open side &amp; nothing on top are free to match
+        </motion.p>
+        <div className="space-y-3 w-full max-w-sm">
+          {DIFFICULTY_OPTIONS.map((d, i) => {
             const best = bestScores[LAYOUTS[d.key]?.label];
             return (
-              <button
-                key={d.key}
+              <motion.button key={d.key}
+                initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.35 + i * 0.1, type: "spring", stiffness: 220 }}
                 onClick={() => startGame(d.key)}
-                className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white text-2xl font-black py-5 rounded-2xl shadow-xl"
+                className={`w-full bg-gradient-to-r ${MAHJONG_DIFF_COLORS[i]} text-white rounded-2xl shadow-xl border-2 ${MAHJONG_DIFF_BORDERS[i]} active:scale-95 transition-transform`}
               >
-                <div>{d.label}</div>
-                <div className="text-sm font-semibold text-white/70">{d.sub}</div>
-                {best && (
-                  <div className="text-sm font-bold text-white/60 mt-0.5">
-                    Best: {best.moves} moves{best.time > 0 ? ` · ${formatTime(best.time)}` : ""}
+                <div className="px-5 py-4 flex items-center justify-between">
+                  <div className="text-left">
+                    <div className="text-2xl font-black">{MAHJONG_DIFF_EMOJIS[i]} {d.label}</div>
+                    <div className="text-sm font-bold opacity-80">{d.sub}</div>
+                    {best && <div className="text-xs opacity-60 mt-0.5">🏆 Best: {best.moves} moves{best.time > 0 ? ` · ${formatTime(best.time)}` : ""}</div>}
                   </div>
-                )}
-              </button>
+                  <span className="text-4xl">{best ? "🏆" : "▶"}</span>
+                </div>
+              </motion.button>
             );
           })}
         </div>
-        <GameBackButton className="mt-8" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6">
+          <GameBackButton />
+        </motion.div>
       </div>
     );
   }
@@ -362,27 +374,47 @@ export default function Mahjong() {
   if (won) {
     const diffLabel = LAYOUTS[difficulty]?.label || difficulty;
     const best = bestScores[diffLabel];
+    const isNewBest = best?.moves === moves;
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-        <div className="text-8xl mb-4">🎉</div>
-        <h1 className="text-4xl font-black text-primary mb-3">Board Cleared!</h1>
-        <MahjongStarRating moves={moves} pairs={totalPairs} />
-        <p className="text-2xl text-foreground mb-1">Layout: {LAYOUTS[difficulty].name}</p>
-        <p className="text-xl text-muted-foreground mb-2">
-          {moves} moves · {formatTime(elapsedSeconds)}
-        </p>
-        {best && (
-          <p className="text-base text-primary font-bold mb-4">
-            🏆 Personal Best: {best.moves} moves{best.time > 0 ? ` · ${formatTime(best.time)}` : ""}
-          </p>
-        )}
-        <button onClick={() => startGame(difficulty)} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-3">
-          🔄 Play Again
-        </button>
-        <button onClick={backToMenu} className="bg-secondary text-foreground text-lg font-bold px-6 py-3 rounded-xl mb-4">
-          Change Layout
-        </button>
-        <GameBackButton />
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
+        <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
+        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+          className="text-5xl font-black text-white mb-3">Board Cleared!</motion.h1>
+        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.35, type: "spring" }}>
+          <MahjongStarRating moves={moves} pairs={totalPairs} />
+        </motion.div>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 }}
+          className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs mt-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <div className="text-2xl font-black text-white">{moves}</div>
+              <div className="text-xs text-red-300 uppercase tracking-wide">Moves</div>
+            </div>
+            <div>
+              <div className="text-2xl font-black text-white">{formatTime(elapsedSeconds)}</div>
+              <div className="text-xs text-red-300 uppercase tracking-wide">Time</div>
+            </div>
+            <div>
+              <div className="text-2xl font-black text-white">{totalPairs}</div>
+              <div className="text-xs text-red-300 uppercase tracking-wide">Pairs</div>
+            </div>
+          </div>
+          {isNewBest && <div className="mt-3 text-yellow-400 font-black text-sm animate-pulse">🏆 New Personal Best!</div>}
+        </motion.div>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
+          className="space-y-3 w-full max-w-xs">
+          <button onClick={() => startGame(difficulty)}
+            className="w-full bg-gradient-to-r from-red-500 to-rose-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-red-400">
+            🔄 Play Again
+          </button>
+          <button onClick={backToMenu}
+            className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
+            Change Layout
+          </button>
+          <GameBackButton />
+        </motion.div>
       </div>
     );
   }
@@ -403,12 +435,12 @@ export default function Mahjong() {
   const progressPct = totalTiles > 0 ? Math.round(((totalTiles - currentLeft) / totalTiles) * 100) : 0;
 
   return (
-    <div className="min-h-screen px-2 py-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
         <div className="text-center">
-          <div className="text-xl font-black text-primary">🀄 Mahjong</div>
+          <div className="text-xl font-black text-white">🀄 Mahjong</div>
           <div className="text-sm text-muted-foreground">
             Pairs: {matches}/{totalPairs} · Moves: {moves} · ⏱ {formatTime(elapsedSeconds)}
           </div>

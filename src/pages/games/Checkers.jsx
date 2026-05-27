@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
@@ -382,35 +382,69 @@ export default function Checkers() {
   // ── Win/Lose/Draw screen ──
   if (gameOver) {
     const won = message.includes("You win");
+    const resultEmoji = won ? "🏆" : isDraw ? "🤝" : "😔";
+    const resultTitle = won ? "Victory!" : isDraw ? "Draw!" : "Defeat";
+    const bgGrad = won
+      ? "from-slate-950 via-yellow-950 to-slate-950"
+      : isDraw
+        ? "from-slate-950 via-gray-900 to-slate-950"
+        : "from-slate-950 via-red-950 to-slate-950";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-        <div className="text-8xl mb-4">{won ? "🏆" : isDraw ? "🤝" : "😔"}</div>
-        <h1 className="text-4xl font-black text-primary mb-2">
-          {won ? "Victory!" : isDraw ? "Draw!" : "Defeat"}
-        </h1>
-        <p className="text-xl text-foreground mb-1">Moves: {moveCount}</p>
-        <p className="text-lg text-muted-foreground mb-6">
-          Captured: {12 - counts.p2} opponent · Lost: {12 - counts.p1} yours
-        </p>
-        {rareDropMsg && (
-          <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 text-white text-center py-3 px-5 rounded-2xl font-bold text-sm mb-4 shadow-lg border-2 border-purple-300 animate-pulse">
-            {rareDropMsg}
+      <div className={`min-h-screen bg-gradient-to-b ${bgGrad} flex flex-col items-center justify-center px-4 pb-24 text-center`}>
+        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">
+          {resultEmoji}
+        </motion.div>
+        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }} className="text-5xl font-black text-white mb-4">
+          {resultTitle}
+        </motion.h1>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-3xl font-black text-white">{moveCount}</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Moves</div>
+            </div>
+            <div>
+              <div className="text-3xl font-black text-orange-400">{12 - counts.p2}</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Captured</div>
+            </div>
+            <div>
+              <div className="text-3xl font-black text-red-400">{12 - counts.p1}</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Lost</div>
+            </div>
+            <div>
+              <div className="text-3xl font-black text-white">{counts.p1}</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Remaining</div>
+            </div>
           </div>
+        </motion.div>
+        {rareDropMsg && (
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 text-white text-center py-3 px-5 rounded-2xl font-bold text-sm mb-4 shadow-lg border-2 border-purple-300 animate-pulse">
+            {rareDropMsg}
+          </motion.div>
         )}
-        <button onClick={doReset} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4">
-          🔄 Play Again
-        </button>
-        <GameBackButton />
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
+          className="space-y-3 w-full max-w-xs">
+          <button onClick={doReset}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-amber-400">
+            🔄 Play Again
+          </button>
+          <GameBackButton />
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-2 py-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-amber-950 to-slate-950 px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-3">
         <GameBackButton />
-        <div className="text-xl font-black text-primary">♟️ Checkers</div>
+        <div className="text-xl font-black text-white">♟️ Checkers</div>
         <div className="flex gap-1.5">
           <GameInstructions
             title="Checkers"

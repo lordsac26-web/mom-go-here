@@ -272,74 +272,103 @@ export default function Sudoku() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
+  const DIFF_OPTIONS = [
+    { key: "easy", label: "Easy", emoji: "😊", desc: "Lots of clues · great for learning", color: "from-emerald-500 to-teal-600", border: "border-emerald-400" },
+    { key: "medium", label: "Medium", emoji: "🧩", desc: "A fair challenge", color: "from-blue-500 to-indigo-600", border: "border-blue-400" },
+    { key: "hard", label: "Hard", emoji: "🧠", desc: "Fewer clues · for experts", color: "from-rose-500 to-purple-600", border: "border-rose-400" },
+  ];
+
   // ── DIFFICULTY SELECT ──
   if (!started) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24">
-      <div className="text-8xl mb-4">🔢</div>
-      <h1 className="text-4xl font-black text-primary mb-2 text-center">Sudoku</h1>
-      <p className="text-xl text-muted-foreground text-center mb-8">Fill every row, column, and box with 1–9!</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24">
+      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        className="text-8xl mb-2 select-none">🔢</motion.div>
+      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}
+        className="text-5xl font-black text-white mb-1 tracking-tight">Sudoku</motion.h1>
+      <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }}
+        className="text-lg text-blue-300 mb-8 text-center">Fill every row, column & box with 1–9</motion.p>
 
-      <p className="text-lg font-bold text-muted-foreground mb-4">Choose Difficulty:</p>
-      <div className="flex flex-col gap-4 w-full max-w-xs">
-        {[
-          { key: "easy", label: "Easy", emoji: "😊", desc: "Lots of clues — great for learning" },
-          { key: "medium", label: "Medium", emoji: "🧩", desc: "A fair challenge" },
-          { key: "hard", label: "Hard", emoji: "🧠", desc: "Fewer clues — for experts" },
-        ].map(d => (
-          <button
-            key={d.key}
+      <div className="space-y-3 w-full max-w-sm">
+        {DIFF_OPTIONS.map((d, i) => (
+          <motion.button key={d.key}
+            initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.35 + i * 0.1, type: "spring", stiffness: 220 }}
             onClick={() => { tapVibrate(); uiClickSound(); startGame(d.key); }}
-            className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left shadow-xl active:scale-95 transition-transform hover:border-primary"
+            className={`w-full bg-gradient-to-r ${d.color} text-white rounded-2xl shadow-xl border-2 ${d.border} active:scale-95 transition-transform`}
           >
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">{d.emoji}</span>
-              <div>
-                <p className="text-xl font-black text-foreground">{d.label}</p>
-                <p className="text-sm text-muted-foreground">{d.desc}</p>
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div className="text-left">
+                <div className="text-2xl font-black">{d.emoji} {d.label}</div>
+                <div className="text-sm font-bold opacity-80">{d.desc}</div>
               </div>
+              <span className="text-4xl">▶</span>
             </div>
-          </button>
+          </motion.button>
         ))}
       </div>
-      <div className="mt-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6">
         <GameBackButton />
-      </div>
+      </motion.div>
     </div>
   );
 
+  const diffLabel = { easy: "😊 Easy", medium: "🧩 Medium", hard: "🧠 Hard" }[difficulty];
+
   // ── WIN SCREEN ──
   if (won) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black text-primary mb-2">Puzzle Solved!</h1>
-      {winTime != null && (
-        <p className="text-2xl font-bold text-muted-foreground mb-1">
-          ⏱️ {formatTime(winTime)}
-        </p>
-      )}
-      <p className="text-lg text-muted-foreground mb-1">
-        {moves} moves · {totalErrors} error{totalErrors !== 1 ? "s" : ""}
-      </p>
-      <p className="text-base text-muted-foreground mb-6">
-        Difficulty: {{ easy: "😊 Easy", medium: "🧩 Medium", hard: "🧠 Hard" }[difficulty]}
-      </p>
-      <button onClick={() => startGame(difficulty)} className="bg-primary text-primary-foreground text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-3">
-        🔄 New Puzzle
-      </button>
-      <button onClick={() => { setStarted(false); setDifficulty(null); }} className="bg-secondary text-foreground text-lg font-bold px-6 py-3 rounded-xl mb-4">
-        Change Difficulty
-      </button>
-      <GameBackButton />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
+      <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
+      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+        className="text-5xl font-black text-white mb-3">Puzzle Solved!</motion.h1>
+
+      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.35, type: "spring" }}
+        className="bg-blue-500/20 border border-blue-400/40 rounded-2xl px-8 py-4 mb-5">
+        <div className="text-5xl font-black text-white">{diffLabel}</div>
+      </motion.div>
+
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 }}
+        className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <div className="text-3xl font-black text-white">{winTime != null ? formatTime(winTime) : "—"}</div>
+            <div className="text-xs text-blue-300 uppercase tracking-wide">Time</div>
+          </div>
+          <div>
+            <div className="text-3xl font-black text-white">{moves}</div>
+            <div className="text-xs text-blue-300 uppercase tracking-wide">Moves</div>
+          </div>
+          <div>
+            <div className={`text-3xl font-black ${totalErrors === 0 ? "text-green-400" : "text-red-400"}`}>{totalErrors}</div>
+            <div className="text-xs text-blue-300 uppercase tracking-wide">Errors</div>
+          </div>
+        </div>
+        {totalErrors === 0 && <div className="mt-3 text-green-400 font-black text-sm">✨ Perfect — No Errors!</div>}
+      </motion.div>
+
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
+        className="space-y-3 w-full max-w-xs">
+        <button onClick={() => startGame(difficulty)}
+          className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-blue-400">
+          🔄 New Puzzle
+        </button>
+        <button onClick={() => { setStarted(false); setDifficulty(null); }}
+          className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
+          Change Difficulty
+        </button>
+        <GameBackButton />
+      </motion.div>
     </div>
   );
 
   // ── GAME BOARD ──
   return (
-    <div className="min-h-screen px-2 py-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
-        <div className="text-xl sm:text-2xl font-black text-primary">🔢 Sudoku</div>
+        <div className="text-xl sm:text-2xl font-black text-white">🔢 Sudoku</div>
         <div className="flex gap-1.5">
           <GameInstructions
             title="Sudoku"

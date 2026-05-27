@@ -263,11 +263,11 @@ export default function Yahtzee() {
   );
 
   return (
-    <div className="min-h-screen px-2 py-4 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 px-2 py-4 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-2">
         <GameBackButton />
-        <div className="text-xl sm:text-2xl font-black text-primary">🎲 Yahtzee</div>
+        <div className="text-xl sm:text-2xl font-black text-white">🎲 Yahtzee</div>
         <div className="flex gap-1.5">
           <GameInstructions
             title="Yahtzee"

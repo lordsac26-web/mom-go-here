@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useGameTimer } from "../../hooks/useGameTimer";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import useHaptics from "../../hooks/useHaptics";
@@ -283,28 +283,32 @@ export default function WordSearch() {
 
   // ── START SCREEN ──
   if (!started) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24" style={{ background: theme.bg }}>
-      <div className="text-8xl mb-4">🔤</div>
-      <h1 className="text-4xl font-black text-primary mb-4 text-center">Word Search</h1>
-      <p className="text-xl text-muted-foreground text-center mb-6">Tap the first letter, then the last — find all the hidden words!</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-green-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24">
+      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 18 }} className="text-8xl mb-2 select-none">🔤</motion.div>
+      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}
+        className="text-5xl font-black text-white mb-1 tracking-tight">Word Search</motion.h1>
+      <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }}
+        className="text-lg text-green-300 mb-5 text-center">Tap first · tap last · find every word</motion.p>
 
       {/* Theme picker */}
-      <div className="flex flex-wrap gap-2 justify-center mb-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+        className="flex flex-wrap gap-2 justify-center mb-4">
         {Object.entries(WS_THEMES).map(([key, t]) => (
           <button key={key} onClick={() => setThemeKey(key)}
-            className={`px-3 py-2 rounded-xl font-bold text-sm border-2 transition-all ${key === themeKey ? "border-white scale-105" : "border-transparent opacity-70"}`}
+            className={`px-3 py-2 rounded-xl font-bold text-sm border-2 transition-all ${key === themeKey ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60"}`}
             style={{ background: t.cell, color: t.cellText }}>
             {t.emoji} {t.name}
           </button>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Difficulty picker */}
-      <p className="text-lg font-bold text-muted-foreground mb-3">Choose Difficulty:</p>
+      {/* Difficulty */}
       <div className="flex gap-4 mb-6">
-        {Object.entries(DIFFICULTIES).map(([key, d]) => (
-          <button
-            key={key}
+        {Object.entries(DIFFICULTIES).map(([key, d], i) => (
+          <motion.button key={key}
+            initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 + i * 0.1, type: "spring", stiffness: 220 }}
             onClick={() => { tapVibrate(); uiClickSound(); setDifficulty(key); startGame(key); }}
             className="flex flex-col items-center gap-1 px-6 py-5 rounded-2xl border-2 font-black text-xl shadow-xl active:scale-95 transition-transform"
             style={{ background: theme.selected, color: theme.selectedText, borderColor: theme.selected }}
@@ -312,33 +316,52 @@ export default function WordSearch() {
             <span className="text-3xl">{d.emoji}</span>
             <span>{d.label}</span>
             <span className="text-xs font-bold opacity-80">{d.desc}</span>
-          </button>
+          </motion.button>
         ))}
       </div>
-      <GameBackButton />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}>
+        <GameBackButton />
+      </motion.div>
     </div>
   );
 
   // ── WIN SCREEN ──
   if (won) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-24 text-center" style={{ background: theme.bg }}>
-      <div className="text-8xl mb-4">🎉</div>
-      <h1 className="text-4xl font-black mb-2" style={{ color: theme.selected }}>All Words Found!</h1>
-      {winTime != null && (
-        <p className="text-2xl font-bold mb-1" style={{ color: theme.cellText }}>
-          ⏱️ Time: {formatTime(winTime)}
-        </p>
-      )}
-      <p className="text-lg mb-6" style={{ color: theme.cellText, opacity: 0.7 }}>
-        Found {words.length} words in the {DIFFICULTIES[difficulty]?.label} puzzle
-      </p>
-      <button onClick={() => startGame(difficulty)} className="text-2xl font-black px-8 py-5 rounded-2xl shadow-xl mb-4" style={{ background: theme.selected, color: theme.selectedText }}>
-        🔄 New Puzzle
-      </button>
-      <button onClick={() => { setStarted(false); setDifficulty(null); }} className="text-lg font-bold px-6 py-3 rounded-xl mb-4" style={{ background: theme.cell, color: theme.cellText }}>
-        Change Difficulty
-      </button>
-      <GameBackButton />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-green-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
+      <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
+      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
+        className="text-5xl font-black text-white mb-4">All Words Found!</motion.h1>
+
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
+        className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-3xl font-black text-white">{winTime != null ? formatTime(winTime) : "—"}</div>
+            <div className="text-xs text-green-300 uppercase tracking-wide">Time</div>
+          </div>
+          <div>
+            <div className="text-3xl font-black text-white">{words.length}</div>
+            <div className="text-xs text-green-300 uppercase tracking-wide">Words Found</div>
+          </div>
+        </div>
+        <div className="mt-3 text-green-300 text-sm font-bold">
+          {DIFFICULTIES[difficulty]?.label} · {DIFFICULTIES[difficulty]?.desc}
+        </div>
+      </motion.div>
+
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
+        className="space-y-3 w-full max-w-xs">
+        <button onClick={() => startGame(difficulty)}
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-green-400">
+          🔄 New Puzzle
+        </button>
+        <button onClick={() => { setStarted(false); setDifficulty(null); }}
+          className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
+          Change Difficulty
+        </button>
+        <GameBackButton />
+      </motion.div>
     </div>
   );
 
