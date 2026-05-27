@@ -20,6 +20,7 @@ import SlotAudioSettings, { useSlotAudioPrefs } from "../../components/slots/Slo
 import BonusRound from "../../components/slots/BonusRound";
 import PlinkoBonus from "../../components/slots/PlinkoBonus";
 import FreeSpinsBonus from "../../components/slots/FreeSpinsBonus";
+import BonusSelectScreen from "../../components/slots/BonusSelectScreen";
 import MachinePayTable from "../../components/slots/MachinePayTable";
 import MachineSelectScreen from "../../components/slots/MachineSelectScreen";
 import GameInstructions from "../../components/GameInstructions";
@@ -178,6 +179,7 @@ export default function SlotMachine() {
   const [bonusRound, setBonusRound] = useState(null);
   const [plinkoBonus, setPlinkoBonus] = useState(null);
   const [freeSpinsBonus, setFreeSpinsBonus] = useState(null);
+  const [bonusSelect, setBonusSelect] = useState(null); // { baseWin, scatterCount }
   const { prefs: audioPrefs, updatePrefs: updateAudioPrefs } = useSlotAudioPrefs();
   const [newBadge, setNewBadge] = useState(null);
   const { stats, recordSpin, recordWin, recordLoss } = useSlotAchievements(setNewBadge);
@@ -385,16 +387,8 @@ export default function SlotMachine() {
               scatterSound();
               setTimeout(() => {
                 resolveSpinEndRef.current?.();
-                if (currentMachine.bonusType === "plinko") {
-                  setPlinkoBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
-                } else if (currentMachine.bonusType === "freeSpins") {
-                  setFreeSpinsBonus({ baseWin: result.totalWin, scatterCount: result.scatterCount });
-                } else if (currentMachine.bonusType === "both") {
-                  // Hi-Roller: boxes first, then plinko (chained in handleBonusComplete)
-                  setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount, chainPlinko: true });
-                } else {
-                  setBonusRound({ baseWin: result.totalWin, scatterCount: result.scatterCount });
-                }
+                // Always show the player-choice screen first
+                setBonusSelect({ baseWin: result.totalWin, scatterCount: result.scatterCount });
               }, 2500);
             } else {
               const triggerRandomPlinko = currentMachine.hasRandomPlinko && Math.random() < 0.10;
@@ -500,25 +494,26 @@ export default function SlotMachine() {
     });
   }
 
+  function handleBonusSelect(bonusType) {
+    if (!bonusSelect) return;
+    const { baseWin, scatterCount: sc } = bonusSelect;
+    setBonusSelect(null);
+    if (bonusType === "boxes") {
+      setBonusRound({ baseWin, scatterCount: sc });
+    } else if (bonusType === "plinko") {
+      setPlinkoBonus({ baseWin, scatterCount: sc });
+    } else if (bonusType === "freeSpins") {
+      setFreeSpinsBonus({ baseWin, scatterCount: sc });
+    }
+  }
+
   function handleBonusComplete(extraWinnings) {
     if (extraWinnings > 0) {
       balanceRef.current += extraWinnings;
       setBalance(prev => prev + extraWinnings);
       setLastWin(prev => prev + extraWinnings);
     }
-    // Hi-Roller chain: after Mystery Boxes finishes, kick off Plinko with the new total
-    const wasBoxesWithChain = bonusRound?.chainPlinko;
-    const carryWin = (bonusRound?.baseWin || 0) + Math.max(0, extraWinnings);
-    const carryScatter = bonusRound?.scatterCount || 3;
-
     setBonusRound(null); setPlinkoBonus(null); setFreeSpinsBonus(null);
-
-    if (wasBoxesWithChain) {
-      setTimeout(() => {
-        setPlinkoBonus({ baseWin: carryWin, scatterCount: carryScatter });
-      }, 400);
-      return;
-    }
     scheduleNextAutoSpin(800);
   }
 
@@ -680,6 +675,7 @@ export default function SlotMachine() {
         setJackpotWin(null);
         fireworks(); emojiRain(["💰", "🏆", "💎", "👑"]);
       }} />}
+      {bonusSelect && <BonusSelectScreen scatterCount={bonusSelect.scatterCount} onSelect={handleBonusSelect} />}
       {bonusRound && <BonusRound baseWin={bonusRound.baseWin} scatterCount={bonusRound.scatterCount} onComplete={handleBonusComplete} />}
       {plinkoBonus && <PlinkoBonus baseWin={plinkoBonus.baseWin} scatterCount={plinkoBonus.scatterCount} onComplete={handleBonusComplete} accentColor={machine.accentColor} />}
       {freeSpinsBonus && <FreeSpinsBonus machine={machine} baseWin={freeSpinsBonus.baseWin} scatterCount={freeSpinsBonus.scatterCount} onComplete={handleBonusComplete} />}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import useHaptics from "../../hooks/useHaptics";
+import { useMinigameSounds } from "@/hooks/useMinigameSounds";
 
 /**
  * Canvas-based Plinko bonus mini-game (DartPop-style).
@@ -65,6 +66,7 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
   const [displayedTotal, setDisplayedTotal] = useState(0);
 
   const haptics = useHaptics();
+  const sounds = useMinigameSounds();
   const ballsRef = useRef([]);
   const pegsRef = useRef(generatePegs());
   const slotsRef = useRef(getSlotBoundaries());
@@ -75,6 +77,9 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
   const slotFlashRef = useRef({}); // { slotIdx: timestamp }
 
   const maxDrops = scatterCount >= 5 ? 4 : scatterCount >= 4 ? 3 : 2;
+
+  // Entrance sound
+  useEffect(() => { sounds.bonusEntrance(); }, []);
 
   // Spawn a particle burst on peg hit
   const spawnParticles = useCallback((x, y, color, count = 6) => {
@@ -138,6 +143,7 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
             peg.hitTime = Date.now();
             spawnParticles(peg.x, peg.y, "#fbbf24", 4);
             shakeRef.current = Math.min(shakeRef.current + 0.8, 5);
+            sounds.plinkoTick();
           }
         }
 
@@ -157,10 +163,21 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
           spawnFloat(ball.x, CANVAS_H - 80, `${mult}x`, slot.color);
           shakeRef.current = Math.min(shakeRef.current + (mult >= 25 ? 8 : mult >= 5 ? 4 : 2), 14);
 
-          // Haptic feedback proportional to multiplier
+          // Haptic + audio feedback proportional to multiplier
+          sounds.plinkoLand(mult);
           if (mult >= 25) haptics.winVibrate?.();
           else if (mult >= 5) haptics.scoreMilestone?.();
           else haptics.tapVibrate?.();
+
+          // Lighting flash on big slots
+          if (mult >= 10) {
+            const flashColor = slot.color;
+            const flash = document.createElement("div");
+            flash.style.cssText = `position:fixed;inset:0;background:${flashColor}22;z-index:9999;pointer-events:none;`;
+            document.body.appendChild(flash);
+            if (window.gsap) window.gsap.to(flash, { opacity: 0, duration: 0.5, onComplete: () => flash.remove() });
+            else setTimeout(() => flash.remove(), 500);
+          }
 
           setLastMultiplier(mult);
           setTotalMultiplier(prev => prev + mult);
@@ -373,6 +390,7 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
   function dropBall(startX) {
     if (phase !== "ready") return;
     setPhase("dropping");
+    sounds.plinkoDrop();
     haptics.tapVibrate?.();
     const dropX = Math.max(20, Math.min(CANVAS_W - 20, startX));
     ballsRef.current.push({
@@ -476,7 +494,7 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
               </div>
             </div>
             <button
-              onClick={() => onComplete(extraWinnings)}
+              onClick={() => { sounds.collectBonus(); onComplete(extraWinnings); }}
               className="w-full text-xl font-black py-5 rounded-2xl bg-green-600 text-white border-2 border-green-400 active:scale-95 animate-pulse shadow-lg"
             >
               💰 Collect +{extraWinnings.toLocaleString()}

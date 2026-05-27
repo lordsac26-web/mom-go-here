@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
 import { HelpCircle } from "lucide-react";
+import { useMinigameSounds } from "@/hooks/useMinigameSounds";
 
 const BOX_COUNT = 9;
 
@@ -33,18 +34,26 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
   const [phase, setPhase] = useState("picking"); // picking | spinning | done
   const [displayedTotal, setDisplayedTotal] = useState(0);
   const containerRef = useRef(null);
+  const sounds = useMinigameSounds();
 
   const maxPicks = scatterCount >= 5 ? 3 : scatterCount >= 4 ? 2 : 1;
 
-  // Entrance animation
+  // Entrance animation + sound
   useEffect(() => {
     if (!containerRef.current) return;
+    sounds.bonusEntrance();
     const boxEls = containerRef.current.querySelectorAll(".bonus-box");
     gsap.fromTo(containerRef.current, { scale: 0.8, opacity: 0 }, {
       scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)",
     });
     gsap.fromTo(boxEls, { scale: 0, rotation: -15 }, {
       scale: 1, rotation: 0, duration: 0.4, stagger: 0.05, ease: "back.out(2)", delay: 0.3,
+    });
+
+    // Ambient pulsing glow on the header
+    gsap.to(containerRef.current.querySelector(".bonus-header-glow"), {
+      textShadow: "0 0 30px rgba(234,179,8,0.9), 0 0 60px rgba(234,179,8,0.4)",
+      yoyo: true, repeat: -1, duration: 1.2, ease: "sine.inOut",
     });
   }, []);
 
@@ -77,6 +86,8 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
     if (revealed[idx] || phase !== "picking") return;
     const box = boxes[idx];
 
+    sounds.boxPick();
+
     const newRevealed = { ...revealed, [idx]: true };
     setRevealed(newRevealed);
     const newMult = totalMultiplier + box.value;
@@ -90,10 +101,20 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
       gsap.to(el, {
         rotateY: 180, duration: 0.5, ease: "power2.inOut",
         onComplete: () => {
+          sounds.boxReveal(box.value);
           gsap.to(el, {
-            boxShadow: `0 0 30px rgba(234,179,8,0.6)`,
-            duration: 0.3, yoyo: true, repeat: 2, ease: "sine.inOut",
+            boxShadow: box.value >= 25
+              ? "0 0 40px rgba(251,191,36,1), 0 0 80px rgba(251,191,36,0.5)"
+              : "0 0 30px rgba(234,179,8,0.6)",
+            duration: 0.3, yoyo: true, repeat: box.value >= 10 ? 4 : 2, ease: "sine.inOut",
           });
+          // Screen flash for jackpot tiers
+          if (box.value >= 25 && containerRef.current) {
+            const flash = document.createElement("div");
+            flash.style.cssText = "position:fixed;inset:0;background:rgba(251,191,36,0.25);z-index:9999;pointer-events:none;border-radius:inherit";
+            document.body.appendChild(flash);
+            gsap.to(flash, { opacity: 0, duration: 0.4, onComplete: () => flash.remove() });
+          }
         },
       });
     }
@@ -138,7 +159,7 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
         {/* Header */}
         <div className="text-center mb-4">
           <div className="text-4xl mb-1">🎁</div>
-          <h2 className="text-2xl font-black text-yellow-400">BONUS ROUND!</h2>
+          <h2 className="bonus-header-glow text-2xl font-black text-yellow-400">BONUS ROUND!</h2>
           <p className="text-sm text-gray-300 mt-1">
             {phase === "picking" 
               ? `Pick ${maxPicks} box${maxPicks > 1 ? "es" : ""} to reveal your multiplier!`
@@ -221,7 +242,7 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
 
             {phase === "done" && (
               <button
-                onClick={() => onComplete(extraWinnings)}
+                onClick={() => { sounds.collectBonus(); onComplete(extraWinnings); }}
                 className="w-full text-xl font-black py-5 rounded-2xl border-2 transition-transform active:scale-95 bg-green-600 text-white border-green-400 animate-pulse"
               >
                 💰 Collect +{extraWinnings.toLocaleString()} & Return to Game
