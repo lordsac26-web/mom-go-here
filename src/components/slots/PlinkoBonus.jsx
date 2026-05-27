@@ -13,11 +13,13 @@ const CANVAS_W = 360;
 const CANVAS_H = 520;
 const PEG_ROWS = 9;
 const PEG_RADIUS = 5;
-const BALL_RADIUS = 9;
+const BALL_RADIUS = 7;   // smaller ball — more clearance between pegs and walls
 const GRAVITY = 0.32;
-const BOUNCE = 0.62;
-const FRICTION = 0.985;
+const BOUNCE = 0.55;
+const FRICTION = 0.988;
 const TRAIL_MAX = 14;
+const MIN_BOUNCE_VX = 1.2;  // minimum horizontal speed after any wall/peg hit
+const WALL_MARGIN = BALL_RADIUS + 2; // safe inset from canvas edge
 
 // Slot multipliers — symmetric, big middle for risk/reward feel
 const SLOT_MULTIPLIERS = [50, 10, 5, 3, 2, 1, 2, 3, 5, 10, 50];
@@ -30,12 +32,17 @@ function generatePegs() {
   const pegs = [];
   const startY = 70;
   const rowSpacing = (CANVAS_H - 160) / PEG_ROWS;
+  // Keep pegs inset from walls so ball always has a clear path down the sides
+  const SIDE_MARGIN = 28;
+  const MAX_ROW_WIDTH = CANVAS_W - SIDE_MARGIN * 2;
   for (let row = 0; row < PEG_ROWS; row++) {
     const pegsInRow = row + 3;
-    const rowWidth = (pegsInRow - 1) * 32;
+    // Cap spacing so outermost pegs don't crowd the wall
+    const spacing = Math.min(32, MAX_ROW_WIDTH / (pegsInRow - 1));
+    const rowWidth = (pegsInRow - 1) * spacing;
     const startX = (CANVAS_W - rowWidth) / 2;
     for (let col = 0; col < pegsInRow; col++) {
-      pegs.push({ x: startX + col * 32, y: startY + row * rowSpacing, hitTime: 0 });
+      pegs.push({ x: startX + col * spacing, y: startY + row * rowSpacing, hitTime: 0 });
     }
   }
   return pegs;
@@ -121,9 +128,15 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
         ball.trail.push({ x: ball.x, y: ball.y });
         if (ball.trail.length > TRAIL_MAX) ball.trail.shift();
 
-        // Wall bounces
-        if (ball.x < BALL_RADIUS) { ball.x = BALL_RADIUS; ball.vx = Math.abs(ball.vx) * BOUNCE; }
-        if (ball.x > CANVAS_W - BALL_RADIUS) { ball.x = CANVAS_W - BALL_RADIUS; ball.vx = -Math.abs(ball.vx) * BOUNCE; }
+        // Wall bounces — enforce minimum outward velocity so ball never gets stuck
+        if (ball.x < WALL_MARGIN) {
+          ball.x = WALL_MARGIN;
+          ball.vx = Math.max(Math.abs(ball.vx) * BOUNCE, MIN_BOUNCE_VX);
+        }
+        if (ball.x > CANVAS_W - WALL_MARGIN) {
+          ball.x = CANVAS_W - WALL_MARGIN;
+          ball.vx = -Math.max(Math.abs(ball.vx) * BOUNCE, MIN_BOUNCE_VX);
+        }
 
         // Peg collisions
         for (const peg of pegsRef.current) {
@@ -134,17 +147,33 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
           if (dist < minDist && dist > 0.1) {
             const nx = dx / dist;
             const ny = dy / dist;
-            ball.x = peg.x + nx * minDist;
-            ball.y = peg.y + ny * minDist;
+            // Push ball fully out of overlap
+            ball.x = peg.x + nx * (minDist + 0.5);
+            ball.y = peg.y + ny * (minDist + 0.5);
             const dot = ball.vx * nx + ball.vy * ny;
             ball.vx -= 2 * dot * nx * BOUNCE;
             ball.vy -= 2 * dot * ny * BOUNCE;
-            ball.vx += (Math.random() - 0.5) * 1.6;
+            // Random horizontal nudge — ensure it always picks a direction
+            const nudge = (Math.random() < 0.5 ? -1 : 1) * (0.8 + Math.random() * 1.2);
+            ball.vx += nudge;
+            // Guarantee minimum horizontal movement after peg hit
+            if (Math.abs(ball.vx) < MIN_BOUNCE_VX) {
+              ball.vx = (ball.vx >= 0 ? 1 : -1) * MIN_BOUNCE_VX;
+            }
+            // Clamp ball away from walls immediately after peg resolution
+            ball.x = Math.max(WALL_MARGIN, Math.min(CANVAS_W - WALL_MARGIN, ball.x));
             peg.hitTime = Date.now();
             spawnParticles(peg.x, peg.y, "#fbbf24", 4);
             shakeRef.current = Math.min(shakeRef.current + 0.8, 5);
             sounds.plinkoTick();
           }
+        }
+
+        // Anti-stuck: if ball has very low total speed and hasn't landed, give it a nudge
+        const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (speed < 0.5 && !ball.landed) {
+          ball.vx += (Math.random() < 0.5 ? -1 : 1) * 1.5;
+          ball.vy = Math.max(ball.vy, 1.0);
         }
 
         // Landing
@@ -238,14 +267,14 @@ export default function PlinkoBonus({ baseWin, scatterCount, onComplete }) {
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // Neon side rails
+      // Neon side rails (drawn at WALL_MARGIN so they match the physics boundary)
       ctx.strokeStyle = "#a855f7";
       ctx.lineWidth = 2;
       ctx.shadowColor = "#a855f7";
       ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.moveTo(2, 50); ctx.lineTo(2, CANVAS_H - 70);
-      ctx.moveTo(CANVAS_W - 2, 50); ctx.lineTo(CANVAS_W - 2, CANVAS_H - 70);
+      ctx.moveTo(WALL_MARGIN - 2, 50); ctx.lineTo(WALL_MARGIN - 2, CANVAS_H - 70);
+      ctx.moveTo(CANVAS_W - WALL_MARGIN + 2, 50); ctx.lineTo(CANVAS_W - WALL_MARGIN + 2, CANVAS_H - 70);
       ctx.stroke();
       ctx.shadowBlur = 0;
 
