@@ -19,6 +19,11 @@ import {
   spawnPowerupBalloon, updatePowerupBalloons, drawPowerupBalloons, checkDartPowerupCollision,
 } from "./powerupBalloons";
 import { POWERUP_BALLOON_SPAWN_INTERVAL } from "./gameConfig";
+import {
+  spawnParticles, spawnBalloonPopParticles, spawnBombParticles,
+  spawnIcyShardParticles, updateParticles, drawParticle,
+  getConfettiColors,
+} from "./particleEngine";
 
 // ── Offscreen static background ──
 // Bump version to invalidate cache when ground layout changes
@@ -77,115 +82,6 @@ function getStaticBg() {
   }
   staticBg = oc;
   return oc;
-}
-
-// Confetti palette per balloon color for multi-color bursts
-const CONFETTI_PALETTES = {
-  "#ef4444": ["#ef4444", "#f87171", "#fca5a5", "#fbbf24", "#fb923c"], // red
-  "#3b82f6": ["#3b82f6", "#60a5fa", "#93c5fd", "#a78bfa", "#38bdf8"], // blue
-  "#a855f7": ["#a855f7", "#c084fc", "#d8b4fe", "#f0abfc", "#818cf8"], // purple
-  "#eab308": ["#eab308", "#facc15", "#fde047", "#fb923c", "#fbbf24"], // gold
-  "#1e293b": ["#f97316", "#ef4444", "#fbbf24", "#fb923c", "#fdba74"], // bomb → fiery
-  "#22c55e": ["#22c55e", "#4ade80", "#86efac", "#fbbf24", "#34d399"], // green
-  "#94a3b8": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#64748b", "#f1f5f9"], // ricochet sparks
-  "#f97316": ["#f97316", "#fb923c", "#fdba74", "#ef4444", "#fbbf24"], // orange/mirv
-  "#f59e0b": ["#f59e0b", "#fbbf24", "#fde047", "#fb923c", "#f97316"], // speed
-  "#6366f1": ["#6366f1", "#818cf8", "#a78bfa", "#c084fc", "#e0e7ff"], // ghost
-  "#ec4899": ["#ec4899", "#f472b6", "#fb7185", "#fda4af", "#fbbf24"], // magnet
-  "#38bdf8": ["#38bdf8", "#7dd3fc", "#bae6fd", "#e0f2fe", "#fff"],    // freeze
-  "#8b5cf6": ["#8b5cf6", "#a78bfa", "#c084fc", "#ddd6fe", "#6366f1"], // gravity
-  "#facc15": ["#facc15", "#fde047", "#fbbf24", "#f97316", "#fff"],    // zipper
-};
-
-function getConfettiColors(baseColor) {
-  return CONFETTI_PALETTES[baseColor] || [baseColor, "#fff", "#fbbf24", "#f87171", "#60a5fa"];
-}
-
-const PARTICLE_SHAPES = ["circle", "square", "star", "triangle"];
-
-function spawnParticles(arr, x, y, color, count = 8) {
-  const colors = getConfettiColors(color);
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
-    const speed = 2.5 + Math.random() * 5;
-    arr.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - Math.random() * 2, // slight upward bias
-      life: 1,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: 3 + Math.random() * 5,
-      shape: PARTICLE_SHAPES[Math.floor(Math.random() * PARTICLE_SHAPES.length)],
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.3,
-    });
-  }
-  // Add a shockwave ring for big bursts (8+ particles)
-  if (count >= 8) {
-    arr.push({
-      x, y, vx: 0, vy: 0,
-      life: 1,
-      color,
-      size: 4,
-      shape: "ring",
-      rotation: 0,
-      rotationSpeed: 0,
-      ringGrowth: 1.8 + count * 0.1,
-    });
-  }
-}
-
-function drawParticle(ctx, p) {
-  ctx.save();
-  ctx.globalAlpha = p.life;
-  ctx.translate(p.x, p.y);
-
-  if (p.shape === "ring") {
-    // Expanding shockwave ring
-    const radius = p.size + (1 - p.life) * 40 * (p.ringGrowth || 1.5);
-    ctx.strokeStyle = p.color;
-    ctx.lineWidth = Math.max(2 * p.life, 0.5);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-
-  ctx.rotate(p.rotation);
-  ctx.fillStyle = p.color;
-
-  if (p.shape === "circle") {
-    ctx.beginPath();
-    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (p.shape === "square") {
-    const half = p.size;
-    ctx.fillRect(-half, -half, half * 2, half * 1.2);
-  } else if (p.shape === "star") {
-    const r = p.size;
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
-      const ax = Math.cos(a) * r, ay = Math.sin(a) * r;
-      const ia = a + Math.PI / 5;
-      const ix = Math.cos(ia) * r * 0.4, iy = Math.sin(ia) * r * 0.4;
-      if (i === 0) ctx.moveTo(ax, ay);
-      else ctx.lineTo(ax, ay);
-      ctx.lineTo(ix, iy);
-    }
-    ctx.closePath();
-    ctx.fill();
-  } else if (p.shape === "triangle") {
-    const r = p.size;
-    ctx.beginPath();
-    ctx.moveTo(0, -r);
-    ctx.lineTo(-r * 0.866, r * 0.5);
-    ctx.lineTo(r * 0.866, r * 0.5);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
 }
 
 function drawBalloon(ctx, b, frozen) {
@@ -690,8 +586,8 @@ export default function DartPopBlitzCanvas({
     } else if (pw === "freeze") {
       sounds.playStreakChime();
       s.freezeTimer = FREEZE_DURATION;
-      // Visual feedback: icy particles at launcher
-      spawnParticles(s.particles, LAUNCHER_POS.x, LAUNCHER_POS.y - 30, "#38bdf8", 16);
+      // Visual feedback: icy shards burst at launcher
+      spawnIcyShardParticles(s.particles, LAUNCHER_POS.x, LAUNCHER_POS.y - 30);
       s.comboFloats.push({ x: GAME_WIDTH / 2, y: GAME_HEIGHT / 3, text: "❄️ FREEZE!", life: 1, scale: 1.2 });
       // Don't fire a dart — just activate the effect
       if (!s.endless) { s.dartsRemaining++; onDartsRemainingChange(s.dartsRemaining); } // refund the dart
@@ -924,7 +820,7 @@ export default function DartPopBlitzCanvas({
               s.score += b.points * s.comboMultiplier;
               s.totalPopped++;
               poppedByGravity++;
-              spawnParticles(s.particles, b.x, b.y, b.color, 8);
+              spawnBalloonPopParticles(s.particles, b, false);
             }
           }
           if (poppedByGravity > 0) {
@@ -1167,11 +1063,11 @@ export default function DartPopBlitzCanvas({
             poppedThisFrame.push(bi);
             needsCollapse = true;
             cb.sounds.playPop();
-            spawnParticles(s.particles, b.x, b.y, b.color, 8);
+            spawnBalloonPopParticles(s.particles, b, frozen);
 
             if (b.type === "bomb") {
               cb.sounds.playExplosion();
-              spawnParticles(s.particles, b.x, b.y, "#f97316", 14);
+              spawnBombParticles(s.particles, b.x, b.y);
               // Screen shake on bomb!
               s.shakeIntensity = SHAKE_INTENSITY * 1.5;
               const explR = BALLOON_TYPES.bomb.explodeRadius;
@@ -1182,7 +1078,7 @@ export default function DartPopBlitzCanvas({
                   ob.alive = false;
                   scoreAdd += ob.points; popsThisFrame++; poppedAdd++;
                   poppedThisFrame.push(obi);
-                  spawnParticles(s.particles, ob.x, ob.y, ob.color, 5);
+                  spawnBalloonPopParticles(s.particles, ob, frozen);
                 }
               }
             }
@@ -1223,18 +1119,7 @@ export default function DartPopBlitzCanvas({
       else if (missThisFrame) newStreak = 0;
 
       // Particles
-      for (const p of s.particles) {
-        p.x += p.vx * ts;
-        p.y += p.vy * ts;
-        if (p.shape !== "ring") {
-          p.vy += 0.15 * ts; // gravity
-          p.vx *= 0.99;      // air drag
-        }
-        p.rotation += (p.rotationSpeed || 0) * ts;
-        p.life -= 0.025;
-        if (p.shape !== "ring") p.size *= 0.975;
-      }
-      for (let i = s.particles.length - 1; i >= 0; i--) { if (s.particles[i].life <= 0) s.particles.splice(i, 1); }
+      updateParticles(s.particles, ts);
       for (let i = s.darts.length - 1; i >= 0; i--) { if (!s.darts[i].alive) s.darts.splice(i, 1); }
 
       // Combo — screen shake on big combos
