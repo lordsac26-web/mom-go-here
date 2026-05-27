@@ -27,8 +27,8 @@ export const POWERUPS = {
 export const FREEZE_DURATION = 180; // frames (~3s at 60fps)
 
 // Gravity bomb pull radius and delay
-export const GRAVITY_BOMB_RADIUS = 80;
-export const GRAVITY_BOMB_PULL_FRAMES = 60; // pull for 1s then explode
+export const GRAVITY_BOMB_RADIUS = 110;      // wider pull field
+export const GRAVITY_BOMB_PULL_FRAMES = 75;  // slightly longer pull (1.25s)
 
 export const STREAK_FOR_POWERUP = 3;
 
@@ -66,7 +66,7 @@ export const DART_PRESETS = [
 
 // Physics
 export const DART_SPEED = 14;
-export const GRAVITY = 0.12;
+export const GRAVITY = 0.10;  // slightly lower gravity so darts reach balloons more reliably
 export const SNIPER_PIERCE = 5;
 
 // Ricochet — darts bounce off side walls and top wall

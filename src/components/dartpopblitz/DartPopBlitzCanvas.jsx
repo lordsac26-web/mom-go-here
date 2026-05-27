@@ -264,7 +264,46 @@ function drawBalloon(ctx, b, frozen) {
 function drawDart(ctx, d) {
   ctx.save();
   ctx.translate(d.x, d.y);
-  ctx.rotate(Math.atan2(d.vy, d.vx));
+  const angle = Math.atan2(d.vy, d.vx);
+  ctx.rotate(angle);
+
+  // Special glow trail for MIRV and gravity darts
+  if (d.type === "mirv") {
+    ctx.shadowColor = "#f97316";
+    ctx.shadowBlur = 14;
+    // Thruster flame trail
+    ctx.fillStyle = "rgba(251,146,60,0.6)";
+    ctx.beginPath();
+    ctx.ellipse(-14, 0, 10, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(239,68,68,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(-22, 0, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (d.type === "gravity") {
+    ctx.shadowColor = "#8b5cf6";
+    ctx.shadowBlur = 16;
+    // Purple vortex trail
+    ctx.fillStyle = "rgba(139,92,246,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(-14, 0, 10, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(99,102,241,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(-24, 0, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (d.type === "mini") {
+    ctx.shadowColor = "#fb923c";
+    ctx.shadowBlur = 6;
+  } else if (d.type === "sniper") {
+    ctx.shadowColor = "#a855f7";
+    ctx.shadowBlur = 10;
+  }
+
+  // Scale mini-darts slightly smaller
+  const sc = d.type === "mini" ? 0.7 : 1;
+  ctx.scale(sc, sc);
+
   ctx.fillStyle = d.color || "#94a3b8";
   ctx.beginPath();
   ctx.moveTo(12, 0); ctx.lineTo(-5, -3); ctx.lineTo(-3, 0); ctx.lineTo(-5, 3);
@@ -275,6 +314,8 @@ function drawDart(ctx, d) {
   ctx.fillStyle = d.finColor || "#ef4444";
   ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(-10, -6); ctx.lineTo(-7, -1); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-5, 3); ctx.lineTo(-10, 6); ctx.lineTo(-7, 1); ctx.closePath(); ctx.fill();
+
+  ctx.shadowBlur = 0;
   ctx.restore();
 }
 
@@ -832,31 +873,39 @@ export default function DartPopBlitzCanvas({
       for (let gi = s.gravityBombs.length - 1; gi >= 0; gi--) {
         const gb = s.gravityBombs[gi];
         gb.timer--;
-        // Pull nearby balloons toward center
+        // Pull nearby balloons toward center with increasing strength as timer counts down
+        const pullProgress = 1 - gb.timer / GRAVITY_BOMB_PULL_FRAMES; // 0→1 as time expires
+        const pullStrength = 2.5 + pullProgress * 4.5; // accelerates from 2.5 to 7
         for (const b of s.balloons) {
           if (!b.alive) continue;
           const dx = gb.x - b.x, dy = gb.y - b.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < GRAVITY_BOMB_RADIUS && dist > 2) {
-            b.x += (dx / dist) * 2 * ts;
-            b.y += (dy / dist) * 2 * ts;
+          if (dist < GRAVITY_BOMB_RADIUS && dist > 4) {
+            const force = pullStrength * ts * (1 - dist / GRAVITY_BOMB_RADIUS); // stronger near center
+            b.x += (dx / dist) * force;
+            b.y += (dy / dist) * force;
             b.targetX = b.x;
           }
         }
         // Explode after pull phase
         if (gb.timer <= 0) {
           cb.sounds.playExplosion();
-          spawnParticles(s.particles, gb.x, gb.y, "#8b5cf6", 18);
-          s.shakeIntensity = SHAKE_INTENSITY * 2;
+          spawnParticles(s.particles, gb.x, gb.y, "#8b5cf6", 24);
+          s.shakeIntensity = SHAKE_INTENSITY * 2.5;
+          let poppedByGravity = 0;
           for (const b of s.balloons) {
             if (!b.alive) continue;
             const dist = Math.sqrt((b.x - gb.x) ** 2 + (b.y - gb.y) ** 2);
             if (dist < GRAVITY_BOMB_RADIUS) {
               b.alive = false;
-              s.score += b.points;
+              s.score += b.points * s.comboMultiplier;
               s.totalPopped++;
-              spawnParticles(s.particles, b.x, b.y, b.color, 6);
+              poppedByGravity++;
+              spawnParticles(s.particles, b.x, b.y, b.color, 8);
             }
+          }
+          if (poppedByGravity > 0) {
+            s.comboFloats.push({ x: gb.x, y: gb.y - 20, text: `💫 ${poppedByGravity} POPPED!`, life: 1.2, scale: 1.1 });
           }
           cb.onScoreChange(s.score);
           cb.onTotalPoppedChange(s.totalPopped);
@@ -923,13 +972,29 @@ export default function DartPopBlitzCanvas({
         // Wind affects all darts
         d.vx += s.wind * ts;
 
-        // Gravity bomb dart — triggers when it reaches mid-screen
-        if (d.type === "gravity" && !d.gravTriggered && d.y < GAME_HEIGHT * 0.5) {
-          d.gravTriggered = true; d.alive = false;
-          spawnParticles(s.particles, d.x, d.y, "#8b5cf6", 10);
-          s.gravityBombs.push({ x: d.x, y: d.y, timer: GRAVITY_BOMB_PULL_FRAMES });
-          s.comboFloats.push({ x: d.x, y: d.y, text: "🌀 GRAVITY!", life: 1, scale: 1 });
-          continue;
+        // Gravity bomb dart — triggers when it's NEAR a balloon cluster (proximity-based)
+        // Falls back to altitude trigger only if no balloons found above
+        if (d.type === "gravity" && !d.gravTriggered) {
+          const aliveBalloons = s.balloons.filter(b => b.alive);
+          // Check if any balloon is within trigger radius
+          const triggerRadius = GRAVITY_BOMB_RADIUS * 1.2;
+          const nearbyBalloon = aliveBalloons.find(b => {
+            const dx = d.x - b.x, dy = d.y - b.y;
+            return Math.sqrt(dx * dx + dy * dy) < triggerRadius;
+          });
+          // Also trigger if dart has passed through most balloon area (altitude fallback)
+          const altitudeTrigger = aliveBalloons.length > 0
+            ? d.y < aliveBalloons.reduce((minY, b) => Math.min(minY, b.y), Infinity) + 20
+            : d.y < GAME_HEIGHT * 0.35;
+
+          if (nearbyBalloon || altitudeTrigger) {
+            d.gravTriggered = true; d.alive = false;
+            spawnParticles(s.particles, d.x, d.y, "#8b5cf6", 14);
+            s.gravityBombs.push({ x: d.x, y: d.y, timer: GRAVITY_BOMB_PULL_FRAMES });
+            s.comboFloats.push({ x: d.x, y: d.y, text: "🌀 GRAVITY!", life: 1, scale: 1.1 });
+            cb.sounds.playExplosion();
+            continue;
+          }
         }
 
         // Magnet balloon deflection — alive magnet balloons push darts sideways
@@ -945,41 +1010,69 @@ export default function DartPopBlitzCanvas({
           }
         }
 
-        // MIRV
-        if (d.type === "mirv" && !d.mirvTriggered && d.y < GAME_HEIGHT * 0.5) {
-          d.mirvTriggered = true; d.alive = false;
-          cb.sounds.playExplosion();
-          spawnParticles(s.particles, d.x, d.y, "#f97316", 12);
-          const mx = d.x, my = d.y;
-          setTimeout(() => {
+        // MIRV — triggers when near a balloon OR when it has passed into balloon cluster area
+        if (d.type === "mirv" && !d.mirvTriggered) {
+          const aliveBalloons = s.balloons.filter(b => b.alive);
+          // Proximity trigger: any balloon within 70px
+          const nearbyBalloon = aliveBalloons.find(b => {
+            const dx = d.x - b.x, dy = d.y - b.y;
+            return Math.sqrt(dx * dx + dy * dy) < 70;
+          });
+          // Altitude fallback: dart has reached the topmost balloon row
+          const minBalloonY = aliveBalloons.length > 0
+            ? aliveBalloons.reduce((minY, b) => Math.min(minY, b.y), Infinity)
+            : GAME_HEIGHT * 0.3;
+          const altitudeTrigger = d.y <= minBalloonY + 40;
+
+          if (nearbyBalloon || altitudeTrigger) {
+            d.mirvTriggered = true; d.alive = false;
+            cb.sounds.playExplosion();
+            spawnParticles(s.particles, d.x, d.y, "#f97316", 16);
+            s.comboFloats.push({ x: d.x, y: d.y - 10, text: "💥 MIRV!", life: 1, scale: 1.1 });
+            s.shakeIntensity = SHAKE_INTENSITY;
+            const mx = d.x, my = d.y;
+            // Spawn 6 mini-darts in a fan pattern aimed at balloon cluster center
+            // Find center of alive balloons to aim toward
+            const clusterCX = aliveBalloons.length > 0
+              ? aliveBalloons.reduce((sum, b) => sum + b.x, 0) / aliveBalloons.length
+              : mx;
+            const clusterCY = aliveBalloons.length > 0
+              ? aliveBalloons.reduce((sum, b) => sum + b.y, 0) / aliveBalloons.length
+              : my - 80;
+            const baseAngle = Math.atan2(clusterCY - my, clusterCX - mx);
             for (let i = 0; i < 6; i++) {
-              const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-              s.darts.push({ x: mx, y: my, vx: Math.cos(angle) * DART_SPEED * 0.7, vy: Math.sin(angle) * DART_SPEED * 0.7, type: "mini", color: "#fb923c", finColor: "#ea580c", pierce: 0, alive: true, bounces: 0 });
+              // Fan spread: -60° to +60° around cluster center direction
+              const spread = (i / 5 - 0.5) * (Math.PI * 0.7);
+              const angle = baseAngle + spread;
+              const speed = DART_SPEED * 0.85;
+              s.darts.push({
+                x: mx, y: my,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                type: "mini", color: "#fb923c", finColor: "#ea580c",
+                pierce: 0, alive: true, bounces: 1,
+              });
             }
-          }, 0);
-          continue;
+            continue;
+          }
         }
 
-        // ── Wall ricochet ──
-        if (d.type !== "mini") {
-          // Left wall
-          if (d.x <= 6 && d.vx < 0 && (d.bounces || 0) < MAX_RICOCHETS) {
-            d.x = 6; d.vx = Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
-            cb.sounds.playRicochet();
-            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
-          }
-          // Right wall
-          if (d.x >= GAME_WIDTH - 6 && d.vx > 0 && (d.bounces || 0) < MAX_RICOCHETS) {
-            d.x = GAME_WIDTH - 6; d.vx = -Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
-            cb.sounds.playRicochet();
-            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
-          }
-          // Top wall
-          if (d.y <= 6 && d.vy < 0 && (d.bounces || 0) < MAX_RICOCHETS) {
-            d.y = 6; d.vy = Math.abs(d.vy) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
-            cb.sounds.playRicochet();
-            spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3);
-          }
+        // ── Wall ricochet — all dart types including mini ──
+        const maxBounces = d.type === "mini" ? 1 : MAX_RICOCHETS;
+        // Left wall
+        if (d.x <= 6 && d.vx < 0 && (d.bounces || 0) < maxBounces) {
+          d.x = 6; d.vx = Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+          if (d.type !== "mini") { cb.sounds.playRicochet(); spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3); }
+        }
+        // Right wall
+        if (d.x >= GAME_WIDTH - 6 && d.vx > 0 && (d.bounces || 0) < maxBounces) {
+          d.x = GAME_WIDTH - 6; d.vx = -Math.abs(d.vx) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+          if (d.type !== "mini") { cb.sounds.playRicochet(); spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3); }
+        }
+        // Top wall
+        if (d.y <= 6 && d.vy < 0 && (d.bounces || 0) < maxBounces) {
+          d.y = 6; d.vy = Math.abs(d.vy) * RICOCHET_DAMPING; d.bounces = (d.bounces || 0) + 1;
+          if (d.type !== "mini") { cb.sounds.playRicochet(); spawnParticles(s.particles, d.x, d.y, "#94a3b8", 3); }
         }
 
         // Off-screen (only bottom and far out of bounds after bounces exhausted)
@@ -1114,18 +1207,21 @@ export default function DartPopBlitzCanvas({
       const multipliedScore = scoreAdd * s.comboMultiplier;
       s.score += multipliedScore;
       s.totalPopped += poppedAdd;
-      s.streak = newStreak;
+      // (s.streak already updated in streak award block above)
 
       if (multipliedScore > 0) cb.onScoreChange(s.score);
       if (poppedAdd > 0) cb.onTotalPoppedChange(s.totalPopped);
-      if (newStreak !== s.streak) cb.onStreakChange(s.streak);
 
+      // Award powerup on streak milestone BEFORE updating s.streak so comparison is valid
       if (newStreak > 0 && newStreak % STREAK_FOR_POWERUP === 0 && newStreak !== s.streak) {
         cb.sounds.playStreakChime();
         const keys = Object.keys(POWERUPS);
         const reward = keys[Math.floor(Math.random() * keys.length)];
         cb.setPowerupInventory(prev => ({ ...prev, [reward]: (prev[reward] || 0) + 1 }));
+        s.comboFloats.push({ x: GAME_WIDTH / 2, y: GAME_HEIGHT / 3, text: `🔥 ${POWERUPS[reward].emoji} EARNED!`, life: 1.2, scale: 1.2 });
       }
+      if (newStreak !== s.streak) cb.onStreakChange(newStreak);
+      s.streak = newStreak;
 
       // Win / lose
       if (!s.ended && !s.endless) {
@@ -1232,25 +1328,57 @@ export default function DartPopBlitzCanvas({
         ctx.fillText(`❄️ FROZEN ${Math.ceil(s.freezeTimer / 60)}s`, GAME_WIDTH / 2, 28);
       }
 
-      // Gravity bomb vortex visuals
+      // Gravity bomb vortex visuals — animated contracting rings + rotating spiral
       for (const gb of (s.gravityBombs || [])) {
-        const progress = 1 - gb.timer / GRAVITY_BOMB_PULL_FRAMES;
+        const progress = 1 - gb.timer / GRAVITY_BOMB_PULL_FRAMES; // 0→1
+        const t = Date.now() * 0.003;
         ctx.save();
         ctx.translate(gb.x, gb.y);
-        ctx.globalAlpha = 0.4 + progress * 0.3;
+
+        // Outer field boundary ring (shows pull radius clearly)
+        ctx.globalAlpha = 0.25 + progress * 0.2;
         ctx.strokeStyle = "#8b5cf6";
-        ctx.lineWidth = 2;
-        for (let ri = 0; ri < 3; ri++) {
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(0, 0, GRAVITY_BOMB_RADIUS, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Contracting concentric rings (shrink toward center as timer counts down)
+        for (let ri = 0; ri < 4; ri++) {
+          const ringPhase = ((t + ri * 0.5) % 1); // 0→1 cycling
+          const rad = GRAVITY_BOMB_RADIUS * (1 - ringPhase) * (1 - progress * 0.3);
+          if (rad < 4) continue;
+          ctx.globalAlpha = (1 - ringPhase) * (0.5 + progress * 0.3);
+          ctx.strokeStyle = ri % 2 === 0 ? "#8b5cf6" : "#6366f1";
+          ctx.lineWidth = 2 - ringPhase;
           ctx.beginPath();
-          const rad = GRAVITY_BOMB_RADIUS * (1 - progress * 0.5) * (0.3 + ri * 0.3);
           ctx.arc(0, 0, rad, 0, Math.PI * 2);
           ctx.stroke();
         }
+
+        // Spinning spiral arms
+        ctx.globalAlpha = 0.6 + progress * 0.3;
+        for (let arm = 0; arm < 3; arm++) {
+          const armAngle = t * 4 + (arm * Math.PI * 2) / 3;
+          const len = GRAVITY_BOMB_RADIUS * (0.4 + progress * 0.25);
+          ctx.strokeStyle = "#a78bfa";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(armAngle) * len, Math.sin(armAngle) * len);
+          ctx.stroke();
+        }
+
         ctx.globalAlpha = 1;
-        ctx.font = "24px sans-serif";
+        ctx.shadowColor = "#8b5cf6";
+        ctx.shadowBlur = 10 + progress * 10;
+        ctx.font = `${20 + progress * 6}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("🌀", 0, 0);
+        ctx.shadowBlur = 0;
         ctx.restore();
       }
 
