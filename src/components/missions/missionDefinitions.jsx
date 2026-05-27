@@ -32,7 +32,6 @@ const MISSION_POOL = [
 
   // ── Specific Games ──
   { id: "play_memory",   title: "Memory Lane",         description: "Play a Memory game",             emoji: "🧠", target: 1, xp_reward: 30,  type: "play_specific", game: "Memory Game" },
-  { id: "play_ttt",      title: "X Marks the Spot",    description: "Play Tic-Tac-Toe",               emoji: "❌", target: 1, xp_reward: 30,  type: "play_specific", game: "TicTacToe" },
   { id: "play_yahtzee",  title: "Roll the Dice",       description: "Play Yahtzee",                   emoji: "🎲", target: 1, xp_reward: 30,  type: "play_specific", game: "Yahtzee" },
   { id: "play_wordsearch", title: "Word Hunter",       description: "Play Word Search",               emoji: "🔍", target: 1, xp_reward: 30,  type: "play_specific", game: "Word Search" },
   { id: "play_sudoku",   title: "Number Cruncher",     description: "Play Sudoku",                    emoji: "🔢", target: 1, xp_reward: 30,  type: "play_specific", game: "Sudoku" },
@@ -47,7 +46,6 @@ const MISSION_POOL = [
   // ── Win Specific Games ──
   { id: "win_checkers",  title: "Checker Champion",    description: "Win a Checkers game",            emoji: "♟️", target: 1, xp_reward: 50,  type: "win_specific", game: "Checkers" },
   { id: "win_memory",    title: "Memory Master",       description: "Win a Memory game",              emoji: "🧠", target: 1, xp_reward: 50,  type: "win_specific", game: "Memory Game" },
-  { id: "win_ttt",       title: "Tic-Tac-Toe Pro",     description: "Win a Tic-Tac-Toe game",         emoji: "❌", target: 1, xp_reward: 50,  type: "win_specific", game: "TicTacToe" },
   { id: "win_solitaire", title: "Solitaire Star",      description: "Win a Solitaire game",           emoji: "🃏", target: 1, xp_reward: 50,  type: "win_specific", game: "Solitaire" },
   { id: "win_sudoku",    title: "Sudoku Solver",       description: "Win a Sudoku game",              emoji: "🔢", target: 1, xp_reward: 50,  type: "win_specific", game: "Sudoku" },
   { id: "win_wordsearch",title: "Word Wizard",         description: "Win a Word Search game",         emoji: "🔍", target: 1, xp_reward: 50,  type: "win_specific", game: "Word Search" },

@@ -19,7 +19,6 @@ const ALL_GAMES = [
   { name: "Memory Match",  emoji: "🧠", path: "/games/memory" },
   { name: "Mahjong",       emoji: "🀄", path: "/games/mahjong" },
   { name: "Solitaire",     emoji: "♠️", path: "/games/solitaire" },
-  { name: "Tic Tac Toe",   emoji: "❌", path: "/games/tictactoe" },
   { name: "Word Search",   emoji: "🔤", path: "/games/wordsearch" },
   { name: "Sudoku",        emoji: "🔢", path: "/games/sudoku" },
   { name: "Checkers",      emoji: "⬛", path: "/games/checkers" },
