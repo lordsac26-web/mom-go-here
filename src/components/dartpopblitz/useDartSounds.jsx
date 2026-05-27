@@ -102,6 +102,55 @@ export default function useDartSounds() {
     playChirp({ pitch: 2500, volume: 0.06 * v, delay: 0.03 });
   }, [muteAll]);
 
+  // ── Zipper launch: electric buzzing zap ──
+  const playZipper = useCallback(() => {
+    if (muteAll) return;
+    const v = sfxVol();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+
+    // Buzzing square-wave oscillator (rapidly modulated pitch = "bzzt" effect)
+    const osc = ctx.createOscillator();
+    const oscGain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.linearRampToValueAtTime(320, now + 0.06);
+    osc.frequency.linearRampToValueAtTime(140, now + 0.18);
+    osc.frequency.linearRampToValueAtTime(280, now + 0.28);
+    oscGain.gain.setValueAtTime(0.18 * v, now);
+    oscGain.gain.linearRampToValueAtTime(0, now + 0.32);
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.32);
+
+    // High crackle layer — white noise through bandpass filter
+    const bufSize = ctx.sampleRate * 0.25;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = "bandpass";
+    bpf.frequency.setValueAtTime(3200, now);
+    bpf.frequency.linearRampToValueAtTime(1800, now + 0.25);
+    bpf.Q.value = 2.5;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.12 * v, now);
+    noiseGain.gain.linearRampToValueAtTime(0, now + 0.25);
+    noise.connect(bpf);
+    bpf.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(now);
+
+    // Short rising chirp for the "launch" feel
+    playChirp({ pitch: 900, volume: 0.09 * v, delay: 0.01 });
+    playChirp({ pitch: 1600, volume: 0.07 * v, delay: 0.06 });
+
+    setTimeout(() => ctx.close(), 500);
+  }, [muteAll]);
+
   // ── Win: full cartoon celebration ──
   const playWin = useCallback(() => {
     if (muteAll) return;
@@ -110,5 +159,5 @@ export default function useDartSounds() {
     playRichTone({ frequency: 262, duration: 0.8, volume: 0.06 * v, type: "sine", harmonic: 2 });
   }, [muteAll]);
 
-  return { playShoot, playPop, playExplosion, playSniper, playMultishot, playStreakChime, playMiss, playWin, playRicochet };
+  return { playShoot, playPop, playExplosion, playSniper, playMultishot, playStreakChime, playMiss, playWin, playRicochet, playZipper };
 }

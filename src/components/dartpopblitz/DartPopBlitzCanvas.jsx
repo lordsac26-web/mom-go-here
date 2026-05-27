@@ -699,7 +699,7 @@ export default function DartPopBlitzCanvas({
       sounds.playExplosion();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "gravity", color: "#8b5cf6", finColor: "#6366f1", pierce: 0, alive: true, bounces: 0, gravTriggered: false });
     } else if (pw === "zipper") {
-      sounds.playRicochet();
+      sounds.playZipper();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "zipper", color: "#facc15", finColor: "#ca8a04", pierce: 0, alive: true, bounces: 0, zipBounces: 0 });
     } else {
       sounds.playShoot();
