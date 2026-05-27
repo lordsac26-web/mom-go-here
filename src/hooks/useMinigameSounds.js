@@ -143,8 +143,8 @@ export function useMinigameSounds() {
         const c = getCtx(); if (!c) return;
         const cn = c.currentTime;
         const pitch = 900 + Math.random() * 600;
-        const o = ctx.createOscillator();
-        const og = ctx.createGain();
+        const o = c.createOscillator();
+        const og = c.createGain();
         o.type = "triangle"; o.frequency.value = pitch;
         og.gain.setValueAtTime(0.1 * v, cn);
         og.gain.exponentialRampToValueAtTime(0.001, cn + 0.15);
