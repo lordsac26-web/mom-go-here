@@ -21,7 +21,12 @@ export const POWERUPS = {
   sniper:    { emoji: "🎯", label: "Sniper", desc: "Pierces through 5 balloons!" },
   freeze:    { emoji: "❄️", label: "Freeze", desc: "Freezes all balloons for 3 sec!" },
   gravity:   { emoji: "🌀", label: "Gravity Bomb", desc: "Pulls balloons together then pops!" },
+  zipper:    { emoji: "⚡", label: "The Zipper", desc: "Bounces off everything — speeds up on every hit!" },
 };
+
+// Zipper dart config
+export const ZIPPER_MAX_BOUNCES = 4;       // total wall+floor bounces before depletion
+export const ZIPPER_SPEED_BOOST = 1.35;   // speed multiplier on each balloon hit
 
 // Freeze power-up duration
 export const FREEZE_DURATION = 180; // frames (~3s at 60fps)

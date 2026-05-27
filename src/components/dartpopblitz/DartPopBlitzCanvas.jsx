@@ -11,6 +11,7 @@ import {
   SHAKE_INTENSITY, SHAKE_DECAY,
   SLOW_MO_DURATION, SLOW_MO_FACTOR,
   FREEZE_DURATION, GRAVITY_BOMB_RADIUS, GRAVITY_BOMB_PULL_FRAMES,
+  ZIPPER_MAX_BOUNCES, ZIPPER_SPEED_BOOST,
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
@@ -93,6 +94,7 @@ const CONFETTI_PALETTES = {
   "#ec4899": ["#ec4899", "#f472b6", "#fb7185", "#fda4af", "#fbbf24"], // magnet
   "#38bdf8": ["#38bdf8", "#7dd3fc", "#bae6fd", "#e0f2fe", "#fff"],    // freeze
   "#8b5cf6": ["#8b5cf6", "#a78bfa", "#c084fc", "#ddd6fe", "#6366f1"], // gravity
+  "#facc15": ["#facc15", "#fde047", "#fbbf24", "#f97316", "#fff"],    // zipper
 };
 
 function getConfettiColors(baseColor) {
@@ -298,6 +300,24 @@ function drawDart(ctx, d) {
   } else if (d.type === "sniper") {
     ctx.shadowColor = "#a855f7";
     ctx.shadowBlur = 10;
+  } else if (d.type === "zipper") {
+    ctx.shadowColor = "#facc15";
+    ctx.shadowBlur = 18;
+    // Electric yellow streak trail
+    ctx.fillStyle = "rgba(250,204,21,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(-16, 0, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(250,204,21,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(-28, 0, 9, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Zigzag spark lines behind dart
+    ctx.strokeStyle = "rgba(253,224,71,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0); ctx.lineTo(-14, -4); ctx.lineTo(-18, 2); ctx.lineTo(-22, -3);
+    ctx.stroke();
   }
 
   // Scale mini-darts slightly smaller
@@ -464,13 +484,13 @@ function drawWindIndicator(ctx, wind) {
 const LAUNCHER_POS = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 68 };
 
 // ── Power-up slots in the dirt area ──
-const POWERUP_KEYS_ORDER = ["multishot", "mirv", "sniper", "freeze", "gravity"];
-const SLOT_SIZE = 30;
-const SLOT_GAP = 6;
+const POWERUP_KEYS_ORDER = ["multishot", "mirv", "sniper", "freeze", "gravity", "zipper"];
+const SLOT_SIZE = 28;
+const SLOT_GAP = 5;
 const SLOT_TOTAL_W = POWERUP_KEYS_ORDER.length * SLOT_SIZE + (POWERUP_KEYS_ORDER.length - 1) * SLOT_GAP;
 const SLOT_START_X = (GAME_WIDTH - SLOT_TOTAL_W) / 2;
 const SLOT_Y = GAME_HEIGHT - 36;
-const SLOT_COLORS = { multishot: "#22d3ee", mirv: "#f97316", sniper: "#a855f7", freeze: "#38bdf8", gravity: "#8b5cf6" };
+const SLOT_COLORS = { multishot: "#22d3ee", mirv: "#f97316", sniper: "#a855f7", freeze: "#38bdf8", gravity: "#8b5cf6", zipper: "#facc15" };
 
 function getSlotRects() {
   return POWERUP_KEYS_ORDER.map((key, i) => ({
@@ -678,6 +698,9 @@ export default function DartPopBlitzCanvas({
     } else if (pw === "gravity") {
       sounds.playExplosion();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "gravity", color: "#8b5cf6", finColor: "#6366f1", pierce: 0, alive: true, bounces: 0, gravTriggered: false });
+    } else if (pw === "zipper") {
+      sounds.playRicochet();
+      s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "zipper", color: "#facc15", finColor: "#ca8a04", pierce: 0, alive: true, bounces: 0, zipBounces: 0 });
     } else {
       sounds.playShoot();
       s.darts.push({ x: LAUNCHER_POS.x, y: LAUNCHER_POS.y, vx, vy, type: "normal", color: "#94a3b8", finColor: "#ef4444", pierce: 0, alive: true, bounces: 0 });
@@ -1053,6 +1076,25 @@ export default function DartPopBlitzCanvas({
           }
         }
 
+        // ── Zipper: bounces off ALL 4 walls including floor, depletes after ZIPPER_MAX_BOUNCES ──
+        if (d.type === "zipper") {
+          let zipBounced = false;
+          if (d.x <= 6 && d.vx < 0)              { d.x = 6;              d.vx = Math.abs(d.vx);  zipBounced = true; }
+          if (d.x >= GAME_WIDTH - 6 && d.vx > 0) { d.x = GAME_WIDTH - 6; d.vx = -Math.abs(d.vx); zipBounced = true; }
+          if (d.y <= 6 && d.vy < 0)              { d.y = 6;              d.vy = Math.abs(d.vy);  zipBounced = true; }
+          const FLOOR_Y = GAME_HEIGHT - 90;
+          if (d.y >= FLOOR_Y && d.vy > 0)        { d.y = FLOOR_Y;        d.vy = -Math.abs(d.vy); zipBounced = true; }
+          if (zipBounced) {
+            d.zipBounces = (d.zipBounces || 0) + 1;
+            cb.sounds.playRicochet();
+            spawnParticles(s.particles, d.x, d.y, "#facc15", 4);
+            if (d.zipBounces >= ZIPPER_MAX_BOUNCES) { d.alive = false; continue; }
+          }
+          // Cancel gravity & wind — zipper flies in a straight line between bounces
+          d.vy -= GRAVITY * ts;
+          d.vx -= s.wind * ts;
+        }
+
         // ── Wall ricochet — all dart types including mini ──
         const maxBounces = d.type === "mini" ? 1 : MAX_RICOCHETS;
         // Left wall
@@ -1157,7 +1199,16 @@ export default function DartPopBlitzCanvas({
             cb.sounds.playPop();
           }
 
-          if (d.pierce > 0) { d.pierce--; } else { d.alive = false; dartKilled = true; break; }
+          // Zipper: speed up and deflect off the balloon's surface normal
+          if (d.type === "zipper") {
+            const nx = (d.x - b.x) / (b.radius + 6);
+            const ny = (d.y - (b.y + Math.sin(b.wobble) * b.wobbleAmp)) / (b.radius + 6);
+            const dot = d.vx * nx + d.vy * ny;
+            d.vx = (d.vx - 2 * dot * nx) * ZIPPER_SPEED_BOOST;
+            d.vy = (d.vy - 2 * dot * ny) * ZIPPER_SPEED_BOOST;
+            spawnParticles(s.particles, b.x, b.y, "#facc15", 5);
+            // Don't deplete on balloon hit — just reflect
+          } else if (d.pierce > 0) { d.pierce--; } else { d.alive = false; dartKilled = true; break; }
         }
         if (dartKilled) missThisFrame = false;
       }
