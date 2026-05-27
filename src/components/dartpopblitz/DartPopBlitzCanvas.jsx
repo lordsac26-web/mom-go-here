@@ -972,22 +972,18 @@ export default function DartPopBlitzCanvas({
         // Wind affects all darts
         d.vx += s.wind * ts;
 
-        // Gravity bomb dart — triggers when it's NEAR a balloon cluster (proximity-based)
-        // Falls back to altitude trigger only if no balloons found above
+        // Gravity bomb dart — triggers ONLY on direct balloon hit
         if (d.type === "gravity" && !d.gravTriggered) {
-          const aliveBalloons = s.balloons.filter(b => b.alive);
-          // Check if any balloon is within trigger radius
-          const triggerRadius = GRAVITY_BOMB_RADIUS * 1.2;
-          const nearbyBalloon = aliveBalloons.find(b => {
-            const dx = d.x - b.x, dy = d.y - b.y;
-            return Math.sqrt(dx * dx + dy * dy) < triggerRadius;
-          });
-          // Also trigger if dart has passed through most balloon area (altitude fallback)
-          const altitudeTrigger = aliveBalloons.length > 0
-            ? d.y < aliveBalloons.reduce((minY, b) => Math.min(minY, b.y), Infinity) + 20
-            : d.y < GAME_HEIGHT * 0.35;
-
-          if (nearbyBalloon || altitudeTrigger) {
+          let gravHit = false;
+          for (const b of s.balloons) {
+            if (!b.alive) continue;
+            const dx = d.x - b.x, dy = d.y - (b.y + Math.sin(b.wobble) * b.wobbleAmp);
+            if (Math.sqrt(dx * dx + dy * dy) < b.radius + 6) {
+              gravHit = true;
+              break;
+            }
+          }
+          if (gravHit) {
             d.gravTriggered = true; d.alive = false;
             spawnParticles(s.particles, d.x, d.y, "#8b5cf6", 14);
             s.gravityBombs.push({ x: d.x, y: d.y, timer: GRAVITY_BOMB_PULL_FRAMES });
