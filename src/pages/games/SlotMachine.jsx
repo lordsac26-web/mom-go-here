@@ -183,6 +183,7 @@ export default function SlotMachine() {
   const { stats, recordSpin, recordWin, recordLoss } = useSlotAchievements(setNewBadge);
   const [jackpotAmount, setJackpotAmount] = useState(0);
   const [jackpotWin, setJackpotWin] = useState(null);
+  const [winTier, setWinTier] = useState("none"); // "none" | "small" | "big" | "mega"
   const spinCountRef = useRef(0);
   const pendingJackpotRef = useRef(0);
 
@@ -310,6 +311,7 @@ export default function SlotMachine() {
     setShowWin(false);
     setWinningLines([]);
     setWinCellMap({});
+    setWinTier("none");
     spinningRef.current = false;
     setSpinning(false);
   }
@@ -369,10 +371,13 @@ export default function SlotMachine() {
             sessionEarnedRef.current += result.totalWin;
 
             if (result.totalWin >= 25000) {
+              setWinTier("mega");
               winVibrate(); bigWinSound(); fireworks(); emojiRain(["💰", "🎰", "💎", "7️⃣"]);
             } else if (result.totalWin >= 5000) {
+              setWinTier("big");
               scoreMilestone(); mediumWinSound(); sideCannons();
             } else {
+              setWinTier("small");
               scoreHit(); smallWinSound(); coinClink(4); spark();
             }
 
@@ -408,6 +413,7 @@ export default function SlotMachine() {
           } else {
             setLastWin(0);
             setWinCellMap({});
+            setWinTier("none");
             spinningRef.current = false;
             setSpinning(false);
             recordLoss();
@@ -549,7 +555,7 @@ export default function SlotMachine() {
       {/* Header — simplified: Lobby, title, menu */}
       <div className={`bg-gradient-to-r ${machine.frameGradient} px-3 py-3 flex items-center justify-between shadow-lg border-b-2 ${machine.borderColor}/50`}>
         <button onClick={handleBackToLobby} className="text-yellow-400 text-lg font-bold">← Lobby</button>
-        <NeonSign text={machine.name.toUpperCase()} spinning={spinning} />
+        <NeonSign text={machine.name.toUpperCase()} spinning={spinning} winning={showWin && totalWin > 0} />
         <div className="flex items-center gap-1.5">
           <GameInstructions
             title={machine.name}
@@ -625,7 +631,7 @@ export default function SlotMachine() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 relative">
         <div className="w-full max-w-md">
-          <CasinoFrame spinning={spinning}>
+          <CasinoFrame spinning={spinning} winning={showWin && totalWin > 0} winTier={winTier}>
             <div className={`bg-gradient-to-b from-gray-800 to-gray-900 border-4 ${machine.borderColor} rounded-2xl p-3 shadow-[0_0_30px_rgba(234,179,8,0.15),inset_0_2px_10px_rgba(0,0,0,0.5)] relative overflow-hidden`}>
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none rounded-2xl z-10" />
               <div className="relative" ref={gridRef}>

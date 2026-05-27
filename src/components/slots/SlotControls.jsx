@@ -94,13 +94,20 @@ export default function SlotControls({
         <button
           onClick={onSpin}
           disabled={spinning}
-          className={`flex-1 h-14 rounded-2xl font-black text-xl uppercase tracking-wider transition-all active:scale-95 shadow-lg ${
+          className={`flex-1 h-14 rounded-2xl font-black text-xl uppercase tracking-wider transition-all shadow-lg relative overflow-hidden ${
             spinning
-              ? "bg-gray-600 text-gray-400"
-              : "bg-gradient-to-r from-red-600 via-red-500 to-orange-500 text-white hover:from-red-500 hover:to-orange-400 shadow-red-600/40"
-          } border-2 ${spinning ? "border-gray-500" : "border-yellow-500/50"}`}
+              ? "bg-gray-600 text-gray-400 border-gray-500"
+              : "bg-gradient-to-b from-red-500 via-red-600 to-red-800 text-white border-yellow-400/70 hover:brightness-110 active:scale-95"
+          } border-2`}
+          style={!spinning ? {
+            boxShadow: "0 4px 0 #7f1d1d, 0 0 20px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+          } : {}}
         >
-          {spinning ? "🎰 ..." : "🎰 SPIN"}
+          {/* Shine overlay */}
+          {!spinning && (
+            <span className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl pointer-events-none" />
+          )}
+          <span className="relative z-10">{spinning ? "⏳ SPINNING..." : "🎰 SPIN"}</span>
         </button>
 
         {/* Auto Spin */}

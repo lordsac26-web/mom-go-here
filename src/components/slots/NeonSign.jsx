@@ -5,7 +5,7 @@ import gsap from "gsap";
  * Animated neon sign for the slot machine header.
  * Flickers on load, then pulses continuously.
  */
-export default function NeonSign({ text = "LUCKY SLOTS", spinning }) {
+export default function NeonSign({ text = "LUCKY SLOTS", spinning, winning = false }) {
   const signRef = useRef(null);
   const flickerDone = useRef(false);
 
@@ -35,10 +35,18 @@ export default function NeonSign({ text = "LUCKY SLOTS", spinning }) {
     });
   }, []);
 
-  // Intensify on spin
+  // React to spin and win states
   useEffect(() => {
     if (!signRef.current) return;
-    if (spinning) {
+    if (winning) {
+      gsap.to(signRef.current, {
+        color: "#fff",
+        textShadow: "0 0 20px rgba(255,255,255,1), 0 0 50px rgba(255,220,0,0.9), 0 0 100px rgba(255,100,0,0.7)",
+        duration: 0.2,
+        yoyo: true,
+        repeat: 6,
+      });
+    } else if (spinning) {
       gsap.to(signRef.current, {
         color: "#fde047",
         textShadow: "0 0 30px rgba(253,224,71,1), 0 0 60px rgba(253,224,71,0.7), 0 0 100px rgba(253,224,71,0.4)",
@@ -51,7 +59,7 @@ export default function NeonSign({ text = "LUCKY SLOTS", spinning }) {
         duration: 0.5,
       });
     }
-  }, [spinning]);
+  }, [spinning, winning]);
 
   return (
     <div

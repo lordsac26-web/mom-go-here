@@ -1,149 +1,208 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 
-const SPIN_INTERVAL = 60;
+const CELL_SIZE = 72; // px per symbol cell
+const VISIBLE = 3;    // visible rows
 
 export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, onStop, winPositions }) {
-  const [displaySymbols, setDisplaySymbols] = useState(finalSymbols || symbols.slice(0, 3));
-  const [isAnimating, setIsAnimating] = useState(false);
-  const intervalRef = useRef(null);
-  const timeoutRef = useRef(null);
-  const cellRefs = useRef([]);
+  const stripRef = useRef(null);
   const containerRef = useRef(null);
+  const glowRefs = useRef([]);
+  const glowTimelines = useRef([]);
   const stoppedRef = useRef(false);
-  const glowTimelinesRef = useRef([]);
+  const spinAnimRef = useRef(null);
+  const spinTimeoutRef = useRef(null);
 
-  // Main spin/stop effect
+  // Display symbols shown in the strip (we keep extra cells for seamless loop)
+  const [displaySyms, setDisplaySyms] = useState(() => finalSymbols || symbols.slice(0, 3));
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  // ── Spin Effect ──
   useEffect(() => {
     if (spinning) {
       stoppedRef.current = false;
-      setIsAnimating(true);
+      setIsSpinning(true);
 
-      // Kill any leftover win glow animations
-      glowTimelinesRef.current.forEach(tl => tl?.kill());
-      glowTimelinesRef.current = [];
+      // Kill old win glows
+      glowTimelines.current.forEach(tl => tl?.kill());
+      glowTimelines.current = [];
 
-      intervalRef.current = setInterval(() => {
-        const randSyms = [];
-        for (let i = 0; i < 3; i++) {
-          randSyms.push(symbols[Math.floor(Math.random() * symbols.length)]);
-        }
-        setDisplaySymbols(randSyms);
-      }, SPIN_INTERVAL);
+      // Build a long strip for scrolling
+      const stripSymbols = [];
+      for (let i = 0; i < 30; i++) {
+        stripSymbols.push(symbols[Math.floor(Math.random() * symbols.length)]);
+      }
+      setDisplaySyms(stripSymbols);
 
-      const stopDelay = 600 + reelIndex * 350;
-      timeoutRef.current = setTimeout(() => {
-        if (stoppedRef.current) return;
-        stoppedRef.current = true;
+      // Wait one frame for DOM to update then animate
+      const frame = requestAnimationFrame(() => {
+        if (!stripRef.current) return;
+        const el = stripRef.current;
+        gsap.killTweensOf(el);
+        gsap.set(el, { y: 0 });
 
-        clearInterval(intervalRef.current);
-        setDisplaySymbols(finalSymbols);
-        setIsAnimating(false);
+        // Spin loop — fast downward scroll
+        const totalH = stripSymbols.length * CELL_SIZE;
+        const loopY = -(totalH - CELL_SIZE * VISIBLE);
 
-        // GSAP bounce-stop
-        if (containerRef.current) {
-          gsap.fromTo(containerRef.current, { y: -12 }, {
-            y: 0, duration: 0.4, ease: "bounce.out",
-          });
-        }
-
-        // Flash each cell on landing
-        cellRefs.current.forEach((cell, i) => {
-          if (cell) {
-            gsap.fromTo(cell, {
-              scale: 1.15, boxShadow: "0 0 20px rgba(234,179,8,0.6)",
-            }, {
-              scale: 1, boxShadow: "0 0 0px rgba(234,179,8,0)",
-              duration: 0.4, delay: i * 0.05, ease: "power2.out",
-            });
-          }
+        spinAnimRef.current = gsap.to(el, {
+          y: loopY,
+          duration: 0.8 + reelIndex * 0.15,
+          ease: "none",
+          onComplete: () => {
+            if (!stoppedRef.current) {
+              // Keep spinning with random new strip
+              if (!stoppedRef.current) triggerStop();
+            }
+          },
         });
-
-        onStop?.(reelIndex);
-      }, stopDelay);
-    } else {
-      stoppedRef.current = true;
-    }
-
-    return () => {
-      clearInterval(intervalRef.current);
-      clearTimeout(timeoutRef.current);
-    };
-  }, [spinning]);
-
-  // Sync final symbols when not spinning
-  useEffect(() => {
-    if (!spinning && finalSymbols) {
-      setDisplaySymbols(finalSymbols);
-    }
-  }, [finalSymbols, spinning]);
-
-  // Win glow animation on winning cells
-  useEffect(() => {
-    // Clean up old glows
-    glowTimelinesRef.current.forEach(tl => tl?.kill());
-    glowTimelinesRef.current = [];
-
-    if (!winPositions || winPositions.length === 0 || spinning) return;
-
-    winPositions.forEach(rowIdx => {
-      const cell = cellRefs.current[rowIdx];
-      if (!cell) return;
-
-      const tl = gsap.timeline({ repeat: -1 });
-      tl.to(cell, {
-        boxShadow: "0 0 24px 6px rgba(250,204,21,0.8), inset 0 0 12px rgba(250,204,21,0.3)",
-        scale: 1.12,
-        duration: 0.4,
-        ease: "sine.inOut",
-      }).to(cell, {
-        boxShadow: "0 0 8px 2px rgba(250,204,21,0.3), inset 0 0 4px rgba(250,204,21,0.1)",
-        scale: 1.0,
-        duration: 0.4,
-        ease: "sine.inOut",
       });
 
-      glowTimelinesRef.current.push(tl);
+      // Set stop delay per reel
+      const stopDelay = 700 + reelIndex * 380;
+      spinTimeoutRef.current = setTimeout(() => {
+        triggerStop();
+      }, stopDelay);
+
+      return () => {
+        cancelAnimationFrame(frame);
+      };
+    } else {
+      stoppedRef.current = true;
+      if (spinAnimRef.current) { spinAnimRef.current.kill(); spinAnimRef.current = null; }
+      if (spinTimeoutRef.current) { clearTimeout(spinTimeoutRef.current); spinTimeoutRef.current = null; }
+    }
+  }, [spinning]);
+
+  function triggerStop() {
+    if (stoppedRef.current) return;
+    stoppedRef.current = true;
+    if (spinAnimRef.current) { spinAnimRef.current.kill(); spinAnimRef.current = null; }
+    if (spinTimeoutRef.current) { clearTimeout(spinTimeoutRef.current); spinTimeoutRef.current = null; }
+
+    // Snap to final symbols
+    setDisplaySyms(finalSymbols);
+    setIsSpinning(false);
+
+    requestAnimationFrame(() => {
+      if (!stripRef.current || !containerRef.current) {
+        onStop?.(reelIndex);
+        return;
+      }
+      gsap.set(stripRef.current, { y: 0 });
+
+      // Elastic bounce-stop — overshoot down then spring up
+      gsap.fromTo(stripRef.current,
+        { y: -18 },
+        {
+          y: 0,
+          duration: 0.45,
+          ease: "elastic.out(1.2, 0.5)",
+          onComplete: () => onStop?.(reelIndex),
+        }
+      );
+
+      // Flash cells on landing
+      glowRefs.current.forEach((cell, i) => {
+        if (!cell) return;
+        gsap.fromTo(cell,
+          { scale: 1.18, filter: "brightness(1.8) saturate(1.4)" },
+          { scale: 1, filter: "brightness(1) saturate(1)", duration: 0.35, delay: i * 0.04, ease: "power2.out" }
+        );
+      });
+    });
+  }
+
+  // Sync final when stopped externally
+  useEffect(() => {
+    if (!spinning && finalSymbols) setDisplaySyms(finalSymbols);
+  }, [finalSymbols, spinning]);
+
+  // Win glow animation
+  useEffect(() => {
+    glowTimelines.current.forEach(tl => tl?.kill());
+    glowTimelines.current = [];
+    if (!winPositions?.length || spinning || isSpinning) return;
+
+    winPositions.forEach(rowIdx => {
+      const cell = glowRefs.current[rowIdx];
+      if (!cell) return;
+      const tl = gsap.timeline({ repeat: -1 });
+      tl.to(cell, {
+        boxShadow: "0 0 28px 8px rgba(250,204,21,0.9), inset 0 0 16px rgba(250,204,21,0.4)",
+        scale: 1.14,
+        filter: "brightness(1.3) saturate(1.6)",
+        duration: 0.38,
+        ease: "sine.inOut",
+      }).to(cell, {
+        boxShadow: "0 0 6px 1px rgba(250,204,21,0.25), inset 0 0 4px rgba(250,204,21,0.1)",
+        scale: 1.0,
+        filter: "brightness(1) saturate(1)",
+        duration: 0.38,
+        ease: "sine.inOut",
+      });
+      glowTimelines.current.push(tl);
     });
 
-    return () => {
-      glowTimelinesRef.current.forEach(tl => tl?.kill());
-      glowTimelinesRef.current = [];
-    };
-  }, [winPositions, spinning]);
+    return () => { glowTimelines.current.forEach(tl => tl?.kill()); glowTimelines.current = []; };
+  }, [winPositions, spinning, isSpinning]);
+
+  const showCells = isSpinning ? displaySyms : (finalSymbols || displaySyms);
+  const visibleCells = isSpinning ? showCells : showCells.slice(0, 3);
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center gap-1 relative">
-      {displaySymbols.map((sym, i) => {
-        const isWinning = winPositions?.includes(i) && !spinning && !isAnimating;
-        return (
-          <div
-            key={`${reelIndex}-${i}`}
-            ref={el => cellRefs.current[i] = el}
-            className={`w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center text-3xl sm:text-4xl rounded-lg border shadow-inner transition-all
-              ${isAnimating
-                ? "bg-gradient-to-b from-gray-700 to-gray-800 border-gray-600"
-                : isWinning
-                ? "bg-gradient-to-b from-yellow-900/60 to-amber-900/40 border-yellow-400"
-                : "bg-gradient-to-b from-gray-800 via-gray-850 to-gray-900 border-yellow-700/40"
-              }`}
-          >
-            <span className={
-              isAnimating
-                ? "blur-[2px] opacity-70"
-                : isWinning
-                ? "drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] scale-110 transition-transform"
-                : "drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]"
-            }>
-              {sym.emoji}
-            </span>
-          </div>
-        );
-      })}
-      {isAnimating && (
-        <div className="absolute inset-0 rounded-lg pointer-events-none"
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden rounded-xl"
+      style={{ width: CELL_SIZE, height: CELL_SIZE * VISIBLE, minWidth: CELL_SIZE }}
+    >
+      {/* Gradient masks — top/bottom fade for depth */}
+      <div className="absolute inset-x-0 top-0 h-8 z-10 pointer-events-none rounded-t-xl"
+        style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)" }} />
+      <div className="absolute inset-x-0 bottom-0 h-8 z-10 pointer-events-none rounded-b-xl"
+        style={{ background: "linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%)" }} />
+
+      {/* Center row highlight line */}
+      <div className="absolute inset-x-0 z-5 pointer-events-none border-y-2 border-yellow-400/40"
+        style={{ top: CELL_SIZE, height: CELL_SIZE }} />
+
+      {/* Symbol strip */}
+      <div ref={stripRef} className="flex flex-col">
+        {visibleCells.map((sym, i) => {
+          const isWinning = winPositions?.includes(i) && !spinning && !isSpinning;
+          return (
+            <div
+              key={`${reelIndex}-${i}-${sym?.id}`}
+              ref={el => glowRefs.current[i] = el}
+              style={{ width: CELL_SIZE, height: CELL_SIZE, flexShrink: 0 }}
+              className={`flex items-center justify-center rounded-xl border transition-colors
+                ${isSpinning
+                  ? "bg-gradient-to-b from-gray-700 to-gray-800 border-gray-600"
+                  : isWinning
+                  ? "bg-gradient-to-b from-yellow-900/70 to-amber-900/50 border-yellow-400"
+                  : "bg-gradient-to-b from-gray-800 via-gray-850 to-gray-900 border-yellow-700/30"
+                }`}
+            >
+              <span
+                className={`text-4xl select-none leading-none
+                  ${isSpinning ? "blur-[2.5px] opacity-60" : ""}
+                  ${isWinning ? "drop-shadow-[0_0_10px_rgba(250,204,21,0.9)] scale-110 transition-transform" : "drop-shadow-[0_0_3px_rgba(255,255,255,0.25)]"}
+                `}
+                style={{ display: "block", lineHeight: 1 }}
+              >
+                {sym?.emoji}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Spin motion blur overlay */}
+      {isSpinning && (
+        <div className="absolute inset-0 rounded-xl pointer-events-none z-5"
           style={{
-            background: "linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.3) 100%)",
+            background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.2) 100%)",
+            backdropFilter: "blur(1px)",
           }}
         />
       )}

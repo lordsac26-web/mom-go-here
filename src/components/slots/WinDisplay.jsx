@@ -1,46 +1,66 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-/**
- * Win overlay with tiered celebrations, coin shower, and a SKIP button for big wins.
- */
 export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
   const containerRef = useRef(null);
   const countRef = useRef(null);
   const tweenRef = useRef(null);
   const coinsRef = useRef(null);
+  const bgFlashRef = useRef(null);
+  const glowTlRef = useRef(null);
 
   useEffect(() => {
     if (!visible || totalWin === 0 || !containerRef.current) return;
 
     const el = containerRef.current;
     const countEl = countRef.current;
-
-    // Entry animation — different per tier
     const isMega = totalWin >= 25000;
     const isBig = totalWin >= 5000;
+    const isSmall = !isBig;
 
-    gsap.fromTo(el, {
-      scale: 0, opacity: 0, rotateZ: isMega ? -15 : -8,
-    }, {
-      scale: 1, opacity: 1, rotateZ: 0,
-      duration: isMega ? 0.7 : 0.5, ease: "back.out(2.5)",
-    });
+    // Kill old glow
+    if (glowTlRef.current) { glowTlRef.current.kill(); glowTlRef.current = null; }
 
-    // Shake for mega
+    // Entry — pop in
+    gsap.fromTo(el,
+      { scale: 0.3, opacity: 0, rotateZ: isMega ? -12 : -6, y: 20 },
+      { scale: 1, opacity: 1, rotateZ: 0, y: 0, duration: isMega ? 0.65 : 0.45, ease: "back.out(2.8)" }
+    );
+
+    // Mega: screen shake simulation
     if (isMega) {
       gsap.to(el, {
-        x: "random(-4, 4)", y: "random(-2, 2)",
-        duration: 0.05, repeat: 20, yoyo: true, delay: 0.7,
+        x: "random(-5, 5)", y: "random(-3, 3)",
+        duration: 0.06, repeat: 22, yoyo: true, delay: 0.65,
+        ease: "none",
         onComplete: () => gsap.set(el, { x: 0, y: 0 }),
       });
     }
 
-    // Count-up effect
+    // Pulsing glow
+    const glowColor = isMega
+      ? "0 0 90px rgba(255,210,0,1), 0 0 180px rgba(255,80,0,0.6)"
+      : isBig
+      ? "0 0 55px rgba(255,210,0,0.85), 0 0 100px rgba(255,200,0,0.4)"
+      : "0 0 28px rgba(34,197,94,0.7)";
+    const glowTl = gsap.timeline({ repeat: -1 });
+    glowTl.to(el, { boxShadow: glowColor, duration: isMega ? 0.4 : 0.55, ease: "sine.inOut" })
+          .to(el, { boxShadow: "0 0 8px rgba(0,0,0,0.3)", duration: isMega ? 0.4 : 0.55, ease: "sine.inOut" });
+    glowTlRef.current = glowTl;
+
+    // Background flash
+    if (bgFlashRef.current && (isBig || isMega)) {
+      gsap.fromTo(bgFlashRef.current,
+        { opacity: 0.7 },
+        { opacity: 0, duration: 0.6, ease: "power2.out" }
+      );
+    }
+
+    // Count-up
     const counter = { val: 0 };
     tweenRef.current = gsap.to(counter, {
       val: totalWin,
-      duration: isMega ? 2.5 : isBig ? 1.8 : 1.2,
+      duration: isMega ? 2.8 : isBig ? 2.0 : 1.2,
       ease: "power2.out",
       delay: 0.3,
       onUpdate: () => {
@@ -48,126 +68,129 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
       },
     });
 
-    // Pulsing glow — more dramatic tiers
-    gsap.to(el, {
-      boxShadow: isMega
-        ? "0 0 80px rgba(255,215,0,0.9), 0 0 160px rgba(255,100,0,0.5)"
-        : isBig
-        ? "0 0 50px rgba(255,215,0,0.7), 0 0 100px rgba(255,200,0,0.35)"
-        : "0 0 25px rgba(34,197,94,0.6)",
-      duration: 0.5,
-      yoyo: true,
-      repeat: -1,
-      ease: "sine.inOut",
-      delay: 0.4,
-    });
-
-    // Animate floating coin emojis
+    // Floating coins / gems
     if (coinsRef.current) {
-      const coinCount = isMega ? 12 : isBig ? 8 : 4;
       const coinContainer = coinsRef.current;
       coinContainer.innerHTML = "";
+      const coinCount = isMega ? 16 : isBig ? 10 : 5;
+      const icons = isMega
+        ? ["💰", "💎", "👑", "⭐", "🏆", "✨"]
+        : isBig ? ["🪙", "💰", "💎", "✨"]
+        : ["🪙", "✨"];
+
       for (let i = 0; i < coinCount; i++) {
         const coin = document.createElement("span");
-        coin.textContent = isMega ? ["💰", "💎", "👑", "⭐"][i % 4] : isBig ? ["🪙", "💰", "✨"][i % 3] : "🪙";
-        coin.className = "absolute text-xl pointer-events-none";
-        coin.style.left = `${10 + Math.random() * 80}%`;
-        coin.style.top = "50%";
+        coin.textContent = icons[i % icons.length];
+        coin.className = "absolute text-2xl pointer-events-none select-none";
+        coin.style.left = `${5 + Math.random() * 90}%`;
+        coin.style.bottom = "0%";
         coinContainer.appendChild(coin);
-
-        gsap.fromTo(coin, {
-          y: 0, opacity: 1, scale: 0.5, rotation: Math.random() * 360,
-        }, {
-          y: -(80 + Math.random() * 100),
-          x: (Math.random() - 0.5) * 60,
-          opacity: 0,
-          scale: 1 + Math.random() * 0.5,
-          rotation: Math.random() * 720 - 360,
-          duration: 1.2 + Math.random() * 0.8,
-          delay: 0.2 + i * 0.08,
-          ease: "power1.out",
-          repeat: isMega ? 2 : 1,
-          repeatDelay: 0.5,
-        });
+        gsap.fromTo(coin,
+          { y: 0, opacity: 1, scale: 0.4 + Math.random() * 0.4, rotation: Math.random() * 360 },
+          {
+            y: -(100 + Math.random() * 120),
+            x: (Math.random() - 0.5) * 80,
+            opacity: 0,
+            scale: 0.8 + Math.random() * 0.6,
+            rotation: (Math.random() - 0.5) * 540,
+            duration: 1.0 + Math.random() * 0.8,
+            delay: 0.1 + i * 0.07,
+            ease: "power1.out",
+            repeat: isMega ? 3 : isBig ? 2 : 1,
+            repeatDelay: 0.3 + Math.random() * 0.2,
+          }
+        );
       }
     }
 
     return () => {
       gsap.killTweensOf([el, counter]);
+      if (glowTlRef.current) { glowTlRef.current.kill(); glowTlRef.current = null; }
       tweenRef.current = null;
       if (coinsRef.current) coinsRef.current.innerHTML = "";
     };
   }, [visible, totalWin]);
 
   function handleSkip() {
-    if (tweenRef.current) {
-      tweenRef.current.progress(1);
-      tweenRef.current = null;
-    }
-    if (countRef.current) {
-      countRef.current.textContent = `+${totalWin.toLocaleString()}`;
-    }
+    if (tweenRef.current) { tweenRef.current.progress(1); tweenRef.current = null; }
+    if (countRef.current) countRef.current.textContent = `+${totalWin.toLocaleString()}`;
+    if (glowTlRef.current) { glowTlRef.current.kill(); glowTlRef.current = null; }
     onSkip?.();
   }
 
   if (!visible || totalWin === 0) return null;
 
-  const isBigWin = totalWin >= 5000;
-  const isMegaWin = totalWin >= 25000;
+  const isBig = totalWin >= 5000;
+  const isMega = totalWin >= 25000;
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center">
+      {/* Screen flash for big wins */}
+      {isBig && (
+        <div
+          ref={bgFlashRef}
+          className="absolute inset-0 pointer-events-none rounded-2xl"
+          style={{
+            background: isMega
+              ? "radial-gradient(ellipse at center, rgba(255,215,0,0.6) 0%, rgba(255,100,0,0.3) 60%, transparent 100%)"
+              : "radial-gradient(ellipse at center, rgba(255,215,0,0.4) 0%, transparent 70%)",
+            opacity: 0,
+          }}
+        />
+      )}
+
       {/* Floating coins layer */}
       <div ref={coinsRef} className="absolute inset-0 overflow-hidden pointer-events-none z-40" />
 
       <div
         ref={containerRef}
-        className={`text-center px-8 py-6 rounded-3xl border-4 relative ${
-          isMegaWin
-            ? "bg-gradient-to-br from-yellow-500 via-red-500 to-purple-600 border-yellow-300"
-            : isBigWin
-            ? "bg-gradient-to-br from-yellow-500 to-amber-600 border-yellow-300"
-            : "bg-gradient-to-br from-green-600 to-emerald-700 border-green-400"
+        className={`text-center px-8 py-6 rounded-3xl border-4 relative overflow-hidden ${
+          isMega
+            ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 border-yellow-200"
+            : isBig
+            ? "bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-600 border-yellow-300"
+            : "bg-gradient-to-br from-green-500 via-emerald-500 to-green-700 border-green-300"
         }`}
-        style={{ opacity: 0 }}
+        style={{ opacity: 0, minWidth: 180 }}
       >
-        {/* Shimmer overlay */}
+        {/* Shimmer sweep */}
         <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-          <div
-            className="absolute inset-0 opacity-30"
+          <div className="absolute inset-0 opacity-40"
             style={{
-              background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.4) 45%, transparent 50%)",
-              animation: "shimmer 1.5s infinite",
+              background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)",
+              animation: "shimmer 1.4s infinite",
             }}
           />
         </div>
 
-        {isMegaWin && (
-          <div className="text-3xl sm:text-4xl font-black text-white mb-1 relative z-10">🎆 MEGA WIN! 🎆</div>
-        )}
-        {isBigWin && !isMegaWin && (
-          <div className="text-2xl sm:text-3xl font-black text-white mb-1 relative z-10">🌟 BIG WIN! 🌟</div>
-        )}
-        {!isBigWin && (
-          <div className="text-xl sm:text-2xl font-black text-white mb-1 relative z-10">✨ WIN! ✨</div>
-        )}
+        {/* Tier label */}
+        <div className="relative z-10 mb-1">
+          {isMega && <div className="text-3xl font-black text-white tracking-wider" style={{ textShadow: "0 0 20px rgba(255,255,100,0.9), 0 2px 4px rgba(0,0,0,0.4)" }}>🎆 MEGA WIN! 🎆</div>}
+          {isBig && !isMega && <div className="text-2xl font-black text-white tracking-wider" style={{ textShadow: "0 0 15px rgba(255,255,100,0.7), 0 2px 4px rgba(0,0,0,0.4)" }}>🌟 BIG WIN! 🌟</div>}
+          {!isBig && <div className="text-xl font-black text-white tracking-wider" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.4)" }}>✨ WIN! ✨</div>}
+        </div>
+
+        {/* Count-up amount */}
         <div
           ref={countRef}
-          className={`font-black text-white drop-shadow-lg relative z-10 ${
-            isMegaWin ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"
+          className={`font-black text-white relative z-10 tabular-nums ${
+            isMega ? "text-5xl sm:text-6xl" : isBig ? "text-4xl sm:text-5xl" : "text-3xl"
           }`}
+          style={{ textShadow: "0 3px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,100,0.4)" }}
         >
           +0
         </div>
+
         {wins.length > 1 && (
-          <div className="text-sm text-white/80 mt-2 font-bold relative z-10">
+          <div className="text-sm text-white/85 mt-2 font-bold relative z-10">
             {wins.length} winning lines!
           </div>
         )}
-        {(isBigWin || isMegaWin) && (
+
+        {(isBig || isMega) && (
           <button
             onClick={handleSkip}
-            className="mt-3 px-5 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 active:scale-95 transition-all pointer-events-auto relative z-10"
+            className="mt-3 px-5 py-2 bg-black/25 hover:bg-black/35 text-white text-sm font-bold rounded-xl border border-white/40 active:scale-95 transition-all pointer-events-auto relative z-10"
           >
             ⏩ Skip
           </button>
@@ -176,8 +199,8 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
 
       <style>{`
         @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
+          0% { transform: translateX(-120%); }
+          100% { transform: translateX(220%); }
         }
       `}</style>
     </div>
