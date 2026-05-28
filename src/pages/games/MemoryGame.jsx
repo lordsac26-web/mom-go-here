@@ -7,6 +7,7 @@ import useHaptics from "../../hooks/useHaptics";
 import useConfetti from "../../hooks/useConfetti";
 import MemoryBackgroundPicker, { MEMORY_BACKGROUNDS } from "../../components/MemoryBackgroundPicker";
 import { useGameActivity } from "../../hooks/useGameActivity";
+import { useDailyMissions } from "../../hooks/useDailyMissions";
 import { base44 } from "@/api/base44Client";
 import { saveGameScore } from "@/lib/scoreSaver";
 import MemoryTile from "../../components/memory/MemoryTile";
@@ -81,6 +82,7 @@ export default function MemoryGame() {
   const { tapVibrate, matchVibrate, winVibrate } = useHaptics();
   const { spark, burst, fireworks, emojiRain } = useConfetti();
   const { reportWin } = useGameActivity();
+  const { reportMissionProgress } = useDailyMissions();
   const sounds = useMemorySounds();
 
   useEffect(() => {
@@ -224,6 +226,11 @@ export default function MemoryGame() {
             fireworks();
             emojiRain(["🧠", "🎉", "⭐", "🌟"]);
             reportWin("Memory Match");
+            reportMissionProgress([
+              { type: "win_specific", extra: "Memory Match" },
+              "win_any",
+              "play_any",
+            ]);
             const finalSeconds = startTimeRef.current
               ? Math.floor((Date.now() - startTimeRef.current) / 1000)
               : 0;
