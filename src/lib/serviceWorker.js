@@ -3,19 +3,21 @@
  * The actual SW logic lives in /public/sw.js.
  */
 
-export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) {
-    console.log('[SW] Service workers not supported');
-    return;
-  }
+// Patterns that must NEVER be served from SW cache
+const NEVER_CACHE_PATTERNS = [
+  '/src/', '/node_modules/.vite', '/@vite', '/@react-refresh',
+  '.js', '.jsx', '.ts', '.tsx', '.css',
+];
 
-  // Never run a service worker in dev/preview — it caches stale Vite chunks
-  // and causes null-dispatcher React hook crashes.
+export function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  // In DEV: unregister all SWs and nuke all caches to prevent stale chunk issues
   if (import.meta.env.DEV) {
-    // Unregister any previously cached dev SW so stale caches are cleared
     navigator.serviceWorker.getRegistrations().then((regs) => {
       regs.forEach((r) => r.unregister());
     });
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
     return;
   }
 
@@ -23,11 +25,7 @@ export function registerServiceWorker() {
     .register('/sw.js', { scope: '/' })
     .then((registration) => {
       console.log('[SW] Registered with scope:', registration.scope);
-
-      // Check for updates periodically (every 30 min)
-      setInterval(() => {
-        registration.update();
-      }, 30 * 60 * 1000);
+      setInterval(() => registration.update(), 30 * 60 * 1000);
     })
     .catch((err) => {
       console.warn('[SW] Registration failed:', err.message);

@@ -1,86 +1,81 @@
 /**
- * Service Worker — production only (dev mode skips registration).
- *
- * Strategy:
- *  - JS / CSS / Vite chunks  → Network-first (never serve stale React/Zustand)
- *  - Images / fonts          → Cache-first (safe to cache)
- *  - HTML navigation          → Network-first with offline fallback
+ * Service Worker — caches only static assets (images, fonts, manifest).
+ * JS and CSS chunks are NEVER cached here — Vite handles their versioning
+ * via content hashes, and caching them in the SW causes stale React
+ * dispatcher crashes on redeployment.
  */
 
-const CACHE_NAME = "momgohere-v3";
-const OFFLINE_HTML = "/index.html";
+const CACHE_NAME = 'momgohere-v4';
 
-// Patterns that must NEVER be served from cache
-const NEVER_CACHE = [
-  /\/node_modules\/.vite\//,
-  /\/@vite\//,
-  /\/@react-refresh/,
+// Only cache truly static, non-JS/CSS assets
+const STATIC_ASSETS = [
+  '/manifest.json',
+  '/favicon.ico',
+];
+
+// Patterns that must always be network-fetched, never cache-first
+const BYPASS_PATTERNS = [
   /\/src\//,
+  /node_modules/,
+  /\/@vite/,
+  /\/@react-refresh/,
   /\.js(\?|$)/,
   /\.jsx(\?|$)/,
   /\.ts(\?|$)/,
   /\.tsx(\?|$)/,
   /\.css(\?|$)/,
+  /\/api\//,
+  /\/functions\//,
 ];
 
-function shouldSkipCache(url) {
-  return NEVER_CACHE.some((re) => re.test(url));
+function shouldBypass(url) {
+  return BYPASS_PATTERNS.some((p) => p.test(url));
 }
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_HTML))
-  );
+self.addEventListener('install', (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+  );
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
+self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = request.url;
 
-  // Only handle GET
-  if (request.method !== "GET") return;
-
-  // JS/CSS/Vite chunks — always network, never cache
-  if (shouldSkipCache(url)) {
+  // Always bypass non-GET and pattern-matched requests
+  if (request.method !== 'GET' || shouldBypass(url)) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Images & fonts — cache-first
-  if (/\.(png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|ico)(\?|$)/.test(url)) {
+  // Network-first for HTML (ensures fresh app shell)
+  if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-          }
-          return response;
-        });
-      })
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }
 
-  // HTML navigation — network-first, fallback to cached index.html
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(OFFLINE_HTML))
-    );
-    return;
-  }
-
-  // Everything else — network-first
-  event.respondWith(fetch(request));
+  // Cache-first for images/fonts only
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      });
+    })
+  );
 });
