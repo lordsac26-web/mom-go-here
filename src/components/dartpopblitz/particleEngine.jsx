@@ -273,6 +273,15 @@ export function spawnBalloonPopParticles(arr, balloon, isFrozen = false) {
   }
 }
 
+// Hard cap to prevent mobile frame spikes from bomb chains etc.
+const MAX_PARTICLES = 120;
+
+export function capParticles(arr) {
+  if (arr.length > MAX_PARTICLES) {
+    arr.splice(0, arr.length - MAX_PARTICLES);
+  }
+}
+
 // ── Physics update (called each frame) ──
 export function updateParticles(particles, ts) {
   for (const p of particles) {

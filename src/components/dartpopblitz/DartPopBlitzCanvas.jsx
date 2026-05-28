@@ -22,7 +22,7 @@ import { POWERUP_BALLOON_SPAWN_INTERVAL } from "./gameConfig";
 import {
   spawnParticles, spawnBalloonPopParticles, spawnBombParticles,
   spawnIcyShardParticles, updateParticles, drawParticle,
-  getConfettiColors,
+  getConfettiColors, capParticles,
 } from "./particleEngine";
 
 // ── Offscreen static background ──
@@ -1078,7 +1078,8 @@ export default function DartPopBlitzCanvas({
                   ob.alive = false;
                   scoreAdd += ob.points; popsThisFrame++; poppedAdd++;
                   poppedThisFrame.push(obi);
-                  spawnBalloonPopParticles(s.particles, ob, frozen);
+                  // Use lighter particle burst for chain victims to avoid mobile freeze
+                  spawnParticles(s.particles, ob.x, ob.y, ob.color, 5);
                 }
               }
             }
@@ -1118,7 +1119,8 @@ export default function DartPopBlitzCanvas({
       if (hitThisFrame) newStreak = s.streak + 1;
       else if (missThisFrame) newStreak = 0;
 
-      // Particles
+      // Particles — cap before update to prevent mobile freeze spikes
+      capParticles(s.particles);
       updateParticles(s.particles, ts);
       for (let i = s.darts.length - 1; i >= 0; i--) { if (!s.darts[i].alive) s.darts.splice(i, 1); }
 
