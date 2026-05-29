@@ -27,6 +27,7 @@ const NAV_CARDS = [
   { path: "/progress", label: "Progress", emoji: "📊", desc: "Track your activity", gradient: "bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700", glare: "#22c55e", iconBg: "bg-green-400/30" },
   { path: "/contacts", label: "Contacts", emoji: "👥", desc: "People & personal events", gradient: "bg-gradient-to-br from-rose-500 via-pink-600 to-fuchsia-700", glare: "#f43f5e", iconBg: "bg-rose-400/30" },
   { path: "/gallery", label: "Gallery", emoji: "🖼️", desc: "Community artwork", gradient: "bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-700", glare: "#eab308", iconBg: "bg-amber-400/30" },
+  { path: "/shop", label: "Shop", emoji: "🛒", desc: "Spend coins on upgrades", gradient: "bg-gradient-to-br from-yellow-500 via-amber-600 to-orange-700", glare: "#eab308", iconBg: "bg-yellow-400/30" },
   { path: "/settings", label: "Settings", emoji: "⚙️", desc: "Customize your app", gradient: "bg-gradient-to-br from-orange-500 via-orange-600 to-red-700", glare: "#f97316", iconBg: "bg-orange-400/30" },
 ];
 

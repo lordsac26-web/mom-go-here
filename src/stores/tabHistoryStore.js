@@ -9,7 +9,7 @@ import { create } from "zustand";
  *   - If it's the already-active tab → reset to tab root
  */
 
-const TAB_ROOTS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
+const TAB_ROOTS = ["/", "/games", "/daily", "/memories", "/progress", "/shop", "/settings"];
 
 export const useTabHistoryStore = create((set, get) => ({
   // Map of tab root → last visited path within that tab
@@ -19,6 +19,7 @@ export const useTabHistoryStore = create((set, get) => ({
     "/daily": "/daily",
     "/memories": "/memories",
     "/progress": "/progress",
+    "/shop": "/shop",
     "/settings": "/settings",
   },
 

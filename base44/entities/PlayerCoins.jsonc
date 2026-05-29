@@ -1,0 +1,38 @@
+{
+  "name": "PlayerCoins",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "balance": {
+      "type": "number",
+      "description": "Current coin balance"
+    },
+    "total_earned": {
+      "type": "number",
+      "description": "Lifetime coins earned"
+    },
+    "total_spent": {
+      "type": "number",
+      "description": "Lifetime coins spent"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

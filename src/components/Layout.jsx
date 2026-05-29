@@ -25,13 +25,14 @@ const NAV_ITEMS = [
   { to: "/daily", label: "⭐ Daily", icon: Star },
   { to: "/memories", label: "📔 Memories", icon: BookOpen },
   { to: "/progress", label: "📊 Progress", icon: BarChart2 },
+  { to: "/shop", label: "🛒 Shop", icon: Settings },
   { to: "/settings", label: "⚙️ Settings", icon: Settings },
 ];
 
 
 
 // Tabs whose scroll position we preserve
-const SCROLL_TABS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
+const SCROLL_TABS = ["/", "/games", "/daily", "/memories", "/progress", "/shop", "/settings"];
 
 export default function Layout() {
   const location = useLocation();

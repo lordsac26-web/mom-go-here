@@ -35,6 +35,7 @@ import DartPopBlitz from './pages/games/DartPopBlitz';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import Gallery from './pages/Gallery';
+import Shop from './pages/Shop';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -92,6 +93,7 @@ const AuthenticatedApp = () => {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/shop" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Shop /></motion.div>} />
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>

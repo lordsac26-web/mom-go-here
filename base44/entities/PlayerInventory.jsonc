@@ -1,0 +1,52 @@
+{
+  "name": "PlayerInventory",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "owned_balloon_skins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of owned balloon skin IDs"
+    },
+    "owned_wheel_themes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of owned wheel theme IDs"
+    },
+    "dart_powerups": {
+      "type": "object",
+      "description": "Map of powerup_id -> quantity owned"
+    },
+    "active_balloon_skin": {
+      "type": "string",
+      "description": "Currently equipped balloon skin ID"
+    },
+    "active_wheel_theme": {
+      "type": "string",
+      "description": "Currently equipped wheel theme ID"
+    }
+  },
+  "required": [
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}
