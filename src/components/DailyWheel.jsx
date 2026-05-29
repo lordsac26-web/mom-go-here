@@ -60,6 +60,7 @@ export default function DailyWheel({ userEmail }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [lightPhase, setLightPhase] = useState(0);
+  const [spinFrame, setSpinFrame] = useState(0);
   const totalRotationRef = useRef(0);
   const tickIntervalRef = useRef(null);
   const { reportMissionProgress } = useDailyMissions();
@@ -73,6 +74,13 @@ export default function DailyWheel({ userEmail }) {
     const id = setInterval(() => setLightPhase(p => (p + 1) % RIM_LIGHTS), 120);
     return () => clearInterval(id);
   }, [expanded, spinning]);
+
+  // Rim light frame counter during spin (replaces Date.now() in render)
+  useEffect(() => {
+    if (!spinning) return;
+    const id = setInterval(() => setSpinFrame(p => (p + 1) % 3), 80);
+    return () => clearInterval(id);
+  }, [spinning]);
 
   // Tick sound during spin
   function playTick(pitch) {
@@ -330,7 +338,7 @@ export default function DailyWheel({ userEmail }) {
                     {[...Array(RIM_LIGHTS)].map((_, i) => {
                       const angle = (i / RIM_LIGHTS) * 360;
                       const isActive = spinning
-                        ? i % 3 === Math.floor(Date.now() / 80) % 3
+                        ? i % 3 === spinFrame
                         : i === lightPhase || i === (lightPhase + 8) % RIM_LIGHTS || i === (lightPhase + 16) % RIM_LIGHTS;
                       return (
                         <div

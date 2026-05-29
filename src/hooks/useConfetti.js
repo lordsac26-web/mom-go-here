@@ -36,14 +36,14 @@ export default function useConfetti() {
   // Medium burst — milestone (halfway done, score threshold)
   function burst(origin = { x: 0.5, y: 0.4 }) {
     confetti({
-      particleCount: 80,
-      spread: 70,
-      startVelocity: 30,
+      particleCount: 45,
+      spread: 65,
+      startVelocity: 28,
       decay: 0.92,
       scalar: 1,
       origin,
       colors: RAINBOW,
-      ticks: 120,
+      ticks: 90,
     });
   }
 
@@ -75,36 +75,34 @@ export default function useConfetti() {
   }
 
   // Fireworks — ultimate achievement (perfect score, all words found)
+  // Uses setTimeout instead of rAF to avoid flooding the main thread every frame
   function fireworks() {
-    const duration = 3000;
-    const end = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 80, zIndex: 9999 };
-
     function randomInRange(min, max) {
       return Math.random() * (max - min) + min;
     }
-
-    (function frame() {
-      const timeLeft = end - Date.now();
-      if (timeLeft <= 0) return;
-
-      const particleCount = 50 * (timeLeft / duration);
-
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: RAINBOW,
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: PARTY,
-      });
-
-      requestAnimationFrame(frame);
-    })();
+    const bursts = 6;
+    for (let i = 0; i < bursts; i++) {
+      setTimeout(() => {
+        confetti({
+          startVelocity: 28,
+          spread: 360,
+          ticks: 60,
+          zIndex: 9999,
+          particleCount: 35,
+          origin: { x: randomInRange(0.1, 0.4), y: Math.random() * 0.4 },
+          colors: RAINBOW,
+        });
+        confetti({
+          startVelocity: 28,
+          spread: 360,
+          ticks: 60,
+          zIndex: 9999,
+          particleCount: 35,
+          origin: { x: randomInRange(0.6, 0.9), y: Math.random() * 0.4 },
+          colors: PARTY,
+        });
+      }, i * 500);
+    }
   }
 
   // Side cannons — dramatic entrance from left and right
@@ -128,18 +126,23 @@ export default function useConfetti() {
     });
   }
 
-  // Emoji rain — themed emoji confetti
+  // Emoji rain — themed emoji confetti (capped to avoid mobile freeze)
   function emojiRain(emojis = ["🎉", "⭐", "🏆"]) {
-    const shapes = emojis.map(e => confetti.shapeFromText({ text: e, scalar: 2 }));
-    
-    confetti({
-      particleCount: 30,
-      spread: 120,
-      origin: { y: 0.3 },
-      scalar: 2,
-      shapes,
-      ticks: 150,
-    });
+    try {
+      // shapeFromText can be expensive — limit to first 2 emojis max
+      const shapes = emojis.slice(0, 2).map(e => confetti.shapeFromText({ text: e, scalar: 1.5 }));
+      confetti({
+        particleCount: 18,
+        spread: 100,
+        origin: { y: 0.3 },
+        scalar: 1.5,
+        shapes,
+        ticks: 100,
+      });
+    } catch {
+      // Fallback if shapeFromText unsupported
+      burst();
+    }
   }
 
   return {

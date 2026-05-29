@@ -56,7 +56,7 @@ export function spawnParticles(arr, x, y, color, count = 8) {
 /** 💣 Bomb: dark smoke puffs + ember shards + fiery ring */
 export function spawnBombParticles(arr, x, y) {
   // Smoke puffs — large, grey, slow-rising, quick fade
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 6; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 0.8 + Math.random() * 2.5;
     arr.push({
@@ -74,7 +74,7 @@ export function spawnBombParticles(arr, x, y) {
     });
   }
   // Ember shards
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 8; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 3 + Math.random() * 5;
     const emberColors = ["#f97316", "#ef4444", "#fbbf24", "#fb923c", "#dc2626"];
@@ -101,7 +101,7 @@ export function spawnBombParticles(arr, x, y) {
 /** ❄️ Frozen/Freeze: icy shards — sharp pointed crystal shapes */
 export function spawnIcyShardParticles(arr, x, y) {
   const iceColors = ["#bae6fd", "#7dd3fc", "#38bdf8", "#e0f2fe", "#fff", "#a5f3fc"];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 8; i++) {
     const angle = (Math.PI * 2 * i) / 14 + (Math.random() - 0.5) * 0.3;
     const speed = 2 + Math.random() * 4.5;
     arr.push({
@@ -187,7 +187,7 @@ export function spawnGoldParticles(arr, x, y) {
 /** ⚡ Speed: electric sparks + lightning bolts */
 export function spawnSpeedParticles(arr, x, y) {
   const sparkColors = ["#f59e0b", "#fbbf24", "#fde047", "#fff", "#fb923c"];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 8; i++) {
     const angle = (Math.PI * 2 * i) / 14 + (Math.random() - 0.5) * 0.5;
     const speed = 4 + Math.random() * 6;
     arr.push({
@@ -274,7 +274,7 @@ export function spawnBalloonPopParticles(arr, balloon, isFrozen = false) {
 }
 
 // Hard cap to prevent mobile frame spikes from bomb chains etc.
-const MAX_PARTICLES = 120;
+const MAX_PARTICLES = 80;
 
 export function capParticles(arr) {
   if (arr.length > MAX_PARTICLES) {
@@ -322,11 +322,9 @@ export function drawParticle(ctx, p) {
   }
 
   if (p.shape === "smoke") {
-    // Soft blurred circle for smoke/ghost wisps
-    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
-    grad.addColorStop(0, p.color + "cc");
-    grad.addColorStop(1, p.color + "00");
-    ctx.fillStyle = grad;
+    // Simple semi-transparent circle — avoids per-frame createRadialGradient cost
+    ctx.globalAlpha *= 0.55;
+    ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.arc(0, 0, p.size, 0, Math.PI * 2);
     ctx.fill();
