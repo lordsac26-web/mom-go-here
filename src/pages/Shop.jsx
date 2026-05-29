@@ -28,33 +28,33 @@ export default function Shop() {
     if (item.free) return;
     const ok = await spend(item.price);
     if (!ok) {
-      toast({ title: "Not enough coins! 🪙", description: `You need ${item.price} coins.`, variant: "destructive" });
+      toast({ title: "Not enough coins! 🪙", description: `You need ${item.price} coins.`, variant: "destructive", duration: 3000 });
       return;
     }
 
     if (category === "balloon") {
       const updated = [...(inventory?.owned_balloon_skins ?? ["default"]), item.id];
       await update({ owned_balloon_skins: updated, active_balloon_skin: item.id });
-      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Balloon skin equipped." });
+      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Balloon skin equipped.", duration: 3000 });
     } else if (category === "wheel") {
       const updated = [...(inventory?.owned_wheel_themes ?? ["default"]), item.id];
       await update({ owned_wheel_themes: updated, active_wheel_theme: item.id });
-      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Wheel theme equipped." });
+      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Wheel theme equipped.", duration: 3000 });
     } else if (category === "powerup") {
       const current = inventory?.dart_powerups ?? {};
       const newQty = (current[item.id] ?? 0) + 1;
       await update({ dart_powerups: { ...current, [item.id]: newQty } });
-      toast({ title: `${item.emoji} ${item.label} added!`, description: `You now have ×${newQty}.` });
+      toast({ title: `${item.emoji} ${item.label} added!`, description: `You now have ×${newQty}.`, duration: 3000 });
     }
   }
 
   async function handleEquip(category, id) {
     if (category === "balloon") {
       await update({ active_balloon_skin: id });
-      toast({ title: "Balloon skin equipped!" });
+      toast({ title: "Balloon skin equipped!", duration: 3000 });
     } else if (category === "wheel") {
       await update({ active_wheel_theme: id });
-      toast({ title: "Wheel theme equipped!" });
+      toast({ title: "Wheel theme equipped!", duration: 3000 });
     }
   }
 

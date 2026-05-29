@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import syncQueue from "@/lib/syncQueue";
+import usePlayerInventory from "@/hooks/usePlayerInventory";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import useHaptics from "../../hooks/useHaptics";
 import useConfetti from "../../hooks/useConfetti";
@@ -68,6 +69,7 @@ async function saveGameScore({ userEmail, displayName, score, dartLimit, balloon
 
 export default function DartPopBlitz() {
   const { user } = useAuth();
+  const { inventory } = usePlayerInventory(user?.email);
   const { reportWin, reportLoss } = useGameActivity();
   const haptics = useHaptics();
   const { fireConfetti } = useConfetti();
@@ -119,12 +121,21 @@ export default function DartPopBlitz() {
     setStreak(0);
     setTotalPopped(0);
     setActivePowerup(null);
-    setPowerupInventory({ multishot: 0, mirv: 0, sniper: 0, freeze: 0, gravity: 0 });
+    // Load purchased powerups from PlayerInventory (default all to 0)
+    const purchased = inventory?.dart_powerups ?? {};
+    setPowerupInventory({
+      multishot: purchased.multishot ?? 0,
+      mirv:      purchased.mirv      ?? 0,
+      sniper:    purchased.sniper    ?? 0,
+      freeze:    purchased.freeze    ?? 0,
+      gravity:   purchased.gravity   ?? 0,
+      zipper:    purchased.zipper    ?? 0,
+    });
     setIsEndless(!!p.endless);
     setWind(0);
     setGameState("playing");
     savedRef.current = false;
-  }, []);
+  }, [inventory]);
 
   const handleGameEnd = useCallback(async (result) => {
     if (savedRef.current) return;
