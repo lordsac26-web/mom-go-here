@@ -12,6 +12,14 @@
     "level": {
       "type": "number",
       "description": "Current player level"
+    },
+    "games_completed": {
+      "type": "number",
+      "description": "Total games completed"
+    },
+    "last_xp_gain": {
+      "type": "number",
+      "description": "XP awarded from the last game"
     }
   },
   "required": [
@@ -22,9 +30,16 @@
       "data.user_email": "{{user.email}}"
     },
     "read": {
-      "created_by": {
-        "$ne": null
-      }
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "update": {
       "data.user_email": "{{user.email}}"

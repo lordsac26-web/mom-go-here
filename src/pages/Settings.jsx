@@ -359,6 +359,13 @@ export default function Settings() {
                       base44.entities.DailyProgress,
                       base44.entities.SavedGame,
                       base44.entities.DartPopBlitzScore,
+                      base44.entities.PlayerCoins,
+                      base44.entities.PlayerInventory,
+                      base44.entities.DailyMission,
+                      base44.entities.GalleryPost,
+                      base44.entities.CheckerCosmetic,
+                      base44.entities.EmergencyFund,
+                      base44.entities.DailyWheelSpin,
                     ];
                     for (const entity of entities) {
                       const records = await entity.filter({ user_email: email });

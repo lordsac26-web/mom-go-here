@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, lazy, Suspense } from "react";
+import { useRef, useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen, ChevronLeft } from "lucide-react";
 import { useTabHistoryStore, TAB_ROOTS, getTabForPath } from "../stores/tabHistoryStore";
@@ -92,14 +92,13 @@ export default function Layout() {
     }
   }, [location.pathname]);
 
-  const achievementBadgeRef = useRef(null);
-
-  // Initialize achievement badge from store
+  // FIX (bug): badge was stored in a ref with an unsupported two-arg subscribe,
+  // so achievement toasts never re-rendered. Use state + plain subscribe instead.
+  const [achievementBadge, setAchievementBadge] = useState(null);
   useEffect(() => {
-    achievementBadgeRef.current = useAchievementToastStore.getState().badge;
+    setAchievementBadge(useAchievementToastStore.getState().badge);
     const unsubscribe = useAchievementToastStore.subscribe(
-      (state) => state.badge,
-      (badge) => { achievementBadgeRef.current = badge; }
+      (state) => setAchievementBadge(state.badge)
     );
     return unsubscribe;
   }, []);
@@ -160,7 +159,7 @@ export default function Layout() {
       <GameActivityMonitor />
 
       {/* Achievement Toast */}
-      <AchievementUnlockToast achievement={achievementBadgeRef.current} />
+      <AchievementUnlockToast achievement={achievementBadge} />
 
       {/* Major Achievement Full-Screen Celebration (lazy — no Zustand hooks at top level) */}
       <Suspense fallback={null}>
@@ -181,7 +180,7 @@ export default function Layout() {
               href={item.to}
               onClick={(e) => handleTabClick(e, item.to)}
               className={`flex flex-col items-center justify-center gap-0.5 min-w-[48px] min-h-[48px] px-2 sm:px-3 py-1.5 rounded-xl transition-colors ${
-                activeTabRef.current === item.to
+                currentTab === item.to
                   ? "text-primary"
                   : "text-muted-foreground"
               }`}
