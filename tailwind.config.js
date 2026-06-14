@@ -34,6 +34,14 @@ module.exports = {
       "from-red-950", "via-orange-900", "to-red-950", "from-orange-200", "via-amber-100", "to-orange-200",
       "from-purple-950", "via-indigo-900", "to-purple-950", "from-purple-200", "via-indigo-100", "to-purple-200",
       "from-gray-950", "via-gray-900", "to-gray-950", "from-gray-300", "via-gray-200", "to-gray-300",
+      // Wheel theme backdrops
+      "from-amber-950", "via-yellow-900", "to-amber-950",
+      "from-violet-950", "via-indigo-900", "to-violet-950",
+      "from-indigo-950", "via-blue-950", "to-indigo-950",
+      "from-teal-950", "via-emerald-900", "to-teal-950",
+      "from-orange-950", "via-red-900", "to-orange-950",
+      "from-emerald-950", "via-green-900", "to-emerald-950",
+      "from-slate-950", "via-gray-900", "to-slate-950",
     ],
   theme: {
   	extend: {

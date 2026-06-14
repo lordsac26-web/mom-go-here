@@ -118,6 +118,9 @@ export const WHEEL_THEMES = [
     price: 400,
     desc: "Deep space colors — stars included.",
     colors: ["#1e1b4b", "#312e81", "#4338ca", "#6366f1", "#818cf8", "#a5b4fc", "#c7d2fe", "#e0e7ff"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/042dafe22_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/7f230d55c_generated_image.png",
+    backdrop: "from-indigo-950 via-blue-950 to-indigo-950",
   },
   {
     id: "tropical",
@@ -126,6 +129,9 @@ export const WHEEL_THEMES = [
     price: 350,
     desc: "Bright beach vibes all day.",
     colors: ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444", "#ec4899", "#06b6d4", "#a855f7"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/4712c5d25_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/955480ad4_generated_image.png",
+    backdrop: "from-teal-950 via-emerald-900 to-teal-950",
   },
   {
     id: "sunset",
@@ -134,6 +140,9 @@ export const WHEEL_THEMES = [
     price: 500,
     desc: "Warm gradient dusk palette.",
     colors: ["#fef3c7", "#fde68a", "#fbbf24", "#f97316", "#ef4444", "#dc2626", "#b91c1c", "#7f1d1d"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/973f87ec6_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/9d4c97b15_generated_image.png",
+    backdrop: "from-orange-950 via-red-900 to-orange-950",
   },
   {
     id: "emerald",
@@ -142,6 +151,9 @@ export const WHEEL_THEMES = [
     price: 600,
     desc: "Rich jewel-tone greens and golds.",
     colors: ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/a663e008d_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/ea389b0a7_generated_image.png",
+    backdrop: "from-emerald-950 via-green-900 to-emerald-950",
     rare: true,
   },
   {
@@ -151,6 +163,9 @@ export const WHEEL_THEMES = [
     price: 700,
     desc: "Sleek black and white precision.",
     colors: ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f1f5f9"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/2a86e210c_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/2bd73b257_generated_image.png",
+    backdrop: "from-slate-950 via-gray-900 to-slate-950",
     rare: true,
   },
 ];
