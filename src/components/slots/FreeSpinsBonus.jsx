@@ -152,9 +152,9 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
     setExtraSpinsMsg(null);
     reelsStopped.current = 0;
 
-    // Escalate multiplier every 3 spins
+    // Escalate multiplier every 2 spins, cap at 10x
     const spinNum = currentSpinRef.current + 1;
-    if (spinNum % 3 === 0 && multiplierRef.current < 5) {
+    if (spinNum % 2 === 0 && multiplierRef.current < 10) {
       multiplierRef.current += 1;
       setCurrentMultiplier(multiplierRef.current);
     }
@@ -226,11 +226,11 @@ export default function FreeSpinsBonus({ machine, baseWin, scatterCount, onCompl
         </div>
 
         {/* Multiplier bar */}
-        <div className="flex items-center justify-center gap-1 mb-3">
-          {[1, 2, 3, 4, 5].map(m => (
+        <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
             <div
               key={m}
-              className={`px-3 py-1 rounded-lg text-sm font-black border transition-all ${
+              className={`px-2 py-1 rounded-lg text-xs font-black border transition-all ${
                 m === currentMultiplier
                   ? "bg-yellow-500 text-gray-900 border-yellow-300 scale-110 shadow-lg"
                   : m < currentMultiplier

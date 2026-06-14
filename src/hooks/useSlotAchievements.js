@@ -2,6 +2,23 @@ import * as React from "react";
 const { useCallback } = React;
 
 const STORAGE_KEY = "slots_stats";
+const GLOBAL_KEY = "slots_global_stats";
+
+// Sync win/spin stats into the global stats store used for machine unlocks
+function syncToGlobalStats(patch) {
+  try {
+    const raw = localStorage.getItem(GLOBAL_KEY);
+    const g = raw ? JSON.parse(raw) : {};
+    if (patch.totalSpins != null) g.totalSpins = (g.totalSpins || 0) + patch.totalSpins;
+    if (patch.totalSpent != null) g.totalSpent = (g.totalSpent || 0) + patch.totalSpent;
+    if (patch.totalWins != null) g.totalWins = (g.totalWins || 0) + patch.totalWins;
+    if (patch.totalEarned != null) g.totalEarned = (g.totalEarned || 0) + patch.totalEarned;
+    if (patch.biggestWin != null) g.biggestWin = Math.max(g.biggestWin || 0, patch.biggestWin);
+    if (patch.scatterWins != null) g.scatterWins = (g.scatterWins || 0) + patch.scatterWins;
+    if (patch.maxBet != null) g.maxBet = Math.max(g.maxBet || 0, patch.maxBet);
+    localStorage.setItem(GLOBAL_KEY, JSON.stringify(g));
+  } catch {}
+}
 
 const ACHIEVEMENTS = [
   { key: "first_spin", emoji: "🎰", title: "First Spin", desc: "Complete your first spin", check: s => s.totalSpins >= 1 },
@@ -103,6 +120,7 @@ export default function useSlotAchievements(onBadge) {
     };
     _stats = checkAchievements(_stats, onBadge);
     saveStats(_stats);
+    syncToGlobalStats({ totalSpins: 1, totalSpent: betAmount, maxBet: betAmount });
     notifyListeners();
   }, [onBadge]);
 
@@ -120,6 +138,7 @@ export default function useSlotAchievements(onBadge) {
     };
     _stats = checkAchievements(_stats, onBadge);
     saveStats(_stats);
+    syncToGlobalStats({ totalWins: 1, totalEarned: winAmount, biggestWin: winAmount, scatterWins: hasScatter ? 1 : 0 });
     notifyListeners();
   }, [onBadge]);
 

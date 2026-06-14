@@ -39,6 +39,7 @@ import {
 } from "../../components/slots/machineDefinitions";
 import { getEffectiveBetLevels, EMERGENCY_THRESHOLD, EMERGENCY_DRIP_AMOUNT } from "../../components/slots/betScaling";
 import LowBalanceWarning from "../../components/slots/LowBalanceWarning";
+import NearMissFlash from "../../components/slots/NearMissFlash";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import { useSlotSounds } from "../../hooks/useSlotSounds";
 import { getLevelInfo } from "../../hooks/usePlayerXP";
@@ -93,12 +94,12 @@ function checkMachineWins(grid, bet, activePaylines, machine) {
     }
 
     if (matchCount >= 3 && matchSymId) {
-      const symDef = machine.symbols.find(s => s.id === matchSymId) || machine.wild;
-      const lineBet = bet / activePaylines;
-      let payout = 0;
-      if (matchCount === 3) payout = lineBet * symDef.multiplier * 0.3;
-      else if (matchCount === 4) payout = lineBet * symDef.multiplier * 0.7;
-      else payout = lineBet * symDef.multiplier;
+    const symDef = machine.symbols.find(s => s.id === matchSymId) || machine.wild;
+    const lineBet = bet / activePaylines;
+    let payout = 0;
+    if (matchCount === 3) payout = lineBet * symDef.multiplier * 0.5;
+    else if (matchCount === 4) payout = lineBet * symDef.multiplier * 0.85;
+    else payout = lineBet * symDef.multiplier;
       payout = Math.round(payout);
       if (payout > 0) {
         totalWin += payout;
@@ -186,6 +187,7 @@ export default function SlotMachine() {
   const [jackpotAmount, setJackpotAmount] = useState(0);
   const [jackpotWin, setJackpotWin] = useState(null);
   const [winTier, setWinTier] = useState("none"); // "none" | "small" | "big" | "mega"
+  const [nearMiss, setNearMiss] = useState(null); // { symbol } or null
   const spinCountRef = useRef(0);
   const pendingJackpotRef = useRef(0);
 
@@ -412,6 +414,22 @@ export default function SlotMachine() {
             setSpinning(false);
             recordLoss();
             reportActivityLoss();
+
+            // Near-miss detection: 2 matching high-value symbols on the middle row
+            const midRow = currentGrid.map(reel => reel[1]); // row index 1 = middle
+            const valuableIds = currentMachine.symbols.slice(0, 4).map(s => s.id); // top 4 symbols
+            let matchId = null, matchCount2 = 0;
+            for (const sym of midRow) {
+              if (!valuableIds.includes(sym.id)) continue;
+              if (!matchId) { matchId = sym.id; matchCount2 = 1; }
+              else if (sym.id === matchId) matchCount2++;
+            }
+            if (matchCount2 === 2 && matchId) {
+              const symDef = currentMachine.symbols.find(s => s.id === matchId);
+              setNearMiss(symDef || null);
+              setTimeout(() => setNearMiss(null), 1500);
+            }
+
             scheduleNextAutoSpinRef.current?.(500);
           }
         }, 200);
@@ -440,7 +458,7 @@ export default function SlotMachine() {
     sessionSpinsRef.current += 1;
 
     setWins([]); setTotalWin(0); setShowWin(false);
-    setWinningLines([]); setWinCellMap({}); setReelsStopped(0);
+    setWinningLines([]); setWinCellMap({}); setReelsStopped(0); setNearMiss(null);
 
     const newGrid = generateMachineGrid(machine);
     nextGridRef.current = newGrid;
@@ -650,6 +668,7 @@ export default function SlotMachine() {
               <div className="absolute right-0 top-3 bottom-3 w-2 flex flex-col justify-around">
                 {[0, 1, 2].map(r => <div key={r} className="w-2 h-2 rounded-full bg-yellow-500/60" />)}
               </div>
+              <NearMissFlash visible={!!nearMiss && !showWin} symbol={nearMiss} onDone={() => setNearMiss(null)} />
               <WinDisplay wins={wins} totalWin={totalWin} visible={showWin} onSkip={() => {
                 resolveSpinEnd();
                 scheduleNextAutoSpin(400);
@@ -675,7 +694,7 @@ export default function SlotMachine() {
         setJackpotWin(null);
         fireworks(); emojiRain(["💰", "🏆", "💎", "👑"]);
       }} />}
-      {bonusSelect && <BonusSelectScreen scatterCount={bonusSelect.scatterCount} onSelect={handleBonusSelect} />}
+      {bonusSelect && <BonusSelectScreen scatterCount={bonusSelect.scatterCount} onSelect={handleBonusSelect} machineBonusType={machine?.bonusType} />}
       {bonusRound && <BonusRound baseWin={bonusRound.baseWin} scatterCount={bonusRound.scatterCount} onComplete={handleBonusComplete} />}
       {plinkoBonus && <PlinkoBonus baseWin={plinkoBonus.baseWin} scatterCount={plinkoBonus.scatterCount} onComplete={handleBonusComplete} accentColor={machine.accentColor} />}
       {freeSpinsBonus && <FreeSpinsBonus machine={machine} baseWin={freeSpinsBonus.baseWin} scatterCount={freeSpinsBonus.scatterCount} onComplete={handleBonusComplete} />}

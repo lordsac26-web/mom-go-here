@@ -27,47 +27,44 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
       glowTimelines.current.forEach(tl => tl?.kill());
       glowTimelines.current = [];
 
-      // Build a long strip for scrolling
+      // Build a long strip — 40 symbols for smooth multi-loop feel
       const stripSymbols = [];
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 40; i++) {
         stripSymbols.push(symbols[Math.floor(Math.random() * symbols.length)]);
       }
       setDisplaySyms(stripSymbols);
 
       // Wait one frame for DOM to update then animate
-      const frame = requestAnimationFrame(() => {
-        if (!stripRef.current) return;
+      let frameId;
+      frameId = requestAnimationFrame(() => {
+        if (!stripRef.current || stoppedRef.current) return;
         const el = stripRef.current;
         gsap.killTweensOf(el);
         gsap.set(el, { y: 0 });
 
-        // Spin loop — fast downward scroll
         const totalH = stripSymbols.length * CELL_SIZE;
         const loopY = -(totalH - CELL_SIZE * VISIBLE);
 
+        // Accelerate then hold speed — easeIn then linear hold
         spinAnimRef.current = gsap.to(el, {
           y: loopY,
-          duration: 0.8 + reelIndex * 0.15,
-          ease: "none",
-          onComplete: () => {
-            if (!stoppedRef.current) {
-              // Keep spinning with random new strip
-              if (!stoppedRef.current) triggerStop();
-            }
-          },
+          duration: 1.2 + reelIndex * 0.2,
+          ease: "power2.in",
+          // Do NOT auto-trigger stop here — the timeout owns that
         });
       });
 
-      // Set stop delay per reel
-      const stopDelay = 700 + reelIndex * 380;
+      // Stop delay staggers per reel — feels like reels stopping one by one
+      const stopDelay = 800 + reelIndex * 420;
       spinTimeoutRef.current = setTimeout(() => {
         triggerStop();
       }, stopDelay);
 
       return () => {
-        cancelAnimationFrame(frame);
+        cancelAnimationFrame(frameId);
       };
     } else {
+      // External stop (e.g. component unmount) — clean up without calling onStop
       stoppedRef.current = true;
       if (spinAnimRef.current) { spinAnimRef.current.kill(); spinAnimRef.current = null; }
       if (spinTimeoutRef.current) { clearTimeout(spinTimeoutRef.current); spinTimeoutRef.current = null; }

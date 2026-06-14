@@ -132,12 +132,12 @@ export function checkWins(grid, bet, activePaylines) {
     }
 
     if (matchCount >= 3 && matchSym) {
-      const symDef = SYMBOLS.find(s => s.id === matchSym) || WILD;
-      const lineBet = bet / activePaylines;
-      let payout = 0;
-      if (matchCount === 3) payout = lineBet * symDef.multiplier * 0.3;
-      else if (matchCount === 4) payout = lineBet * symDef.multiplier * 0.7;
-      else payout = lineBet * symDef.multiplier;
+    const symDef = SYMBOLS.find(s => s.id === matchSym) || WILD;
+    const lineBet = bet / activePaylines;
+    let payout = 0;
+    if (matchCount === 3) payout = lineBet * symDef.multiplier * 0.5;
+    else if (matchCount === 4) payout = lineBet * symDef.multiplier * 0.85;
+    else payout = lineBet * symDef.multiplier;
       payout = Math.round(payout);
       if (payout > 0) {
         totalWin += payout;

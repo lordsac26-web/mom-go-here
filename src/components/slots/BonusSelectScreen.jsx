@@ -44,7 +44,17 @@ const OPTIONS = [
   },
 ];
 
-export default function BonusSelectScreen({ scatterCount, onSelect }) {
+// Only show options relevant to the machine. "both" machines show all 3.
+const getAvailableOptions = (bonusType) => {
+  if (!bonusType || bonusType === "both") return OPTIONS;
+  if (bonusType === "boxes") return OPTIONS.filter(o => o.id === "boxes" || o.id === "plinko");
+  if (bonusType === "plinko") return OPTIONS.filter(o => o.id === "plinko" || o.id === "boxes");
+  if (bonusType === "freeSpins") return OPTIONS.filter(o => o.id === "freeSpins" || o.id === "plinko");
+  return OPTIONS;
+};
+
+export default function BonusSelectScreen({ scatterCount, onSelect, machineBonusType }) {
+  const availableOptions = getAvailableOptions(machineBonusType);
   const containerRef = useRef(null);
   const cardRefs = useRef([]);
   const glowRefs = useRef([]);
@@ -170,7 +180,7 @@ export default function BonusSelectScreen({ scatterCount, onSelect }) {
 
         {/* Option cards */}
         <div className="space-y-3">
-          {OPTIONS.map((opt, i) => (
+          {availableOptions.map((opt, i) => (
             <button
               key={opt.id}
               ref={el => { cardRefs.current[i] = el; glowRefs.current[i] = el; }}
