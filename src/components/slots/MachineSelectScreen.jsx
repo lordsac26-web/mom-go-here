@@ -20,7 +20,12 @@ const BONUS_LABELS = {
 };
 
 export default function MachineSelectScreen({ onSelect }) {
-  const [globalStats] = useState(loadGlobalStats);
+  const [globalStats, setGlobalStats] = useState(loadGlobalStats);
+
+  // Refresh stats each time this screen is shown (e.g. returning from a session)
+  useEffect(() => {
+    setGlobalStats(loadGlobalStats());
+  }, []);
   const [selectedPreview, setSelectedPreview] = useState(null);
   const cardsRef = useRef([]);
 

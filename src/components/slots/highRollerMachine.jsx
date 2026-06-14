@@ -9,8 +9,8 @@ export const HIGH_ROLLER_MACHINE = {
   name: "Diamond Vault",
   subtitle: "Hi-Roller — 100k Max Bet",
   emoji: "💎",
-  unlockRequirement: { type: "totalEarned", value: 10_000_000 },
-  unlockLabel: "Earn 10,000,000 total credits across all machines",
+  unlockRequirement: { type: "totalEarned", value: 500_000 },
+  unlockLabel: "Earn 500,000 total credits across all machines",
   description: "The ultimate VIP slot. Diamond-only symbols, mega multipliers, and BOTH Mystery Boxes + Plinko trigger together on every scatter win!",
   volatility: "extreme",
   bonusType: "both", // chained: boxes → plinko
