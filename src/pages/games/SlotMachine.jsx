@@ -44,17 +44,69 @@ import { useGameActivity } from "../../hooks/useGameActivity";
 import { useSlotSounds } from "../../hooks/useSlotSounds";
 import { getLevelInfo } from "../../hooks/usePlayerXP";
 
-function generateMachineGrid(machine) {
-  const allSyms = getMachineAllSymbols(machine);
+// Build a weighted pool for a machine — called once per machine selection
+function buildWeightedPool(machine) {
+  const pool = [];
+  for (const sym of getMachineAllSymbols(machine)) {
+    for (let i = 0; i < sym.weight; i++) pool.push(sym);
+  }
+  return pool;
+}
+
+// Volatility → base win-rate target
+// Real casino slots: low ~35%, medium ~28%, high ~22%, extreme ~16%
+const VOLATILITY_WIN_RATE = {
+  low: 0.35,
+  medium: 0.28,
+  high: 0.22,
+  extreme: 0.16,
+};
+
+function generateMachineGrid(machine, weightedPool) {
+  const pool = weightedPool || buildWeightedPool(machine);
   const grid = [];
   for (let r = 0; r < REELS; r++) {
     const col = [];
     for (let row = 0; row < ROWS; row++) {
-      col.push(allSyms[Math.floor(Math.random() * allSyms.length)]);
+      col.push(pool[Math.floor(Math.random() * pool.length)]);
     }
     grid.push(col);
   }
   return grid;
+}
+
+// Forced-loss gate: if RNG decides this spin should lose, regenerate the grid
+// until no 3-of-a-kind exists on any payline. Capped at 8 attempts to avoid infinite loop.
+function generateMachineGridWithRTP(machine, weightedPool, paylines) {
+  const targetWinRate = VOLATILITY_WIN_RATE[machine.volatility] || 0.28;
+  const forceLoss = Math.random() > targetWinRate;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const grid = generateMachineGrid(machine, weightedPool);
+    if (!forceLoss) return grid; // win spin — return as-is
+
+    // Check if this grid has any 3+ match on any payline
+    let hasWin = false;
+    outer: for (const line of paylines) {
+      const lineSyms = line.map((row, reel) => grid[reel][row]);
+      let matchId = lineSyms[0].id === "wild" ? null : lineSyms[0].id;
+      let count = 0;
+      for (const sym of lineSyms) {
+        if (sym.id === "wild" || sym.id === matchId) { if (!matchId && sym.id !== "wild") matchId = sym.id; count++; }
+        else if (!matchId && sym.id !== "wild") { matchId = sym.id; count++; }
+        else break;
+      }
+      if (count >= 3) { hasWin = true; break outer; }
+    }
+    // Also check scatters
+    let scatterCount = 0;
+    for (const col of grid) for (const sym of col) if (sym.id === "scatter") scatterCount++;
+    if (scatterCount >= 3) hasWin = true;
+
+    if (!hasWin) return grid; // successfully generated a losing grid
+  }
+  // Fallback: return last generated grid (we tried 8 times)
+  return generateMachineGrid(machine, weightedPool);
 }
 
 function checkMachineWins(grid, bet, activePaylines, machine) {
@@ -174,6 +226,7 @@ export default function SlotMachine() {
   const [autoSpin, setAutoSpin] = useState(false);
   const [topOffMessage, setTopOffMessage] = useState(false);
   const [reelStrip, setReelStrip] = useState([]);
+  const weightedPoolRef = useRef([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
@@ -196,7 +249,9 @@ export default function SlotMachine() {
 
   useEffect(() => {
     if (!machine) return;
-    setGrid(generateMachineGrid(machine));
+    const pool = buildWeightedPool(machine);
+    weightedPoolRef.current = pool;
+    setGrid(generateMachineGrid(machine, pool));
     setReelStrip(buildMachineReelStrip(machine));
     setEmergencyDripShown(false);
     // Reset bet to second tier of the effective (level-gated) bet levels
@@ -460,7 +515,7 @@ export default function SlotMachine() {
     setWins([]); setTotalWin(0); setShowWin(false);
     setWinningLines([]); setWinCellMap({}); setReelsStopped(0); setNearMiss(null);
 
-    const newGrid = generateMachineGrid(machine);
+    const newGrid = generateMachineGridWithRTP(machine, weightedPoolRef.current, PAYLINES);
     nextGridRef.current = newGrid;
     setGrid(newGrid);
     setSpinning(true);
