@@ -25,7 +25,10 @@ export default function WinParticles({ active, intensity = "small", containerRef
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    const count = intensity === "mega" ? 80 : intensity === "big" ? 50 : 25;
+    const mobile = window.innerWidth < 768;
+    const count = mobile
+      ? (intensity === "mega" ? 30 : intensity === "big" ? 20 : 10)
+      : (intensity === "mega" ? 55 : intensity === "big" ? 35 : 18);
     const particles = [];
 
     for (let i = 0; i < count; i++) {
@@ -102,7 +105,7 @@ export default function WinParticles({ active, intensity = "small", containerRef
     <canvas
       ref={canvasRef}
       className="absolute inset-0 z-20 pointer-events-none"
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "100%", willChange: "transform" }}
     />
   );
 }

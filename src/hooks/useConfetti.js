@@ -16,133 +16,80 @@ const GOLD_COLORS = ["#f59e0b", "#fbbf24", "#fde68a", "#d97706"];
 const RAINBOW = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899"];
 const PARTY = ["#ff0a54", "#ff477e", "#ff7096", "#ff85a1", "#fbb1bd", "#f9bec7", "#3b82f6", "#22d3ee", "#a855f7"];
 
+// Detect low-end / mobile to scale down particle counts
+const isMobile = () => typeof window !== "undefined" && window.innerWidth < 768;
+
 export default function useConfetti() {
 
   // Tiny burst — small celebration (word found, pair matched)
   function spark(origin = { x: 0.5, y: 0.5 }) {
     confetti({
-      particleCount: 30,
+      particleCount: isMobile() ? 16 : 28,
       spread: 50,
-      startVelocity: 20,
-      decay: 0.95,
-      scalar: 0.8,
+      startVelocity: 18,
+      decay: 0.94,
+      scalar: 0.75,
       origin,
       colors: GOLD_COLORS,
-      ticks: 80,
-      gravity: 0.8,
+      ticks: 60,
+      gravity: 0.9,
     });
   }
 
-  // Medium burst — milestone (halfway done, score threshold)
+  // Medium burst — milestone
   function burst(origin = { x: 0.5, y: 0.4 }) {
     confetti({
-      particleCount: 45,
-      spread: 65,
-      startVelocity: 28,
-      decay: 0.92,
-      scalar: 1,
+      particleCount: isMobile() ? 28 : 45,
+      spread: 60,
+      startVelocity: 26,
+      decay: 0.91,
+      scalar: 0.9,
       origin,
       colors: RAINBOW,
-      ticks: 90,
+      ticks: 75,
     });
   }
 
-  // Full shower — major win (game complete)
+  // Full shower — major win
   function shower() {
-    const duration = 2000;
+    const duration = 1600;
     const end = Date.now() + duration;
+    const pc = isMobile() ? 2 : 4;
 
     (function frame() {
-      confetti({
-        particleCount: 4,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.6 },
-        colors: PARTY,
-      });
-      confetti({
-        particleCount: 4,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.6 },
-        colors: PARTY,
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
+      confetti({ particleCount: pc, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: PARTY });
+      confetti({ particleCount: pc, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: PARTY });
+      if (Date.now() < end) requestAnimationFrame(frame);
     })();
   }
 
-  // Fireworks — ultimate achievement (perfect score, all words found)
-  // Uses setTimeout instead of rAF to avoid flooding the main thread every frame
+  // Fireworks — reduced bursts + particle count on mobile
   function fireworks() {
-    function randomInRange(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-    const bursts = 6;
+    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+    const bursts = isMobile() ? 3 : 5;
+    const pc = isMobile() ? 18 : 30;
     for (let i = 0; i < bursts; i++) {
       setTimeout(() => {
-        confetti({
-          startVelocity: 28,
-          spread: 360,
-          ticks: 60,
-          zIndex: 9999,
-          particleCount: 35,
-          origin: { x: randomInRange(0.1, 0.4), y: Math.random() * 0.4 },
-          colors: RAINBOW,
-        });
-        confetti({
-          startVelocity: 28,
-          spread: 360,
-          ticks: 60,
-          zIndex: 9999,
-          particleCount: 35,
-          origin: { x: randomInRange(0.6, 0.9), y: Math.random() * 0.4 },
-          colors: PARTY,
-        });
-      }, i * 500);
+        confetti({ startVelocity: 26, spread: 360, ticks: 50, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.1, 0.4), y: Math.random() * 0.4 }, colors: RAINBOW });
+        confetti({ startVelocity: 26, spread: 360, ticks: 50, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.6, 0.9), y: Math.random() * 0.4 }, colors: PARTY });
+      }, i * 600);
     }
   }
 
-  // Side cannons — dramatic entrance from left and right
+  // Side cannons — halved on mobile
   function sideCannons() {
-    const count = 100;
-    const defaults = { origin: { y: 0.7 }, colors: RAINBOW };
-
-    confetti({
-      ...defaults,
-      particleCount: count,
-      angle: 60,
-      spread: 55,
-      origin: { x: 0 },
-    });
-    confetti({
-      ...defaults,
-      particleCount: count,
-      angle: 120,
-      spread: 55,
-      origin: { x: 1 },
-    });
+    const count = isMobile() ? 45 : 80;
+    confetti({ particleCount: count, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: RAINBOW });
+    confetti({ particleCount: count, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: RAINBOW });
   }
 
-  // Emoji rain — themed emoji confetti (capped to avoid mobile freeze)
+  // Emoji rain — on mobile just do a plain burst (shapeFromText is very expensive on Android)
   function emojiRain(emojis = ["🎉", "⭐", "🏆"]) {
+    if (isMobile()) { burst(); return; }
     try {
-      // shapeFromText can be expensive — limit to first 2 emojis max
       const shapes = emojis.slice(0, 2).map(e => confetti.shapeFromText({ text: e, scalar: 1.5 }));
-      confetti({
-        particleCount: 18,
-        spread: 100,
-        origin: { y: 0.3 },
-        scalar: 1.5,
-        shapes,
-        ticks: 100,
-      });
-    } catch {
-      // Fallback if shapeFromText unsupported
-      burst();
-    }
+      confetti({ particleCount: 16, spread: 90, origin: { y: 0.3 }, scalar: 1.5, shapes, ticks: 80 });
+    } catch { burst(); }
   }
 
   return {

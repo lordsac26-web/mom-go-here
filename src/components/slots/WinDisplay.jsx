@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
+const isMobile = () => typeof window !== "undefined" && window.innerWidth < 768;
+
 export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
   const containerRef = useRef(null);
   const countRef = useRef(null);
@@ -37,16 +39,20 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
       });
     }
 
-    // Pulsing glow
+    // Pulsing glow — skip infinite loop on mobile (causes sustained GPU overdraw)
     const glowColor = isMega
-      ? "0 0 90px rgba(255,210,0,1), 0 0 180px rgba(255,80,0,0.6)"
+      ? "0 0 60px rgba(255,210,0,0.9), 0 0 120px rgba(255,80,0,0.5)"
       : isBig
-      ? "0 0 55px rgba(255,210,0,0.85), 0 0 100px rgba(255,200,0,0.4)"
-      : "0 0 28px rgba(34,197,94,0.7)";
-    const glowTl = gsap.timeline({ repeat: -1 });
-    glowTl.to(el, { boxShadow: glowColor, duration: isMega ? 0.4 : 0.55, ease: "sine.inOut" })
-          .to(el, { boxShadow: "0 0 8px rgba(0,0,0,0.3)", duration: isMega ? 0.4 : 0.55, ease: "sine.inOut" });
-    glowTlRef.current = glowTl;
+      ? "0 0 40px rgba(255,210,0,0.8), 0 0 80px rgba(255,200,0,0.3)"
+      : "0 0 22px rgba(34,197,94,0.65)";
+    if (!isMobile()) {
+      const glowTl = gsap.timeline({ repeat: -1 });
+      glowTl.to(el, { boxShadow: glowColor, duration: isMega ? 0.45 : 0.6, ease: "sine.inOut" })
+            .to(el, { boxShadow: "0 0 8px rgba(0,0,0,0.3)", duration: isMega ? 0.45 : 0.6, ease: "sine.inOut" });
+      glowTlRef.current = glowTl;
+    } else {
+      gsap.set(el, { boxShadow: glowColor });
+    }
 
     // Background flash
     if (bgFlashRef.current && (isBig || isMega)) {
@@ -68,11 +74,12 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
       },
     });
 
-    // Floating coins / gems
+    // Floating coins / gems — single pass only on mobile to avoid sustained animation load
     if (coinsRef.current) {
       const coinContainer = coinsRef.current;
       coinContainer.innerHTML = "";
-      const coinCount = isMega ? 16 : isBig ? 10 : 5;
+      const mobile = isMobile();
+      const coinCount = mobile ? (isMega ? 6 : isBig ? 4 : 2) : (isMega ? 14 : isBig ? 8 : 4);
       const icons = isMega
         ? ["💰", "💎", "👑", "⭐", "🏆", "✨"]
         : isBig ? ["🪙", "💰", "💎", "✨"]
@@ -86,18 +93,19 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
         coin.style.bottom = "0%";
         coinContainer.appendChild(coin);
         gsap.fromTo(coin,
-          { y: 0, opacity: 1, scale: 0.4 + Math.random() * 0.4, rotation: Math.random() * 360 },
+          { y: 0, opacity: 1, scale: 0.5 + Math.random() * 0.3, rotation: Math.random() * 180 },
           {
-            y: -(100 + Math.random() * 120),
-            x: (Math.random() - 0.5) * 80,
+            y: -(80 + Math.random() * 100),
+            x: (Math.random() - 0.5) * 60,
             opacity: 0,
-            scale: 0.8 + Math.random() * 0.6,
-            rotation: (Math.random() - 0.5) * 540,
-            duration: 1.0 + Math.random() * 0.8,
-            delay: 0.1 + i * 0.07,
+            scale: 0.8 + Math.random() * 0.4,
+            rotation: (Math.random() - 0.5) * 360,
+            duration: 0.9 + Math.random() * 0.6,
+            delay: 0.1 + i * 0.06,
             ease: "power1.out",
-            repeat: isMega ? 3 : isBig ? 2 : 1,
-            repeatDelay: 0.3 + Math.random() * 0.2,
+            // No repeat on mobile — one pass is enough
+            repeat: mobile ? 0 : (isMega ? 2 : 1),
+            repeatDelay: 0.4,
           }
         );
       }
@@ -153,15 +161,17 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
         }`}
         style={{ opacity: 0, minWidth: 180 }}
       >
-        {/* Shimmer sweep */}
-        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 opacity-40"
-            style={{
-              background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)",
-              animation: "shimmer 1.4s infinite",
-            }}
-          />
-        </div>
+        {/* Shimmer sweep — desktop only to avoid mobile GPU overdraw */}
+        {!isMobile() && (
+          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 opacity-40"
+              style={{
+                background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)",
+                animation: "shimmer 1.4s infinite",
+              }}
+            />
+          </div>
+        )}
 
         {/* Tier label */}
         <div className="relative z-10 mb-1">
