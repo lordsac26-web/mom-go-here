@@ -205,9 +205,30 @@ export default function DartPopBlitz() {
   }
 
   return (
-    <div className="min-h-screen px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+4rem)] flex flex-col items-center gap-2 select-none">
-      <div className="flex items-center justify-end w-full max-w-[400px]">
-        <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
+    <div className="h-screen max-h-screen px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+4rem)] flex flex-col items-center gap-1.5 select-none overflow-hidden">
+      <div className="flex items-center justify-between w-full max-w-[400px] shrink-0">
+        <div className="flex items-center gap-2">
+          {launcherPhase === "power" && (
+            <button
+              onClick={() => dartCanvasRef.current?.cancelAim()}
+              className="bg-red-600/90 active:bg-red-700 text-white font-black px-4 py-1.5 rounded-xl text-sm border border-red-400 shadow-lg"
+            >
+              ✕ Cancel
+            </button>
+          )}
+          {isEndless && (
+            <button
+              onClick={handleEndlessStop}
+              className="bg-red-600 text-white font-black px-4 py-1.5 rounded-xl text-sm"
+            >
+              🛑 Stop
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <AimSpeedSelector value={aimSpeedMultiplier} onChange={setAimSpeedMultiplier} />
+          <GameInstructions title="Dart Pop Blitz" emoji="🎯" steps={INSTRUCTIONS} />
+        </div>
       </div>
 
       <GameUI
@@ -219,34 +240,6 @@ export default function DartPopBlitz() {
         endless={isEndless}
         wind={wind}
       />
-
-      <AimSpeedSelector value={aimSpeedMultiplier} onChange={setAimSpeedMultiplier} />
-
-      {isEndless && (
-        <button
-          onClick={handleEndlessStop}
-          className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-2 rounded-xl text-lg transition-all"
-        >
-          🛑 Stop Run
-        </button>
-      )}
-
-      {/* FIX (structure): DartPopBlitzCanvas now owns balloons/darts/particles/obstacles
-          internally. The parent only receives summary state (score, streak, totalPopped,
-          dartsRemaining) via the callbacks below, which fire infrequently — not on every
-          animation frame. This prevents the page shell from re-rendering every tick.
-
-          FIX (bug): onGameEnd replaces the old setGameState("won"/"lost") call from inside
-          the canvas. The canvas calls it with the final result object so scores are captured
-          at the correct moment with no stale-closure risk. */}
-      {launcherPhase === "power" && (
-        <button
-          onClick={() => dartCanvasRef.current?.cancelAim()}
-          className="bg-red-600/90 active:bg-red-700 text-white font-black px-5 py-2.5 rounded-2xl text-base border border-red-400 shadow-lg"
-        >
-          ✕ Cancel
-        </button>
-      )}
 
       <DartPopBlitzCanvas
         ref={dartCanvasRef}
@@ -265,6 +258,7 @@ export default function DartPopBlitz() {
         aimSpeedMultiplier={aimSpeedMultiplier}
         sounds={sounds}
         onPhaseChange={setLauncherPhase}
+        className="flex-1 min-h-0 w-full max-w-[400px]"
       />
     </div>
   );
