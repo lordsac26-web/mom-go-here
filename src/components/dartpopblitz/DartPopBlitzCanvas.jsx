@@ -27,59 +27,140 @@ import {
 
 // ── Offscreen static background ──
 // Bump version to invalidate cache when ground layout changes
-let staticBg = null; const _bgVer = 2;
+let staticBg = null; const _bgVer = 3;
+
+// Cartoony puffy cloud helper — chunky bumps with a soft outline
+function drawCloud(ctx, cx, cy, scale) {
+  const bumps = [
+    [0, 0, 1], [0.7, -0.2, 0.75], [-0.7, -0.1, 0.7],
+    [1.3, 0.1, 0.6], [-1.3, 0.15, 0.55], [0.35, 0.25, 0.65], [-0.35, 0.25, 0.6],
+  ];
+  const R = 26 * scale;
+  // Soft shadow underside
+  ctx.fillStyle = "rgba(180,210,235,0.55)";
+  bumps.forEach(([bx, by, br]) => {
+    ctx.beginPath();
+    ctx.arc(cx + bx * R, cy + by * R + 3, br * R, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // White body
+  ctx.fillStyle = "#ffffff";
+  bumps.forEach(([bx, by, br]) => {
+    ctx.beginPath();
+    ctx.arc(cx + bx * R, cy + by * R, br * R, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 function getStaticBg() {
   if (staticBg) return staticBg;
   const oc = document.createElement("canvas");
   oc.width = GAME_WIDTH;
   oc.height = GAME_HEIGHT;
   const ctx = oc.getContext("2d");
+
+  // Bright cartoon sky
   const grad = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
-  grad.addColorStop(0, "#0ea5e9");
-  grad.addColorStop(0.6, "#7dd3fc");
-  grad.addColorStop(1, "#22c55e");
+  grad.addColorStop(0, "#38bdf8");
+  grad.addColorStop(0.45, "#7dd3fc");
+  grad.addColorStop(0.7, "#bae6fd");
+  grad.addColorStop(1, "#86efac");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
-  [[60, 50, 40], [200, 30, 30], [330, 70, 25]].forEach(([cx, cy, r]) => {
+
+  // Smiling cartoon sun, top-right
+  const sunX = GAME_WIDTH - 48, sunY = 52, sunR = 30;
+  ctx.fillStyle = "rgba(253,224,71,0.45)";
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(sunX, sunY);
+    ctx.rotate(a);
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.arc(cx + r * 0.7, cy - r * 0.2, r * 0.7, 0, Math.PI * 2);
-    ctx.arc(cx - r * 0.5, cy + r * 0.1, r * 0.5, 0, Math.PI * 2);
+    ctx.moveTo(sunR + 4, -5);
+    ctx.lineTo(sunR + 18, 0);
+    ctx.lineTo(sunR + 4, 5);
+    ctx.closePath();
     ctx.fill();
-  });
-  // Dirt layer under grass
+    ctx.restore();
+  }
+  ctx.fillStyle = "#fde047";
+  ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3; ctx.stroke();
+  // little blush + smile
+  ctx.fillStyle = "#fb923c";
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.arc(sunX - 10, sunY + 4, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sunX + 10, sunY + 4, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#7c4a02";
+  ctx.beginPath(); ctx.arc(sunX - 9, sunY - 4, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sunX + 9, sunY - 4, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#7c4a02"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.arc(sunX, sunY + 2, 9, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+
+  // Puffy cartoon clouds
+  drawCloud(ctx, 70, 60, 1.1);
+  drawCloud(ctx, 220, 38, 0.85);
+  drawCloud(ctx, 150, 120, 0.7);
+
+  // ── Rolling grass hills ──
   const GROUND_TOP = GAME_HEIGHT - 80;
-  ctx.fillStyle = "#8B6914";
-  ctx.fillRect(0, GROUND_TOP + 12, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP);
-  // Darker dirt stripe
-  ctx.fillStyle = "#6B4F12";
-  ctx.fillRect(0, GROUND_TOP + 24, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP - 24);
-  // Dirt texture dots
-  ctx.fillStyle = "#7A5C13";
-  for (let dx = 5; dx < GAME_WIDTH; dx += 14) {
-    for (let dy = GROUND_TOP + 28; dy < GAME_HEIGHT; dy += 12) {
-      ctx.globalAlpha = 0.3 + Math.random() * 0.3;
+  // Back hill
+  ctx.fillStyle = "#4ade80";
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_TOP + 6);
+  for (let x = 0; x <= GAME_WIDTH; x += 8) {
+    ctx.lineTo(x, GROUND_TOP - 14 + Math.sin(x * 0.018) * 16);
+  }
+  ctx.lineTo(GAME_WIDTH, GAME_HEIGHT);
+  ctx.lineTo(0, GAME_HEIGHT);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dirt layer under grass
+  ctx.fillStyle = "#a16207";
+  ctx.fillRect(0, GROUND_TOP + 14, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP);
+  ctx.fillStyle = "#854d0e";
+  ctx.fillRect(0, GROUND_TOP + 26, GAME_WIDTH, GAME_HEIGHT - GROUND_TOP - 26);
+  // Dirt pebbles
+  ctx.fillStyle = "#ca8a04";
+  for (let dx = 6; dx < GAME_WIDTH; dx += 16) {
+    for (let dy = GROUND_TOP + 30; dy < GAME_HEIGHT; dy += 14) {
+      ctx.globalAlpha = 0.25 + Math.random() * 0.25;
       ctx.beginPath();
-      ctx.arc(dx + Math.random() * 6, dy + Math.random() * 4, 1.5 + Math.random(), 0, Math.PI * 2);
+      ctx.arc(dx + Math.random() * 8, dy + Math.random() * 4, 1.5 + Math.random() * 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   ctx.globalAlpha = 1;
-  // Grass layer on top of dirt
-  ctx.fillStyle = "#16a34a";
-  ctx.fillRect(0, GROUND_TOP, GAME_WIDTH, 14);
-  // Grass blades
-  ctx.fillStyle = "#15803d";
-  for (let gx = 0; gx < GAME_WIDTH; gx += 12) {
-    const h = 6 + Math.sin(gx * 0.3) * 3 + Math.random() * 3;
-    ctx.fillRect(gx, GROUND_TOP - 2, 3, h);
-  }
-  // Lighter grass highlights
+
+  // Front grass band with bold outline
   ctx.fillStyle = "#22c55e";
-  for (let gx = 6; gx < GAME_WIDTH; gx += 18) {
-    ctx.fillRect(gx, GROUND_TOP, 2, 5 + Math.random() * 3);
+  ctx.fillRect(0, GROUND_TOP, GAME_WIDTH, 16);
+  ctx.strokeStyle = "#15803d"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_TOP); ctx.lineTo(GAME_WIDTH, GROUND_TOP); ctx.stroke();
+  // Chunky grass tufts
+  ctx.fillStyle = "#16a34a";
+  for (let gx = 0; gx < GAME_WIDTH; gx += 10) {
+    const h = 7 + Math.sin(gx * 0.4) * 4;
+    ctx.beginPath();
+    ctx.moveTo(gx, GROUND_TOP + 2);
+    ctx.lineTo(gx + 3, GROUND_TOP - h);
+    ctx.lineTo(gx + 6, GROUND_TOP + 2);
+    ctx.closePath();
+    ctx.fill();
   }
+  ctx.fillStyle = "#4ade80";
+  for (let gx = 5; gx < GAME_WIDTH; gx += 20) {
+    ctx.beginPath();
+    ctx.moveTo(gx, GROUND_TOP + 1);
+    ctx.lineTo(gx + 2, GROUND_TOP - 5);
+    ctx.lineTo(gx + 4, GROUND_TOP + 1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   staticBg = oc;
   return oc;
 }
@@ -98,28 +179,56 @@ function drawBalloon(ctx, b, frozen) {
   }
 
   ctx.beginPath();
-  ctx.ellipse(0, b.radius + 3, b.radius * 0.5, 3, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.ellipse(0, b.radius + 4, b.radius * 0.55, 3.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.14)";
   ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
-  ctx.fillStyle = b.color;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  // Wavy cartoon string
+  ctx.strokeStyle = "rgba(80,80,90,0.55)";
   ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, b.radius + 4);
+  ctx.quadraticCurveTo(b.radius * 0.35, b.radius + 12, -b.radius * 0.1, b.radius + 20);
   ctx.stroke();
 
+  // Knot at bottom
   ctx.beginPath();
-  ctx.arc(-b.radius * 0.3, -b.radius * 0.3, b.radius * 0.2, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.moveTo(-3, b.radius + 2);
+  ctx.lineTo(0, b.radius + 7);
+  ctx.lineTo(3, b.radius + 2);
+  ctx.closePath();
+  ctx.fillStyle = b.color;
   ctx.fill();
 
+  // Balloon body — slightly egg-shaped for a cartoon look
   ctx.beginPath();
-  ctx.moveTo(-2, b.radius);
-  ctx.lineTo(0, b.radius + 5);
-  ctx.lineTo(2, b.radius);
+  ctx.ellipse(0, -1, b.radius, b.radius * 1.08, 0, 0, Math.PI * 2);
   ctx.fillStyle = b.color;
+  ctx.fill();
+  // Bold dark outline
+  ctx.strokeStyle = "rgba(0,0,0,0.28)";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Soft inner shading on the lower-right
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(0, -1, b.radius, b.radius * 1.08, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.beginPath();
+  ctx.arc(b.radius * 0.35, b.radius * 0.35, b.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Glossy highlight — elongated streak + dot
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.beginPath();
+  ctx.ellipse(-b.radius * 0.32, -b.radius * 0.38, b.radius * 0.2, b.radius * 0.38, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.beginPath();
+  ctx.arc(b.radius * 0.22, -b.radius * 0.45, b.radius * 0.12, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.font = `${Math.max(b.radius * 0.8, 8)}px sans-serif`;
@@ -217,19 +326,47 @@ function drawDart(ctx, d) {
   }
 
   // Scale mini-darts slightly smaller
-  const sc = d.type === "mini" ? 0.7 : 1;
+  const sc = d.type === "mini" ? 0.75 : 1.1;
   ctx.scale(sc, sc);
 
+  // Cartoon dart: chunky body with a bold dark outline
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(0,0,0,0.55)";
+  ctx.lineWidth = 2;
+
+  // Body (rounded teardrop)
   ctx.fillStyle = d.color || "#94a3b8";
   ctx.beginPath();
-  ctx.moveTo(12, 0); ctx.lineTo(-5, -3); ctx.lineTo(-3, 0); ctx.lineTo(-5, 3);
+  ctx.moveTo(13, 0);
+  ctx.lineTo(-4, -3.5);
+  ctx.lineTo(-3, 0);
+  ctx.lineTo(-4, 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Body shine
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.beginPath();
+  ctx.moveTo(10, -1.4); ctx.lineTo(-2, -2); ctx.lineTo(-2, -0.6);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#f97316";
-  ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(16, 0); ctx.lineTo(12, -2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(16, 0); ctx.lineTo(12, 2); ctx.closePath(); ctx.fill();
+
+  // Metal tip
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.moveTo(13, 0); ctx.lineTo(18, 0); ctx.lineTo(13, -2.6);
+  ctx.lineTo(13, 2.6); ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Tail fins (rounded, outlined)
   ctx.fillStyle = d.finColor || "#ef4444";
-  ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(-10, -6); ctx.lineTo(-7, -1); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-5, 3); ctx.lineTo(-10, 6); ctx.lineTo(-7, 1); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-4, -3.5); ctx.lineTo(-11, -7); ctx.lineTo(-6, -1);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-4, 3.5); ctx.lineTo(-11, 7); ctx.lineTo(-6, 1);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
 
   ctx.shadowBlur = 0;
   ctx.restore();
@@ -261,38 +398,70 @@ function drawTrajectoryPreview(ctx, launchX, launchY, vx, vy, wind) {
   ctx.restore();
 }
 
-// ── Rotating dart launcher (missile pod) ──
+// ── Rotating dart launcher (cartoon cannon) ──
 function drawLauncher(ctx, pos, aimAngle) {
   ctx.save();
   ctx.translate(pos.x, pos.y);
-  // Base platform
-  ctx.fillStyle = "#374151";
+  ctx.lineJoin = "round";
+
+  // Chunky rounded base with bold outline
+  ctx.fillStyle = "#dc2626";
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(-26, 6); ctx.lineTo(26, 6); ctx.lineTo(20, 20); ctx.lineTo(-20, 20);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#4b5563";
-  ctx.fillRect(-18, 7, 36, 4);
-  // Rotating turret
+  ctx.moveTo(-28, 8);
+  ctx.quadraticCurveTo(-30, 22, -16, 22);
+  ctx.lineTo(16, 22);
+  ctx.quadraticCurveTo(30, 22, 28, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Base highlight stripe
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(0, 11, 18, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Bolts
+  ctx.fillStyle = "#fca5a5";
+  [-18, 18].forEach(bx => { ctx.beginPath(); ctx.arc(bx, 15, 2.5, 0, Math.PI * 2); ctx.fill(); });
+
+  // Rotating cannon barrel
   ctx.rotate(aimAngle + Math.PI / 2);
-  const bLen = 34, bW = 10;
-  ctx.fillStyle = "#6b7280";
-  ctx.fillRect(-bW, -bLen, bW * 2, bLen);
-  ctx.fillStyle = "#4b5563";
-  ctx.fillRect(-bW + 2, -bLen, (bW - 2) * 2, bLen);
-  // Muzzle
-  ctx.fillStyle = "#ef4444";
-  ctx.fillRect(-bW - 2, -bLen - 6, bW * 2 + 4, 7);
+  const bLen = 36, bW = 12;
+  // Barrel body — rounded with outline
+  ctx.fillStyle = "#facc15";
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-bW, 4);
+  ctx.lineTo(-bW + 1, -bLen + 6);
+  ctx.quadraticCurveTo(-bW + 1, -bLen, -bW + 6, -bLen);
+  ctx.lineTo(bW - 6, -bLen);
+  ctx.quadraticCurveTo(bW - 1, -bLen, bW - 1, -bLen + 6);
+  ctx.lineTo(bW, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Barrel shine
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillRect(-bW + 3, -bLen + 4, 3, bLen - 2);
+  // Red muzzle ring
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath();
+  ctx.roundRect(-bW - 1, -bLen - 7, bW * 2 + 2, 9, 4);
+  ctx.fill();
+  ctx.stroke();
+  // Muzzle hole
   ctx.fillStyle = "#1f2937";
-  ctx.beginPath(); ctx.arc(0, -bLen - 3, 4, 0, Math.PI * 2); ctx.fill();
-  // Fins
-  ctx.fillStyle = "#9ca3af";
-  ctx.beginPath(); ctx.moveTo(-bW - 4, -5); ctx.lineTo(-bW - 12, 8); ctx.lineTo(-bW, 3); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(bW + 4, -5); ctx.lineTo(bW + 12, 8); ctx.lineTo(bW, 3); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -bLen - 3, 4.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // Hinge
-  ctx.fillStyle = "#f59e0b";
-  ctx.beginPath(); ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#d97706"; ctx.lineWidth = 2; ctx.stroke();
+
+  // Center hinge knob
+  ctx.fillStyle = "#fbbf24";
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(pos.x, pos.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.beginPath(); ctx.arc(pos.x - 2, pos.y - 2, 2.5, 0, Math.PI * 2); ctx.fill();
 }
 
 // ── Power meter bar (right side) ──
