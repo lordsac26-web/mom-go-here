@@ -22,7 +22,7 @@ export default function HintButton({ moves, onHint, disabled }) {
     <button
       onClick={showHint}
       disabled={cooldown || disabled}
-      className={`bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition-all ${
+      className={`bg-secondary text-foreground px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] active:scale-95 transition-all ${
         cooldown ? "opacity-40" : ""
       }`}
       aria-label="Show hint"

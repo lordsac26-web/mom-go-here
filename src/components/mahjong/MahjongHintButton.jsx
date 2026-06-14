@@ -24,7 +24,7 @@ export default function MahjongHintButton({ tiles, onHint, disabled }) {
     <button
       onClick={handleClick}
       disabled={cooldown || disabled}
-      className={`bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition-opacity ${
+      className={`bg-secondary text-foreground px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] active:scale-95 transition-opacity ${
         cooldown ? "opacity-40" : ""
       }`}
       title="Show a matching pair"

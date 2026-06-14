@@ -20,7 +20,7 @@ export default function SolitaireHintButton({ onHint, disabled }) {
     <button
       onClick={handleClick}
       disabled={cooldown || disabled}
-      className={`px-3 py-2 rounded-xl font-bold flex items-center gap-1 transition-all ${
+      className={`px-3 rounded-xl font-bold flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] active:scale-95 transition-all ${
         cooldown || disabled
           ? "bg-green-900/50 text-green-700 opacity-60"
           : "bg-green-700 text-white"

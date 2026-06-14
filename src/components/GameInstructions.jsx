@@ -8,7 +8,7 @@ export default function GameInstructions({ title, emoji, steps }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold flex items-center gap-1"
+        className="bg-secondary text-foreground px-3 rounded-xl font-bold flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] active:scale-95 transition-transform"
         aria-label="How to play"
       >
         <HelpCircle size={20} /> <span className="hidden sm:inline">Help</span>
@@ -25,7 +25,7 @@ export default function GameInstructions({ title, emoji, steps }) {
                 <span className="text-4xl">{emoji}</span>
                 <h2 className="text-2xl font-black text-primary">How to Play</h2>
               </div>
-              <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-muted">
+              <button onClick={() => setOpen(false)} className="rounded-xl hover:bg-muted flex items-center justify-center min-w-[44px] min-h-[44px] active:scale-95 transition-transform" aria-label="Close">
                 <X size={24} className="text-foreground" />
               </button>
             </div>

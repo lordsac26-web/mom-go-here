@@ -292,7 +292,7 @@ export default function Yahtzee() {
               "Play 13 turns — score as high as you can!"
             ]}
           />
-          <button onClick={handleResetClick} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
+          <button onClick={handleResetClick} aria-label="Reset game" className="bg-secondary text-foreground rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform">🔄</button>
         </div>
       </div>
 

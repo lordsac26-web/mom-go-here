@@ -376,11 +376,12 @@ export default function Sudoku() {
           <button
             onClick={handleUndo}
             disabled={undoStack.length === 0}
-            className={`px-3 py-2 rounded-xl font-bold text-sm ${
+            aria-label="Undo"
+            className={`rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform ${
               undoStack.length > 0 ? "bg-secondary text-foreground" : "bg-muted text-muted-foreground opacity-50"
             }`}
           >↩</button>
-          <button onClick={handleResetClick} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
+          <button onClick={handleResetClick} aria-label="Reset game" className="bg-secondary text-foreground rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform">🔄</button>
         </div>
       </div>
 

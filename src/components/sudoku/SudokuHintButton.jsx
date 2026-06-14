@@ -18,7 +18,7 @@ export default function SudokuHintButton({ onHint, disabled }) {
     <button
       onClick={handleClick}
       disabled={cooldown || disabled}
-      className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition-all ${
+      className={`px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] active:scale-95 transition-all ${
         cooldown || disabled
           ? "bg-muted text-muted-foreground opacity-50"
           : "bg-secondary text-foreground"

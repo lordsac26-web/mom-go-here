@@ -384,13 +384,13 @@ export default function WordSearch() {
           />
           <WordSearchHintButton onHint={handleHint} disabled={won} theme={theme} />
           <button onClick={() => setThemePanelOpen(true)}
-            className="px-3 py-2 rounded-xl font-bold"
+            className="px-3 rounded-xl font-bold flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform"
             style={{ background: theme.cell, color: theme.cellText }}
-            title="Change theme">
+            aria-label="Change theme">
             <Palette size={18} />
           </button>
-          <button onClick={clearSelection} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>✕</button>
-          <button onClick={handleResetClick} className="px-3 py-2 rounded-xl font-bold" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
+          <button onClick={clearSelection} aria-label="Clear selection" className="px-3 rounded-xl font-bold flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform" style={{ background: theme.cell, color: theme.cellText }}>✕</button>
+          <button onClick={handleResetClick} aria-label="Reset game" className="px-3 rounded-xl font-bold flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform" style={{ background: theme.cell, color: theme.cellText }}>🔄</button>
         </div>
       </div>
 

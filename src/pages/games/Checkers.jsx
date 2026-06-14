@@ -445,10 +445,11 @@ export default function Checkers() {
             onHint={handleHint}
             disabled={turn !== 1 || thinkingRef.current}
           />
-          <button onClick={() => setShowCosmetics(true)} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🎨</button>
+          <button onClick={() => setShowCosmetics(true)} aria-label="Cosmetics" className="bg-secondary text-foreground rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform">🎨</button>
           <button
             onClick={() => moveCount > 0 ? setShowResetConfirm(true) : doReset()}
-            className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm"
+            aria-label="Reset game"
+            className="bg-secondary text-foreground rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform"
           >🔄</button>
         </div>
       </div>

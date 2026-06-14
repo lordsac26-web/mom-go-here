@@ -666,7 +666,7 @@ export default function Solitaire() {
           <button
             onClick={handleUndo}
             disabled={undoStack.length === 0 || autoCompleting}
-            className={`px-3 py-2 rounded-xl font-bold text-sm transition-all ${
+            className={`px-3 rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-all ${
               undoStack.length > 0 && !autoCompleting
                 ? "bg-green-700 text-white"
                 : "bg-green-900/50 text-green-700 opacity-60"
@@ -675,7 +675,7 @@ export default function Solitaire() {
           >
             ↩
           </button>
-          <button onClick={handleResetClick} className="bg-green-700 text-white px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
+          <button onClick={handleResetClick} aria-label="Reset game" className="bg-green-700 text-white rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform">🔄</button>
         </div>
       </div>
 

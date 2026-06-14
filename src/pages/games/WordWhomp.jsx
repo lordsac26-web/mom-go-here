@@ -327,7 +327,7 @@ export default function WordWhomp() {
               isRelaxed ? "Take your time — no timer! ☕" : "Find all words before time runs out! ⏰",
             ]}
           />
-          <button onClick={handleResetClick} className="bg-secondary text-foreground px-3 py-2 rounded-xl font-bold text-sm">🔄</button>
+          <button onClick={handleResetClick} aria-label="Reset game" className="bg-secondary text-foreground rounded-xl font-bold text-sm flex items-center justify-center min-h-[44px] min-w-[44px] active:scale-95 transition-transform">🔄</button>
         </div>
       </div>
 
