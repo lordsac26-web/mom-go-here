@@ -390,58 +390,33 @@ export default function Checkers() {
     const won = message.includes("You win");
     const resultEmoji = won ? "🏆" : isDraw ? "🤝" : "😔";
     const resultTitle = won ? "Victory!" : isDraw ? "Draw!" : "Defeat";
-    const bgGrad = won
-      ? "from-slate-950 via-yellow-950 to-slate-950"
+    const accent = won
+      ? "from-amber-500 to-orange-600"
       : isDraw
-        ? "from-slate-950 via-gray-900 to-slate-950"
-        : "from-slate-950 via-red-950 to-slate-950";
+        ? "from-slate-500 to-gray-600"
+        : "from-red-500 to-rose-700";
     return (
-      <div className={`min-h-screen bg-gradient-to-b ${bgGrad} flex flex-col items-center justify-center px-4 pb-24 text-center`}>
-        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">
-          {resultEmoji}
-        </motion.div>
-        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }} className="text-5xl font-black text-white mb-4">
-          {resultTitle}
-        </motion.h1>
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-3xl font-black text-white">{moveCount}</div>
-              <div className="text-xs text-gray-400 uppercase tracking-wide">Moves</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black text-orange-400">{12 - counts.p2}</div>
-              <div className="text-xs text-gray-400 uppercase tracking-wide">Captured</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black text-red-400">{12 - counts.p1}</div>
-              <div className="text-xs text-gray-400 uppercase tracking-wide">Lost</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black text-white">{counts.p1}</div>
-              <div className="text-xs text-gray-400 uppercase tracking-wide">Remaining</div>
-            </div>
-          </div>
-        </motion.div>
+      <GameVictoryScreen
+        emoji={resultEmoji}
+        title={resultTitle}
+        accent={accent}
+        coins={won ? coinsWon : 0}
+        stats={[
+          { label: "Moves", value: moveCount },
+          { label: "Captured", value: 12 - counts.p2 },
+          { label: "Lost", value: 12 - counts.p1 },
+          { label: "Remaining", value: counts.p1 },
+        ]}
+        primaryLabel="🔄 Play Again"
+        onPrimary={doReset}
+      >
         {rareDropMsg && (
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             className="bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 text-white text-center py-3 px-5 rounded-2xl font-bold text-sm mb-4 shadow-lg border-2 border-purple-300 animate-pulse">
             {rareDropMsg}
           </motion.div>
         )}
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
-          className="space-y-3 w-full max-w-xs">
-          <button onClick={doReset}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-amber-400">
-            🔄 Play Again
-          </button>
-          <GameBackButton />
-        </motion.div>
-      </div>
+      </GameVictoryScreen>
     );
   }
 

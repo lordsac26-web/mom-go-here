@@ -15,7 +15,8 @@ import { saveGameScore } from "@/lib/scoreSaver";
 import YahtzeeResetDialog from "../../components/yahtzee/YahtzeeResetDialog";
 import YahtzeeStatusBar from "../../components/yahtzee/YahtzeeStatusBar";
 import YahtzeeScorecard from "../../components/yahtzee/YahtzeeScorecard";
-import YahtzeeGameOver from "../../components/yahtzee/YahtzeeGameOver";
+import YahtzeeGameOver, { getRating } from "../../components/yahtzee/YahtzeeGameOver";
+import { awardCoins, coinsForStars } from "@/lib/awardCoins";
 
 const UPPER_KEYS = ["ones", "twos", "threes", "fours", "fives", "sixes"];
 const UPPER_BONUS_TARGET = 63;
@@ -78,6 +79,7 @@ export default function Yahtzee() {
   const [turn, setTurn] = useState(1);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [winTime, setWinTime] = useState(null);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   const totalTurns = 13;
   const gameStartRef = useRef(Date.now());
@@ -127,6 +129,11 @@ export default function Yahtzee() {
     const elapsed = Math.round((Date.now() - gameStartRef.current) / 1000);
     setWinTime(elapsed);
     recordStats(elapsed);
+    // Award coins scaled by score-based star rating (min 1 star reward)
+    if (user?.email) {
+      const stars = Math.max(getRating(totalScore).stars, 1);
+      awardCoins(user.email, coinsForStars(stars, 25)).then(setCoinsWon);
+    }
   }, [gameOver]);
 
   async function recordStats(elapsed) {
@@ -234,6 +241,7 @@ export default function Yahtzee() {
     setYahtzeeBonus(0);
     setTurn(1);
     setWinTime(null);
+    setCoinsWon(0);
     setShowResetConfirm(false);
     isRollingRef.current = false;
     zustandInitRef.current = false;
@@ -258,6 +266,7 @@ export default function Yahtzee() {
       upperBonusEarned={upperBonusEarned}
       yahtzeeBonus={yahtzeeBonus}
       winTime={winTime}
+      coinsWon={coinsWon}
       onPlayAgain={reset}
     />
   );
