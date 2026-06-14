@@ -200,3 +200,19 @@
 .ps__rail-x {
   display: none !important;
 }
+
+/* Slot win-cell pulse — GPU-composited, no JS per frame */
+@keyframes slot-win-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(250,204,21,0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 22px 6px rgba(250,204,21,0.85);
+    transform: scale(1.08);
+  }
+}
+.slot-win-pulse {
+  animation: slot-win-pulse 0.75s ease-in-out infinite;
+  will-change: transform;
+}

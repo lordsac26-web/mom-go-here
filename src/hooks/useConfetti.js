@@ -63,22 +63,22 @@ export default function useConfetti() {
     })();
   }
 
-  // Fireworks — reduced bursts + particle count on mobile
+  // Fireworks — 2 bursts on mobile, 4 on desktop
   function fireworks() {
     function randomInRange(min, max) { return Math.random() * (max - min) + min; }
-    const bursts = isMobile() ? 3 : 5;
-    const pc = isMobile() ? 18 : 30;
+    const bursts = isMobile() ? 2 : 4;
+    const pc = isMobile() ? 12 : 22;
     for (let i = 0; i < bursts; i++) {
       setTimeout(() => {
-        confetti({ startVelocity: 26, spread: 360, ticks: 50, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.1, 0.4), y: Math.random() * 0.4 }, colors: RAINBOW });
-        confetti({ startVelocity: 26, spread: 360, ticks: 50, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.6, 0.9), y: Math.random() * 0.4 }, colors: PARTY });
-      }, i * 600);
+        confetti({ startVelocity: 24, spread: 360, ticks: 40, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.1, 0.4), y: Math.random() * 0.4 }, colors: RAINBOW });
+        confetti({ startVelocity: 24, spread: 360, ticks: 40, zIndex: 9999, particleCount: pc, origin: { x: randomInRange(0.6, 0.9), y: Math.random() * 0.4 }, colors: PARTY });
+      }, i * 700);
     }
   }
 
-  // Side cannons — halved on mobile
+  // Side cannons — significantly reduced on mobile
   function sideCannons() {
-    const count = isMobile() ? 45 : 80;
+    const count = isMobile() ? 25 : 55;
     confetti({ particleCount: count, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: RAINBOW });
     confetti({ particleCount: count, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: RAINBOW });
   }

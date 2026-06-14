@@ -27,9 +27,9 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
       glowTimelines.current.forEach(tl => tl?.kill());
       glowTimelines.current = [];
 
-      // Build a long strip — 40 symbols for smooth multi-loop feel
+      // Build a spin strip — 20 symbols is plenty for a smooth loop
       const stripSymbols = [];
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 20; i++) {
         stripSymbols.push(symbols[Math.floor(Math.random() * symbols.length)]);
       }
       setDisplaySyms(stripSymbols);
@@ -115,33 +115,11 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
     if (!spinning && finalSymbols) setDisplaySyms(finalSymbols);
   }, [finalSymbols, spinning]);
 
-  // Win glow animation
+  // Win glow — pure CSS animation, zero JS per frame
   useEffect(() => {
+    // Kill any leftover GSAP timelines from previous renders
     glowTimelines.current.forEach(tl => tl?.kill());
     glowTimelines.current = [];
-    if (!winPositions?.length || spinning || isSpinning) return;
-
-    winPositions.forEach(rowIdx => {
-      const cell = glowRefs.current[rowIdx];
-      if (!cell) return;
-      const tl = gsap.timeline({ repeat: -1 });
-      tl.to(cell, {
-        boxShadow: "0 0 28px 8px rgba(250,204,21,0.9), inset 0 0 16px rgba(250,204,21,0.4)",
-        scale: 1.14,
-        filter: "brightness(1.3) saturate(1.6)",
-        duration: 0.38,
-        ease: "sine.inOut",
-      }).to(cell, {
-        boxShadow: "0 0 6px 1px rgba(250,204,21,0.25), inset 0 0 4px rgba(250,204,21,0.1)",
-        scale: 1.0,
-        filter: "brightness(1) saturate(1)",
-        duration: 0.38,
-        ease: "sine.inOut",
-      });
-      glowTimelines.current.push(tl);
-    });
-
-    return () => { glowTimelines.current.forEach(tl => tl?.kill()); glowTimelines.current = []; };
   }, [winPositions, spinning, isSpinning]);
 
   const showCells = isSpinning ? displaySyms : (finalSymbols || displaySyms);
@@ -172,11 +150,11 @@ export default function SlotReel({ symbols, spinning, finalSymbols, reelIndex, o
               key={`${reelIndex}-${i}-${sym?.id}`}
               ref={el => glowRefs.current[i] = el}
               style={{ width: CELL_SIZE, height: CELL_SIZE, flexShrink: 0 }}
-              className={`flex items-center justify-center rounded-xl border transition-colors
+              className={`flex items-center justify-center rounded-xl border
                 ${isSpinning
                   ? "bg-gradient-to-b from-gray-700 to-gray-800 border-gray-600"
                   : isWinning
-                  ? "bg-gradient-to-b from-yellow-900/70 to-amber-900/50 border-yellow-400"
+                  ? "bg-gradient-to-b from-yellow-900/70 to-amber-900/50 border-yellow-400 slot-win-pulse"
                   : "bg-gradient-to-b from-gray-800 via-gray-850 to-gray-900 border-yellow-700/30"
                 }`}
             >

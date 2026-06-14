@@ -26,9 +26,10 @@ export default function WinParticles({ active, intensity = "small", containerRef
     canvas.height = rect.height;
 
     const mobile = window.innerWidth < 768;
+    // Aggressively capped on mobile — stars are expensive path ops
     const count = mobile
-      ? (intensity === "mega" ? 30 : intensity === "big" ? 20 : 10)
-      : (intensity === "mega" ? 55 : intensity === "big" ? 35 : 18);
+      ? (intensity === "mega" ? 14 : intensity === "big" ? 10 : 6)
+      : (intensity === "mega" ? 30 : intensity === "big" ? 20 : 12);
     const particles = [];
 
     for (let i = 0; i < count; i++) {
@@ -41,7 +42,7 @@ export default function WinParticles({ active, intensity = "small", containerRef
         color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
         life: 1,
         decay: 0.01 + Math.random() * 0.02,
-        shape: Math.random() > 0.5 ? "circle" : "star",
+        shape: !mobile && Math.random() > 0.6 ? "star" : "circle",
       });
     }
 
