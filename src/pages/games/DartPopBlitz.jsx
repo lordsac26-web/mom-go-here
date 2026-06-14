@@ -205,7 +205,7 @@ export default function DartPopBlitz() {
   }
 
   return (
-    <div className="h-screen max-h-screen px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+4rem)] flex flex-col items-center gap-1.5 select-none overflow-hidden">
+    <div className="flex flex-col items-center gap-1.5 select-none overflow-hidden px-2 py-2" style={{ height: "calc(100dvh - 4rem)", paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="flex items-center justify-between w-full max-w-[400px] shrink-0">
         <div className="flex items-center gap-2">
           {launcherPhase === "power" && (
@@ -258,7 +258,7 @@ export default function DartPopBlitz() {
         aimSpeedMultiplier={aimSpeedMultiplier}
         sounds={sounds}
         onPhaseChange={setLauncherPhase}
-        className="flex-1 min-h-0 w-full max-w-[400px]"
+        className="flex-1 min-h-0 w-full max-w-[400px] block"
       />
     </div>
   );

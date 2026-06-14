@@ -1356,8 +1356,8 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
       ref={canvasRef}
       width={GAME_WIDTH}
       height={GAME_HEIGHT}
-      className="rounded-2xl border-2 border-primary/30 shadow-xl touch-none w-full"
-      style={{ maxHeight: "100%", objectFit: "contain", aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}` }}
+      className="rounded-2xl border-2 border-primary/30 shadow-xl touch-none block"
+      style={{ width: "100%", maxWidth: "400px", maxHeight: "100%", objectFit: "contain", aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}`, flex: "1 1 0", minHeight: 0 }}
       onClick={handleTap}
       onTouchEnd={handleTap}
     />
