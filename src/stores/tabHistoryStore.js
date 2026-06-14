@@ -9,7 +9,7 @@ import { create } from "zustand";
  *   - If it's the already-active tab → reset to tab root
  */
 
-const TAB_ROOTS = ["/", "/games", "/daily", "/memories", "/progress", "/shop", "/settings"];
+const TAB_ROOTS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
 
 export const useTabHistoryStore = create((set, get) => ({
   // Map of tab root → last visited path within that tab
@@ -19,7 +19,6 @@ export const useTabHistoryStore = create((set, get) => ({
     "/daily": "/daily",
     "/memories": "/memories",
     "/progress": "/progress",
-    "/shop": "/shop",
     "/settings": "/settings",
   },
 
@@ -64,7 +63,7 @@ export function getTabForPath(pathname) {
   if (pathname.startsWith("/games/")) return "/games";
 
   // Sub-pages under Home
-  const homeSubPages = ["/rankings", "/achievements", "/contacts", "/scripture", "/daily-challenge", "/onboarding"];
+  const homeSubPages = ["/rankings", "/achievements", "/contacts", "/scripture", "/daily-challenge", "/onboarding", "/shop", "/gallery"];
   if (homeSubPages.some(p => pathname === p || pathname.startsWith(p + "/"))) return "/";
 
   return null;
