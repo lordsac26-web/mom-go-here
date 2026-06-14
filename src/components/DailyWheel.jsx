@@ -306,17 +306,17 @@ export default function DailyWheel({ userEmail }) {
               {/* Sparkle backdrop */}
               {canSpin && (
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  {[...Array(12)].map((_, i) => (
+                  {[...Array(6)].map((_, i) => (
                     <motion.div
                       key={i}
                       className="absolute text-yellow-300/40"
                       style={{
-                        left: `${(i * 17) % 100}%`,
-                        top: `${(i * 23) % 100}%`,
+                        left: `${(i * 33) % 100}%`,
+                        top: `${(i * 41) % 100}%`,
                         fontSize: "10px",
                       }}
-                      animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
-                      transition={{ duration: 2, delay: i * 0.2, repeat: Infinity }}
+                      animate={{ opacity: [0, 1, 0] }}
+                      transition={{ duration: 2.5, delay: i * 0.4, repeat: Infinity }}
                     >
                       ✨
                     </motion.div>
@@ -487,11 +487,9 @@ export default function DailyWheel({ userEmail }) {
                   }`}
                 >
                   {!spinning && (
-                    <motion.div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)" }}
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                    <div
+                      className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)", animation: "shimmer 1.8s linear infinite" }}
                     />
                   )}
                   <span className="relative">
@@ -513,12 +511,10 @@ export default function DailyWheel({ userEmail }) {
                         : "bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 border-yellow-300"
                     }`}
                   >
-                    {/* Animated shine */}
-                    <motion.div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)" }}
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    {/* Animated shine — CSS shimmer, no JS */}
+                    <div
+                      className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                      style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)", animation: "shimmer 2s linear infinite" }}
                     />
                     <motion.span
                       className="block text-5xl relative"

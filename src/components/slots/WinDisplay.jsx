@@ -207,12 +207,7 @@ export default function WinDisplay({ wins, totalWin, visible, onSkip }) {
         )}
       </div>
 
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-120%); }
-          100% { transform: translateX(220%); }
-        }
-      `}</style>
+
     </div>
   );
 }

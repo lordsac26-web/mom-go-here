@@ -34,8 +34,8 @@ export default function FlipCard({
       onClick={disabled ? undefined : onTap}
       whileTap={disabled ? {} : { scale: 0.92 }}
       animate={matchPulse ? {
-        scale: [1, 1.15, 1],
-        transition: { duration: 0.4, ease: "easeOut" },
+        scale: [1, 1.08, 1],
+        transition: { duration: 0.35, ease: "easeOut" },
       } : {}}
     >
       <motion.div

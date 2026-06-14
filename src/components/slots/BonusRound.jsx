@@ -50,11 +50,7 @@ export default function BonusRound({ baseWin, scatterCount, onComplete }) {
       scale: 1, rotation: 0, duration: 0.4, stagger: 0.05, ease: "back.out(2)", delay: 0.3,
     });
 
-    // Ambient pulsing glow on the header
-    gsap.to(containerRef.current.querySelector(".bonus-header-glow"), {
-      textShadow: "0 0 30px rgba(234,179,8,0.9), 0 0 60px rgba(234,179,8,0.4)",
-      yoyo: true, repeat: -1, duration: 1.2, ease: "sine.inOut",
-    });
+    // Header glow handled by CSS animation — no JS per frame
   }, []);
 
   // When phase becomes "spinning", animate the total counting up, then show collect

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const SPARKLE_COUNT = 8;
+const SPARKLE_COUNT = 5;
 
 function randomBetween(min, max) {
   return Math.random() * (max - min) + min;

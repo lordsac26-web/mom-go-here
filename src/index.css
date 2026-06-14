@@ -201,6 +201,21 @@
   display: none !important;
 }
 
+/* Global shimmer sweep — used by DailyWheel, WinDisplay, etc. */
+@keyframes shimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+
+/* Bonus Round header glow — replaces infinite GSAP repeat */
+@keyframes bonus-header-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(234,179,8,0.4); }
+  50%       { text-shadow: 0 0 30px rgba(234,179,8,0.9), 0 0 60px rgba(234,179,8,0.4); }
+}
+.bonus-header-glow {
+  animation: bonus-header-glow 1.2s ease-in-out infinite;
+}
+
 /* Slot win-cell pulse — GPU-composited, no JS per frame */
 @keyframes slot-win-pulse {
   0%, 100% {

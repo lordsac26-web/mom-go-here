@@ -25,10 +25,15 @@ export function getConfettiColors(baseColor) {
   return CONFETTI_PALETTES[baseColor] || [baseColor, "#fff", "#fbbf24", "#f87171", "#60a5fa"];
 }
 
-const PARTICLE_SHAPES = ["circle", "square", "star", "triangle"];
+// On mobile skip star/triangle shapes (expensive path ops)
+const _mobile = typeof window !== "undefined" && window.innerWidth < 768;
+const PARTICLE_SHAPES = _mobile ? ["circle", "square"] : ["circle", "square", "star", "triangle"];
+
+const _isMob = typeof window !== "undefined" && window.innerWidth < 768;
 
 // ── Generic confetti burst (used as fallback) ──
 export function spawnParticles(arr, x, y, color, count = 8) {
+  count = _isMob ? Math.max(3, Math.ceil(count * 0.55)) : count;
   const colors = getConfettiColors(color);
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
@@ -55,8 +60,9 @@ export function spawnParticles(arr, x, y, color, count = 8) {
 
 /** 💣 Bomb: dark smoke puffs + ember shards + fiery ring */
 export function spawnBombParticles(arr, x, y) {
+  const smokeCount = _isMob ? 3 : 6;
   // Smoke puffs — large, grey, slow-rising, quick fade
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < smokeCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 0.8 + Math.random() * 2.5;
     arr.push({
@@ -74,7 +80,8 @@ export function spawnBombParticles(arr, x, y) {
     });
   }
   // Ember shards
-  for (let i = 0; i < 8; i++) {
+  const emberCount = _isMob ? 4 : 8;
+  for (let i = 0; i < emberCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 3 + Math.random() * 5;
     const emberColors = ["#f97316", "#ef4444", "#fbbf24", "#fb923c", "#dc2626"];
@@ -140,7 +147,8 @@ export function spawnIcyShardParticles(arr, x, y) {
 /** 👻 Ghost: wispy dissolving spirits */
 export function spawnGhostParticles(arr, x, y) {
   const ghostColors = ["#818cf8", "#a78bfa", "#c084fc", "#e0e7ff", "#fff", "#6366f1"];
-  for (let i = 0; i < 10; i++) {
+  const ghostCount = _isMob ? 5 : 10;
+  for (let i = 0; i < ghostCount; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 1.2 + Math.random() * 3;
     arr.push({
@@ -165,7 +173,8 @@ export function spawnGhostParticles(arr, x, y) {
 /** ⭐ Gold: star burst with coin-like glints */
 export function spawnGoldParticles(arr, x, y) {
   const goldColors = ["#eab308", "#facc15", "#fde047", "#fbbf24", "#f59e0b", "#fff"];
-  for (let i = 0; i < 12; i++) {
+  const goldCount = _isMob ? 6 : 12;
+  for (let i = 0; i < goldCount; i++) {
     const angle = (Math.PI * 2 * i) / 12 + (Math.random() - 0.5) * 0.3;
     const speed = 3 + Math.random() * 4.5;
     arr.push({
@@ -273,8 +282,10 @@ export function spawnBalloonPopParticles(arr, balloon, isFrozen = false) {
   }
 }
 
-// Hard cap to prevent mobile frame spikes from bomb chains etc.
-const MAX_PARTICLES = 80;
+const isMobile = () => typeof window !== "undefined" && window.innerWidth < 768;
+
+// Hard cap — lower on mobile to prevent frame spikes from bomb chains
+const MAX_PARTICLES = isMobile() ? 50 : 70;
 
 export function capParticles(arr) {
   if (arr.length > MAX_PARTICLES) {
