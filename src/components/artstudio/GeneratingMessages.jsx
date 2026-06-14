@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import GameSpinner from "../GameSpinner";
 
 const MESSAGES = [
   "Mixing the colors... 🎨",
@@ -21,10 +23,21 @@ export default function GeneratingMessages() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-xl font-bold text-foreground animate-pulse">
-        {MESSAGES[index]}
-      </p>
+      <GameSpinner size="md" />
+      <div className="h-7 flex items-center justify-center">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={index}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25 }}
+            className="text-xl font-bold text-foreground"
+          >
+            {MESSAGES[index]}
+          </motion.p>
+        </AnimatePresence>
+      </div>
       <p className="text-sm text-muted-foreground">This usually takes 5-10 seconds</p>
     </div>
   );
