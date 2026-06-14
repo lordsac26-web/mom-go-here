@@ -83,12 +83,15 @@ export default function Layout() {
     };
   }, [location.pathname]);
 
-  // Restore scroll position when arriving at a main tab
+  // Restore scroll position when arriving at a main tab; reset to top on sub-pages.
+  // Doing this synchronously before paint avoids a visible scroll "jump" jitter
+  // during the page transition.
   useEffect(() => {
     const mainEl = mainRef.current;
-    if (mainEl && TAB_ROOTS.includes(location.pathname)) {
-      mainEl.scrollTop = scrollMap.current[location.pathname] || 0;
-    }
+    if (!mainEl) return;
+    mainEl.scrollTop = TAB_ROOTS.includes(location.pathname)
+      ? (scrollMap.current[location.pathname] || 0)
+      : 0;
   }, [location.pathname]);
 
   // FIX (bug): badge was stored in a ref with an unsupported two-arg subscribe,

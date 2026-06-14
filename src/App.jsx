@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Layout from './components/Layout';
+import PageTransition from './components/PageTransition';
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Settings from './pages/Settings';
@@ -66,10 +67,10 @@ const AuthenticatedApp = () => {
     <AnimatePresence mode="wait">
       <Routes location={loc} key={loc.pathname}>
         <Route element={<Layout />}>
-          <Route path="/" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Home /></motion.div>} />
-          <Route path="/games" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Games /></motion.div>} />
-          <Route path="/settings" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Settings /></motion.div>} />
-          <Route path="/daily" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Daily /></motion.div>} />
+          <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+          <Route path="/games" element={<PageTransition><Games /></PageTransition>} />
+          <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
+          <Route path="/daily" element={<PageTransition><Daily /></PageTransition>} />
           <Route path="/games/memory" element={<MemoryGame />} />
 
           <Route path="/games/yahtzee" element={<Yahtzee />} />
@@ -79,9 +80,9 @@ const AuthenticatedApp = () => {
           <Route path="/games/mahjong" element={<Mahjong />} />
           <Route path="/games/solitaire" element={<Solitaire />} />
           <Route path="/games/artstudio" element={<AIArtStudio />} />
-          <Route path="/progress" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Progress /></motion.div>} />
+          <Route path="/progress" element={<PageTransition><Progress /></PageTransition>} />
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/memories" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Memories /></motion.div>} />
+          <Route path="/memories" element={<PageTransition><Memories /></PageTransition>} />
           <Route path="/games/buzzword" element={<BuzzWord />} />
           <Route path="/games/slots" element={<SlotMachine />} />
           <Route path="/contacts" element={<Contacts />} />
@@ -93,7 +94,7 @@ const AuthenticatedApp = () => {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/gallery" element={<Gallery />} />
-          <Route path="/shop" element={<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.18, ease: 'easeOut' }}><Shop /></motion.div>} />
+          <Route path="/shop" element={<PageTransition><Shop /></PageTransition>} />
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>
