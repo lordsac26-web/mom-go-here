@@ -8,6 +8,7 @@ import { useGameAudio } from "../../hooks/useGameAudio";
 import LetterHoneycomb from "../../components/wordwhomp/LetterHoneycomb";
 import WordList from "../../components/wordwhomp/WordList";
 import PUZZLES from "../../components/wordwhomp/wordData";
+import { isCommonWord } from "../../components/wordwhomp/commonWords";
 import useConfetti from "../../hooks/useConfetti";
 import BeeFlightTitle from "../../components/BeeFlightTitle";
 import { useGameActivity } from "../../hooks/useGameActivity";
@@ -69,6 +70,7 @@ export default function WordWhomp() {
   const [currentWord, setCurrentWord] = useState([]);
   const [usedIndices, setUsedIndices] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
+  const [bonusWords, setBonusWords] = useState([]); // valid words not in the target list
   const [lastFoundWord, setLastFoundWord] = useState(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
@@ -202,7 +204,7 @@ export default function WordWhomp() {
       return;
     }
 
-    if (foundWords.includes(word)) {
+    if (foundWords.includes(word) || bonusWords.includes(word)) {
       showMessage("Already found!", "error");
       tapVibrate();
       handleClear();
@@ -210,6 +212,7 @@ export default function WordWhomp() {
     }
 
     if (allWords.includes(word)) {
+      // ── Target word ──
       const points = word.length === 3 ? 1 : word.length === 4 ? 3 : word.length === 5 ? 5 : word.length === 6 ? 8 : 12;
       matchVibrate();
       matchSound();
@@ -229,6 +232,16 @@ export default function WordWhomp() {
         showMessage(`✅ +${points} pts`, "success");
         spark();
       }
+    } else if (isCommonWord(word)) {
+      // ── Bonus word — real English word, not in the target list ──
+      const bonusPoints = word.length <= 3 ? 1 : word.length === 4 ? 2 : word.length === 5 ? 3 : 5;
+      matchVibrate();
+      matchSound();
+      setBonusWords(prev => [...prev, word]);
+      setScore(s => s + bonusPoints);
+      scoreHit();
+      showMessage(`⭐ Bonus! +${bonusPoints} pts`, "success");
+      spark();
     } else {
       showMessage("Not a valid word", "error");
       tapVibrate();
@@ -245,6 +258,7 @@ export default function WordWhomp() {
     setCurrentWord([]);
     setUsedIndices([]);
     setFoundWords([]);
+    setBonusWords([]);
     setLastFoundWord(null);
     setScore(0);
     setMessage("");
@@ -308,6 +322,7 @@ export default function WordWhomp() {
               "Each letter tile can only be used once per word.",
               "Tap SUBMIT to check your word.",
               "Longer words earn more points! (3 = 1pt, 4 = 3pts, 5 = 5pts, 6 = 8pts, 7+ = 12pts)",
+              "Real English words that aren't in the puzzle target list earn ⭐ Bonus points!",
               "Use SHUFFLE to rearrange the outer letters (center stays put!).",
               isRelaxed ? "Take your time — no timer! ☕" : "Find all words before time runs out! ⏰",
             ]}
@@ -406,10 +421,27 @@ export default function WordWhomp() {
 
       {/* Word list */}
       <div className="bg-card border-2 border-border rounded-2xl p-4 max-w-sm mx-auto">
-        <h3 className="text-lg font-black text-primary mb-3">
-          📝 Words ({foundWords.length}/{allWords.length})
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-black text-primary">
+            📝 Words ({foundWords.length}/{allWords.length})
+          </h3>
+          {bonusWords.length > 0 && (
+            <span className="text-sm font-bold text-yellow-400">⭐ {bonusWords.length} bonus</span>
+          )}
+        </div>
         <WordList foundWords={foundWords} allWords={allWords} lastFoundWord={lastFoundWord} />
+        {bonusWords.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-xs text-muted-foreground font-bold mb-1.5">⭐ BONUS WORDS</p>
+            <div className="flex flex-wrap gap-1.5">
+              {bonusWords.map(w => (
+                <span key={w} className="bg-yellow-500/20 text-yellow-300 text-xs font-bold px-2 py-0.5 rounded-full border border-yellow-500/30">
+                  {w}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Reset Confirmation */}
