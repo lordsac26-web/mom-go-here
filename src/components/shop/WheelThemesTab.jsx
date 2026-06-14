@@ -4,7 +4,7 @@ import { Check, Lock, Sparkles } from "lucide-react";
 
 function WheelPreview({ theme }) {
   const count = theme.colors.length;
-  const size = 52;
+  const size = 56;
   const cx = size / 2, cy = size / 2, r = size / 2 - 2;
   const sliceAngle = (2 * Math.PI) / count;
   const paths = theme.colors.map((color, i) => {
@@ -24,10 +24,21 @@ function WheelPreview({ theme }) {
       />
     );
   });
+
+  // Premium themes: show colored slices + the AI rim & hub layered on top
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-full overflow-hidden border-2 border-white/20">
-      {paths}
-    </svg>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-full overflow-hidden">
+        {paths}
+      </svg>
+      {theme.rim && (
+        <img src={theme.rim} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full pointer-events-none" style={{ transform: "scale(1.12)" }} />
+      )}
+      {theme.hub && (
+        <img src={theme.hub} alt="" aria-hidden="true" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/4 h-1/4 pointer-events-none" />
+      )}
+      {!theme.rim && <div className="absolute inset-0 rounded-full border-2 border-white/20" />}
+    </div>
   );
 }
 

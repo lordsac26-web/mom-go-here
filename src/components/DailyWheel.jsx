@@ -7,6 +7,7 @@ import { playRichTone } from "../lib/SoundEngine";
 import { useAudioStore } from "../stores/audioStore";
 import useConfetti from "../hooks/useConfetti";
 import useHaptics from "../hooks/useHaptics";
+import { WHEEL_THEME_MAP } from "./shop/shopCatalog";
 
 // Brighter, more game-like prize segments with vivid gradients
 const SEGMENTS = [
@@ -61,6 +62,7 @@ export default function DailyWheel({ userEmail }) {
   const [expanded, setExpanded] = useState(false);
   const [lightPhase, setLightPhase] = useState(0);
   const [spinFrame, setSpinFrame] = useState(0);
+  const [theme, setTheme] = useState(null);
   const totalRotationRef = useRef(0);
   const tickIntervalRef = useRef(null);
   const { reportMissionProgress } = useDailyMissions();
@@ -125,7 +127,18 @@ export default function DailyWheel({ userEmail }) {
   useEffect(() => {
     if (!userEmail) return;
     checkSpin();
+    // Load the player's equipped wheel theme
+    base44.entities.PlayerInventory.filter({ user_email: userEmail }).then(recs => {
+      const equipped = recs[0]?.active_wheel_theme;
+      if (equipped && WHEEL_THEME_MAP[equipped]) setTheme(WHEEL_THEME_MAP[equipped]);
+      else setTheme(null);
+    }).catch(() => setTheme(null));
   }, [userEmail]);
+
+  // Apply theme colors to segments (prizes stay identical — only colors change)
+  const themedSegments = theme?.colors
+    ? SEGMENTS.map((seg, i) => ({ ...seg, color: theme.colors[i % theme.colors.length], colorEnd: theme.colors[i % theme.colors.length] }))
+    : SEGMENTS;
 
   async function checkSpin() {
     const records = await base44.entities.DailyWheelSpin.filter({ user_email: userEmail });
@@ -351,8 +364,8 @@ export default function DailyWheel({ userEmail }) {
                     />
                   )}
 
-                  {/* Rim bulbs */}
-                  <div className="absolute inset-0 pointer-events-none z-20">
+                  {/* Rim bulbs — hidden when a themed AI rim is equipped */}
+                  <div className={`absolute inset-0 pointer-events-none z-20 ${theme?.rim ? "hidden" : ""}`}>
                     {[...Array(RIM_LIGHTS)].map((_, i) => {
                       const angle = (i / RIM_LIGHTS) * 360;
                       const isActive = spinning
@@ -385,7 +398,9 @@ export default function DailyWheel({ userEmail }) {
                   <div
                     className="relative w-60 h-60 sm:w-72 sm:h-72 rounded-full overflow-hidden"
                     style={{
-                      boxShadow: "inset 0 0 0 6px #ca8a04, inset 0 0 0 8px #1e1e2e, 0 8px 24px rgba(0,0,0,0.5)",
+                      boxShadow: theme?.rim
+                        ? "0 8px 24px rgba(0,0,0,0.5)"
+                        : "inset 0 0 0 6px #ca8a04, inset 0 0 0 8px #1e1e2e, 0 8px 24px rgba(0,0,0,0.5)",
                     }}
                   >
                     <svg
@@ -398,14 +413,14 @@ export default function DailyWheel({ userEmail }) {
                       }}
                     >
                       <defs>
-                        {SEGMENTS.map((seg, i) => (
+                        {themedSegments.map((seg, i) => (
                           <radialGradient key={i} id={`grad-${i}`} cx="50%" cy="50%" r="70%">
                             <stop offset="0%" stopColor={seg.color} />
                             <stop offset="100%" stopColor={seg.colorEnd} />
                           </radialGradient>
                         ))}
                       </defs>
-                      {SEGMENTS.map((seg, i) => {
+                      {themedSegments.map((seg, i) => {
                         const startAngle = (i * SEGMENT_ANGLE * Math.PI) / 180;
                         const endAngle = ((i + 1) * SEGMENT_ANGLE * Math.PI) / 180;
                         const x1 = 100 + 100 * Math.sin(startAngle);
@@ -456,21 +471,46 @@ export default function DailyWheel({ userEmail }) {
                           </g>
                         );
                       })}
-                      {/* Center hub */}
-                      <circle cx="100" cy="100" r="20" fill="#1e1e2e" stroke="#fde047" strokeWidth="2.5" />
-                      <circle cx="100" cy="100" r="14" fill="url(#hubGrad)" />
-                      <defs>
-                        <radialGradient id="hubGrad" cx="50%" cy="40%" r="60%">
-                          <stop offset="0%" stopColor="#fef3c7" />
-                          <stop offset="60%" stopColor="#eab308" />
-                          <stop offset="100%" stopColor="#854d0e" />
-                        </radialGradient>
-                      </defs>
-                      <text x="100" y="100" fill="#1e1e2e" fontSize="16" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
-                        🎡
-                      </text>
+                      {/* Center hub — CSS default only (themed hub rendered as image overlay) */}
+                      {!theme?.hub && (
+                        <>
+                          <circle cx="100" cy="100" r="20" fill="#1e1e2e" stroke="#fde047" strokeWidth="2.5" />
+                          <circle cx="100" cy="100" r="14" fill="url(#hubGrad)" />
+                          <defs>
+                            <radialGradient id="hubGrad" cx="50%" cy="40%" r="60%">
+                              <stop offset="0%" stopColor="#fef3c7" />
+                              <stop offset="60%" stopColor="#eab308" />
+                              <stop offset="100%" stopColor="#854d0e" />
+                            </radialGradient>
+                          </defs>
+                          <text x="100" y="100" fill="#1e1e2e" fontSize="16" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
+                            🎡
+                          </text>
+                        </>
+                      )}
                     </svg>
                   </div>
+
+                  {/* Themed AI rim overlay (hollow center, sits above the wheel) */}
+                  {theme?.rim && (
+                    <img
+                      src={theme.rim}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full pointer-events-none z-20 select-none"
+                      style={{ transform: "scale(1.12)" }}
+                    />
+                  )}
+
+                  {/* Themed AI hub overlay (center medallion) */}
+                  {theme?.hub && (
+                    <img
+                      src={theme.hub}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/4 h-1/4 pointer-events-none z-30 select-none drop-shadow-lg"
+                    />
+                  )}
                 </div>
               </div>
 

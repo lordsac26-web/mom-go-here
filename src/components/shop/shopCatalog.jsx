@@ -72,6 +72,11 @@ export const BALLOON_SKINS = [
   },
 ];
 
+// Wheel themes can optionally include premium AI-generated decorative assets:
+//  - rim:  ornate outer ring image (hollow center) layered over the spinning wheel
+//  - hub:  center medallion image
+//  - backdrop: gradient classes for the wheel container background
+// Themes without assets fall back to the classic CSS rim/hub.
 export const WHEEL_THEMES = [
   {
     id: "default",
@@ -83,9 +88,33 @@ export const WHEEL_THEMES = [
     colors: ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"],
   },
   {
+    id: "gold_vegas",
+    label: "Royal Gold",
+    emoji: "👑",
+    price: 1500,
+    desc: "Jewel-encrusted gold rim & diamond hub.",
+    colors: ["#b45309", "#d97706", "#f59e0b", "#fbbf24", "#92400e", "#a16207", "#ca8a04", "#854d0e"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/6228b5afc_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/ee3fc1e81_generated_image.png",
+    backdrop: "from-amber-950 via-yellow-900 to-amber-950",
+    rare: true,
+  },
+  {
+    id: "cosmic",
+    label: "Cosmic Nebula",
+    emoji: "🌌",
+    price: 1500,
+    desc: "Glowing neon energy rim from deep space.",
+    colors: ["#4338ca", "#6366f1", "#0891b2", "#06b6d4", "#7c3aed", "#a855f7", "#2563eb", "#3b82f6"],
+    rim: "https://media.base44.com/images/public/69d2319af097365cbf91e620/05d063d0a_generated_image.png",
+    hub: "https://media.base44.com/images/public/69d2319af097365cbf91e620/6b31ca1c7_generated_image.png",
+    backdrop: "from-violet-950 via-indigo-900 to-violet-950",
+    rare: true,
+  },
+  {
     id: "galaxy",
     label: "Galaxy",
-    emoji: "🌌",
+    emoji: "🪐",
     price: 400,
     desc: "Deep space colors — stars included.",
     colors: ["#1e1b4b", "#312e81", "#4338ca", "#6366f1", "#818cf8", "#a5b4fc", "#c7d2fe", "#e0e7ff"],
@@ -125,6 +154,8 @@ export const WHEEL_THEMES = [
     rare: true,
   },
 ];
+
+export const WHEEL_THEME_MAP = Object.fromEntries(WHEEL_THEMES.map(t => [t.id, t]));
 
 export const DART_POWERUPS = [
   {
