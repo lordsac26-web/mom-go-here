@@ -14,6 +14,8 @@ import SudokuResetDialog from "../../components/sudoku/SudokuResetDialog";
 import SudokuHintButton from "../../components/sudoku/SudokuHintButton";
 import SudokuStatusBar from "../../components/sudoku/SudokuStatusBar";
 import { getPuzzlesByDifficulty } from "../../components/sudoku/sudokuPuzzles";
+import GameVictoryScreen from "../../components/games/GameVictoryScreen";
+import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 function getBox(r, c) { return Math.floor(r / 3) * 3 + Math.floor(c / 3); }
 
@@ -36,6 +38,8 @@ export default function Sudoku() {
   const [totalErrors, setTotalErrors] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [winTime, setWinTime] = useState(null);
+  const [winStars, setWinStars] = useState(0);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   // Undo stack
   const [undoStack, setUndoStack] = useState([]);
@@ -257,6 +261,17 @@ export default function Sudoku() {
     if (!user?.email || statsRecordedRef.current) return;
     statsRecordedRef.current = true;
     reportWin("Sudoku");
+
+    // Star rating: fewer errors = more stars
+    const stars = computeStars(totalErrors, 0, 3, true);
+    setWinStars(stars);
+
+    // Coin reward scaled by difficulty + stars
+    const diffBase = { easy: 15, medium: 25, hard: 40 }[difficulty] || 20;
+    const reward = coinsForStars(stars, diffBase);
+    const awarded = await awardCoins(user.email, reward);
+    setCoinsWon(awarded);
+
     await saveGameScore({
       game_name: "Sudoku",
       score: moves,
@@ -316,50 +331,23 @@ export default function Sudoku() {
 
   // ── WIN SCREEN ──
   if (won) return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
-      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-        className="text-5xl font-black text-white mb-3">Puzzle Solved!</motion.h1>
-
-      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.35, type: "spring" }}
-        className="bg-blue-500/20 border border-blue-400/40 rounded-2xl px-8 py-4 mb-5">
-        <div className="text-5xl font-black text-white">{diffLabel}</div>
-      </motion.div>
-
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 }}
-        className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <div className="text-3xl font-black text-white">{winTime != null ? formatTime(winTime) : "—"}</div>
-            <div className="text-xs text-blue-300 uppercase tracking-wide">Time</div>
-          </div>
-          <div>
-            <div className="text-3xl font-black text-white">{moves}</div>
-            <div className="text-xs text-blue-300 uppercase tracking-wide">Moves</div>
-          </div>
-          <div>
-            <div className={`text-3xl font-black ${totalErrors === 0 ? "text-green-400" : "text-red-400"}`}>{totalErrors}</div>
-            <div className="text-xs text-blue-300 uppercase tracking-wide">Errors</div>
-          </div>
-        </div>
-        {totalErrors === 0 && <div className="mt-3 text-green-400 font-black text-sm">✨ Perfect — No Errors!</div>}
-      </motion.div>
-
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
-        className="space-y-3 w-full max-w-xs">
-        <button onClick={() => startGame(difficulty)}
-          className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-blue-400">
-          🔄 New Puzzle
-        </button>
-        <button onClick={() => { setStarted(false); setDifficulty(null); }}
-          className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
-          Change Difficulty
-        </button>
-        <GameBackButton />
-      </motion.div>
-    </div>
+    <GameVictoryScreen
+      emoji="🔢"
+      title="Puzzle Solved!"
+      accent="from-blue-500 to-indigo-600"
+      stars={winStars}
+      coins={coinsWon}
+      stats={[
+        { label: "Time", value: winTime != null ? formatTime(winTime) : "—" },
+        { label: "Moves", value: moves },
+        { label: "Errors", value: totalErrors, highlight: totalErrors === 0 },
+      ]}
+      perfectLabel={totalErrors === 0 ? "Perfect — No Errors!" : null}
+      primaryLabel="🔄 New Puzzle"
+      onPrimary={() => startGame(difficulty)}
+      secondaryLabel="Change Difficulty"
+      onSecondary={() => { setStarted(false); setDifficulty(null); }}
+    />
   );
 
   // ── GAME BOARD ──

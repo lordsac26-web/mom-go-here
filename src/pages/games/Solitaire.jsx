@@ -15,6 +15,8 @@ import { saveGameScore } from "@/lib/scoreSaver";
 import { useAuth } from "@/lib/AuthContext";
 import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
+import GameVictoryScreen from "../../components/games/GameVictoryScreen";
+import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -195,6 +197,8 @@ export default function Solitaire() {
   const [stuck, setStuck] = useState(false);
   const [cardBackKey, setCardBackKey] = useState("classic_blue");
   const [winTime, setWinTime] = useState(null);
+  const [winStars, setWinStars] = useState(0);
+  const [coinsWon, setCoinsWon] = useState(0);
   const [moves, setMoves] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [autoCompleting, setAutoCompleting] = useState(false);
@@ -285,6 +289,15 @@ export default function Solitaire() {
     // Also record to GameScore for Hall of Fame / XP / achievements
     if (didWin) {
       setWinTime(elapsed);
+
+      // Star rating: faster win = more stars
+      const stars = computeStars(elapsed, 180, 360, true);
+      setWinStars(stars);
+
+      const reward = coinsForStars(stars, 25);
+      const awarded = await awardCoins(user.email, reward);
+      setCoinsWon(awarded);
+
       await saveGameScore({
         game_name: "Solitaire",
         score: moves,
@@ -607,35 +620,19 @@ export default function Solitaire() {
     const winMinutes = winTime != null ? Math.floor(winTime / 60) : null;
     const winSecs = winTime != null ? (winTime % 60).toString().padStart(2, "0") : null;
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-950 via-emerald-900 to-green-950 flex flex-col items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] text-center select-none">
-        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
-        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-          className="text-5xl font-black text-yellow-300 mb-4">You Won!</motion.h1>
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
-          className="bg-black/30 border border-yellow-500/30 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
-          <div className="grid grid-cols-2 gap-4">
-            {winTime != null && (
-              <div>
-                <div className="text-3xl font-black text-white">{winMinutes}:{winSecs}</div>
-                <div className="text-xs text-yellow-300/70 uppercase tracking-wide">Time</div>
-              </div>
-            )}
-            <div>
-              <div className="text-3xl font-black text-white">{moves}</div>
-              <div className="text-xs text-yellow-300/70 uppercase tracking-wide">Moves</div>
-            </div>
-          </div>
-        </motion.div>
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
-          className="space-y-3 w-full max-w-xs">
-          <button onClick={doReset}
-            className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-black text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-yellow-400">
-            🔄 New Game
-          </button>
-          <GameBackButton />
-        </motion.div>
-      </div>
+      <GameVictoryScreen
+        emoji="♠️"
+        title="You Won!"
+        accent="from-emerald-500 to-green-600"
+        stars={winStars}
+        coins={coinsWon}
+        stats={[
+          ...(winTime != null ? [{ label: "Time", value: `${winMinutes}:${winSecs}` }] : []),
+          { label: "Moves", value: moves },
+        ]}
+        primaryLabel="🔄 New Game"
+        onPrimary={doReset}
+      />
     );
   }
 

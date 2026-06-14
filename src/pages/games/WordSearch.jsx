@@ -19,6 +19,8 @@ import WordSearchResetDialog from "../../components/wordsearch/WordSearchResetDi
 import WordSearchHintButton from "../../components/wordsearch/WordSearchHintButton";
 import WordSearchStatusBar from "../../components/wordsearch/WordSearchStatusBar";
 import { WORD_LISTS_EASY, WORD_LISTS_ADVANCED } from "../../components/wordsearch/wordLists";
+import GameVictoryScreen from "../../components/games/GameVictoryScreen";
+import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 const DIFFICULTIES = {
   easy: { label: "Easy", emoji: "😊", gridSize: 10, wordLists: WORD_LISTS_EASY, desc: "10×10 grid · 8 words" },
@@ -106,6 +108,8 @@ export default function WordSearch() {
   const gameStartRef = useRef(null);
   const statsRecordedRef = useRef(false);
   const [winTime, setWinTime] = useState(null);
+  const [winStars, setWinStars] = useState(0);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   const won = foundWords.length === words.length && words.length > 0;
 
@@ -179,6 +183,18 @@ export default function WordSearch() {
       ? Math.round((Date.now() - gameStartRef.current) / 1000)
       : 0;
     setWinTime(elapsed);
+
+    // Star rating: faster solve = more stars (thresholds scale with difficulty)
+    const isAdvanced = difficulty === "advanced";
+    const great = isAdvanced ? 150 : 90;
+    const good = isAdvanced ? 300 : 180;
+    const stars = computeStars(elapsed, great, good, true);
+    setWinStars(stars);
+
+    const reward = coinsForStars(stars, isAdvanced ? 30 : 18);
+    const awarded = await awardCoins(user.email, reward);
+    setCoinsWon(awarded);
+
     await saveGameScore({
       game_name: "Word Search",
       score: words.length,
@@ -327,42 +343,21 @@ export default function WordSearch() {
 
   // ── WIN SCREEN ──
   if (won) return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-green-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
-      <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
-      <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-        className="text-5xl font-black text-white mb-4">All Words Found!</motion.h1>
-
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
-        className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-3xl font-black text-white">{winTime != null ? formatTime(winTime) : "—"}</div>
-            <div className="text-xs text-green-300 uppercase tracking-wide">Time</div>
-          </div>
-          <div>
-            <div className="text-3xl font-black text-white">{words.length}</div>
-            <div className="text-xs text-green-300 uppercase tracking-wide">Words Found</div>
-          </div>
-        </div>
-        <div className="mt-3 text-green-300 text-sm font-bold">
-          {DIFFICULTIES[difficulty]?.label} · {DIFFICULTIES[difficulty]?.desc}
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
-        className="space-y-3 w-full max-w-xs">
-        <button onClick={() => startGame(difficulty)}
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-green-400">
-          🔄 New Puzzle
-        </button>
-        <button onClick={() => { setStarted(false); setDifficulty(null); }}
-          className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
-          Change Difficulty
-        </button>
-        <GameBackButton />
-      </motion.div>
-    </div>
+    <GameVictoryScreen
+      emoji="🔤"
+      title="All Words Found!"
+      accent="from-green-500 to-emerald-600"
+      stars={winStars}
+      coins={coinsWon}
+      stats={[
+        { label: "Time", value: winTime != null ? formatTime(winTime) : "—" },
+        { label: "Words Found", value: words.length },
+      ]}
+      primaryLabel="🔄 New Puzzle"
+      onPrimary={() => startGame(difficulty)}
+      secondaryLabel="Change Difficulty"
+      onSecondary={() => { setStarted(false); setDifficulty(null); }}
+    />
   );
 
   // ── GAME BOARD ──

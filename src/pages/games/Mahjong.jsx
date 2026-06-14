@@ -21,7 +21,9 @@ import { base44 } from "@/api/base44Client";
 import { saveGameScore } from "@/lib/scoreSaver";
 import MahjongHintButton from "../../components/mahjong/MahjongHintButton";
 import MahjongResetDialog from "../../components/mahjong/MahjongResetDialog";
-import MahjongStarRating from "../../components/mahjong/MahjongStarRating";
+import { getStarRating } from "../../components/mahjong/MahjongStarRating";
+import GameVictoryScreen from "../../components/games/GameVictoryScreen";
+import { awardCoins, coinsForStars } from "@/lib/awardCoins";
 
 const DIFFICULTY_OPTIONS = [
   { key: "easy", label: "Easy (72 tiles)", sub: "Fortress layout" },
@@ -55,6 +57,7 @@ export default function Mahjong() {
   const [stuck, setStuck] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [hintPair, setHintPair] = useState(null);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   // Timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -154,6 +157,7 @@ export default function Mahjong() {
     setWon(false);
     setStuck(false);
     setHintPair(null);
+    setCoinsWon(0);
     setElapsedSeconds(0);
     startTimeRef.current = Date.now();
   }
@@ -206,9 +210,16 @@ export default function Mahjong() {
   }, [tiles, selectedId]);
 
   // ── Persist win ──
-  async function recordWin(moveCount, seconds, diffLabel) {
+  async function recordWin(moveCount, seconds, diffLabel, pairs) {
     const email = userEmailRef.current;
     if (!email) return;
+
+    // Coins scaled by star rating + difficulty
+    const stars = getStarRating(moveCount, pairs);
+    const diffBase = { easy: 15, medium: 25, classic: 40 }[difficulty] || 20;
+    const awarded = await awardCoins(email, coinsForStars(stars, diffBase));
+    setCoinsWon(awarded);
+
     await saveGameScore({
       game_name: "Mahjong",
       score: moveCount,
@@ -279,7 +290,7 @@ export default function Mahjong() {
         setElapsedSeconds(finalSeconds);
         reportWin("Mahjong");
         const diffLabel = LAYOUTS[difficulty]?.label || difficulty;
-        recordWin(moves + 1, finalSeconds, diffLabel);
+        recordWin(moves + 1, finalSeconds, diffLabel, totalPairs);
       } else {
         if (newMatches % 5 === 0) burst();
         setMessage("✅ Match!");
@@ -375,47 +386,25 @@ export default function Mahjong() {
     const diffLabel = LAYOUTS[difficulty]?.label || difficulty;
     const best = bestScores[diffLabel];
     const isNewBest = best?.moves === moves;
+    const stars = getStarRating(moves, totalPairs);
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-red-950 to-slate-950 flex flex-col items-center justify-center px-4 pb-24 text-center">
-        <motion.div initial={{ scale: 0, rotate: -15 }} animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 14 }} className="text-8xl mb-3">🎉</motion.div>
-        <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-          className="text-5xl font-black text-white mb-3">Board Cleared!</motion.h1>
-        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.35, type: "spring" }}>
-          <MahjongStarRating moves={moves} pairs={totalPairs} />
-        </motion.div>
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 }}
-          className="bg-white/10 border border-white/20 rounded-2xl px-8 py-5 mb-5 w-full max-w-xs mt-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="text-2xl font-black text-white">{moves}</div>
-              <div className="text-xs text-red-300 uppercase tracking-wide">Moves</div>
-            </div>
-            <div>
-              <div className="text-2xl font-black text-white">{formatTime(elapsedSeconds)}</div>
-              <div className="text-xs text-red-300 uppercase tracking-wide">Time</div>
-            </div>
-            <div>
-              <div className="text-2xl font-black text-white">{totalPairs}</div>
-              <div className="text-xs text-red-300 uppercase tracking-wide">Pairs</div>
-            </div>
-          </div>
-          {isNewBest && <div className="mt-3 text-yellow-400 font-black text-sm animate-pulse">🏆 New Personal Best!</div>}
-        </motion.div>
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }}
-          className="space-y-3 w-full max-w-xs">
-          <button onClick={() => startGame(difficulty)}
-            className="w-full bg-gradient-to-r from-red-500 to-rose-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border-2 border-red-400">
-            🔄 Play Again
-          </button>
-          <button onClick={backToMenu}
-            className="w-full bg-white/10 border border-white/20 text-white text-lg font-bold py-3 rounded-xl active:scale-95 transition-transform">
-            Change Layout
-          </button>
-          <GameBackButton />
-        </motion.div>
-      </div>
+      <GameVictoryScreen
+        emoji="🀄"
+        title="Board Cleared!"
+        accent="from-red-500 to-rose-600"
+        stars={stars}
+        coins={coinsWon}
+        newBest={isNewBest}
+        stats={[
+          { label: "Moves", value: moves },
+          { label: "Time", value: formatTime(elapsedSeconds) },
+          { label: "Pairs", value: totalPairs },
+        ]}
+        primaryLabel="🔄 Play Again"
+        onPrimary={() => startGame(difficulty)}
+        secondaryLabel="Change Layout"
+        onSecondary={backToMenu}
+      />
     );
   }
 

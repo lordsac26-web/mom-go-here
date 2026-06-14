@@ -21,6 +21,8 @@ import {
   BOARD_STYLES, PIECE_SKINS, rollRareDrops,
 } from "../../components/checkers/cosmeticDefinitions";
 import CosmeticPicker from "../../components/checkers/CosmeticPicker";
+import GameVictoryScreen from "../../components/games/GameVictoryScreen";
+import { awardCoins } from "@/lib/awardCoins";
 
 // Draw rule: after this many consecutive non-capture moves by both sides, it's a draw
 const DRAW_MOVE_LIMIT = 40;
@@ -57,6 +59,7 @@ export default function Checkers() {
   const [activePieceSkin, setActivePieceSkin] = useState(PIECE_SKINS[0]);
   const [rareDropMsg, setRareDropMsg] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   // ── Refs ──
   const moveCountRef = useRef(0);
@@ -207,6 +210,8 @@ export default function Checkers() {
     reportWin("Checkers");
     recordCheckersWin();
     checkRareDrops();
+    // Reward coins for beating the CPU
+    if (userEmail) awardCoins(userEmail, 50).then(setCoinsWon);
   }
 
   function endAsLoss() {
@@ -377,6 +382,7 @@ export default function Checkers() {
     moveCountRef.current = 0;
     nonCaptureRef.current = 0;
     thinkingRef.current = false;
+    setCoinsWon(0);
   }
 
   // ── Win/Lose/Draw screen ──
