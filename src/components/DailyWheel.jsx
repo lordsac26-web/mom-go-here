@@ -190,9 +190,27 @@ export default function DailyWheel({ userEmail }) {
 
       if (prize.type === "coins") {
         updates.total_coins_won = (record.total_coins_won || 0) + prize.value;
+        // Sync to slots localStorage
         try {
           const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
           localStorage.setItem("slots_balance", (current + prize.value).toString());
+        } catch {}
+        // Sync to PlayerCoins (shop currency)
+        try {
+          const coinRecords = await base44.entities.PlayerCoins.filter({ user_email: userEmail });
+          if (coinRecords[0]) {
+            await base44.entities.PlayerCoins.update(coinRecords[0].id, {
+              balance: (coinRecords[0].balance ?? 0) + prize.value,
+              total_earned: (coinRecords[0].total_earned ?? 0) + prize.value,
+            });
+          } else {
+            await base44.entities.PlayerCoins.create({
+              user_email: userEmail,
+              balance: 500 + prize.value,
+              total_earned: 500 + prize.value,
+              total_spent: 0,
+            });
+          }
         } catch {}
       } else if (prize.type === "xp") {
         updates.total_xp_won = (record.total_xp_won || 0) + prize.value;
