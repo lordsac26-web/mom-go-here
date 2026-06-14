@@ -104,6 +104,8 @@ export default function DartPopBlitz() {
   const [isEndless, setIsEndless] = useState(false);
   const [wind, setWind] = useState(0);
   const [aimSpeedMultiplier, setAimSpeedMultiplier] = useState(1.0);
+  const [launcherPhase, setLauncherPhase] = useState("aiming");
+  const dartCanvasRef = useRef(null);
 
   // FIX (bug): savedRef guards against double-saves. It is reset inside
   // startGame via a ref so it doesn't depend on render timing.
@@ -237,7 +239,17 @@ export default function DartPopBlitz() {
           FIX (bug): onGameEnd replaces the old setGameState("won"/"lost") call from inside
           the canvas. The canvas calls it with the final result object so scores are captured
           at the correct moment with no stale-closure risk. */}
+      {launcherPhase === "power" && (
+        <button
+          onClick={() => dartCanvasRef.current?.cancelAim()}
+          className="bg-red-600/90 active:bg-red-700 text-white font-black px-5 py-2.5 rounded-2xl text-base border border-red-400 shadow-lg"
+        >
+          ✕ Cancel
+        </button>
+      )}
+
       <DartPopBlitzCanvas
+        ref={dartCanvasRef}
         preset={preset}
         gameState={gameState}
         activePowerup={activePowerup}
@@ -252,6 +264,7 @@ export default function DartPopBlitz() {
         onWindChange={setWind}
         aimSpeedMultiplier={aimSpeedMultiplier}
         sounds={sounds}
+        onPhaseChange={setLauncherPhase}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import {
   BALLOON_TYPES, POWERUPS, DART_SPEED, GRAVITY,
   SNIPER_PIERCE, GAME_WIDTH, GAME_HEIGHT, STREAK_FOR_POWERUP,
@@ -513,13 +513,14 @@ const MAGNETIC_SPEED = 1.5;
 // cooldown: brief pause then back to "aiming"
 const COOLDOWN_FRAMES = 15;
 
-export default function DartPopBlitzCanvas({
+const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
   preset, gameState,
   activePowerup, setActivePowerup,
   powerupInventory, setPowerupInventory,
   onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange,
   onGameEnd, onWindChange, aimSpeedMultiplier = 1.0, sounds,
-}) {
+  onPhaseChange,
+}, ref) {
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
   const initIdRef = useRef(null);
@@ -661,12 +662,27 @@ export default function DartPopBlitzCanvas({
       lr.phase = "power";
       lr.powerT = 0;
       lr.powerDir = 1;
+      onPhaseChange?.("power");
     } else if (lr.phase === "power") {
       fireDart(lr.lockedAngle, lr.powerT);
       lr.phase = "cooldown";
       lr.cooldownTimer = COOLDOWN_FRAMES;
+      onPhaseChange?.("cooldown");
     }
-  }, [fireDart, getCanvasPos, activePowerup, powerupInventory, setActivePowerup, setPowerupInventory]);
+  }, [fireDart, getCanvasPos, activePowerup, powerupInventory, setActivePowerup, setPowerupInventory, onPhaseChange]);
+
+  // Cancel aim — revert from "power" phase back to "aiming"
+  const cancelAim = useCallback(() => {
+    const lr = launcherRef.current;
+    if (lr.phase === "power") {
+      lr.phase = "aiming";
+      lr.aimDir = 1;
+      onPhaseChange?.("aiming");
+    }
+  }, [onPhaseChange]);
+
+  // Expose cancelAim to parent via ref
+  useImperativeHandle(ref, () => ({ cancelAim }), [cancelAim]);
 
   // ── Initialization ──
   useEffect(() => {
@@ -692,6 +708,7 @@ export default function DartPopBlitzCanvas({
     const lr = launcherRef.current;
     lr.phase = "aiming"; lr.aimAngle = AIM_START_ANGLE; lr.aimDir = 1;
     lr.powerT = 0; lr.powerDir = 1; lr.cooldownTimer = 0;
+    onPhaseChange?.("aiming");
   }, [preset]);
 
   // ── Game Loop ──
@@ -729,6 +746,7 @@ export default function DartPopBlitzCanvas({
         if (lr.cooldownTimer <= 0) {
           lr.phase = "aiming";
           lr.aimDir = 1;
+          onPhaseChange?.("aiming");
         }
       }
 
@@ -1344,4 +1362,6 @@ export default function DartPopBlitzCanvas({
       onTouchEnd={handleTap}
     />
   );
-}
+});
+
+export default DartPopBlitzCanvas;
