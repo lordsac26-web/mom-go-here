@@ -491,14 +491,19 @@ export default function DailyWheel({ userEmail }) {
                     </svg>
                   </div>
 
-                  {/* Themed AI rim overlay (hollow center, sits above the wheel) */}
+                  {/* Themed AI rim overlay — masked to a hollow ring so the spinning
+                      segments stay fully visible (AI PNGs aren't perfectly transparent). */}
                   {theme?.rim && (
                     <img
                       src={theme.rim}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full pointer-events-none z-20 select-none"
-                      style={{ transform: "scale(1.12)" }}
+                      style={{
+                        transform: "scale(1.14)",
+                        WebkitMaskImage: "radial-gradient(circle, transparent 0 62%, black 67% 100%)",
+                        maskImage: "radial-gradient(circle, transparent 0 62%, black 67% 100%)",
+                      }}
                     />
                   )}
 
