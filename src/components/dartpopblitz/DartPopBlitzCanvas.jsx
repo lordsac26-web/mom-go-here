@@ -780,15 +780,34 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
   }, [sounds, setActivePowerup, onDartsRemainingChange]);
 
   // ── Canvas coordinate helper ──
+  // The canvas is drawn with object-fit: contain, so the rendered game area can be
+  // letterboxed inside the element box. We must map the pointer against the ACTUAL
+  // contained content rect (not the raw element box) or clicks land in the wrong
+  // place — which made power-up slots un-clickable on desktop.
   const getCanvasPos = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
     const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-    const scaleX = GAME_WIDTH / rect.width;
-    const scaleY = GAME_HEIGHT / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+
+    // Compute the contained content box inside the element (object-fit: contain)
+    const elemRatio = rect.width / rect.height;
+    const gameRatio = GAME_WIDTH / GAME_HEIGHT;
+    let contentW = rect.width, contentH = rect.height, offsetX = 0, offsetY = 0;
+    if (elemRatio > gameRatio) {
+      // Element is wider than the game → pillarboxed (bars left/right)
+      contentW = rect.height * gameRatio;
+      offsetX = (rect.width - contentW) / 2;
+    } else {
+      // Element is taller than the game → letterboxed (bars top/bottom)
+      contentH = rect.width / gameRatio;
+      offsetY = (rect.height - contentH) / 2;
+    }
+
+    const x = (clientX - rect.left - offsetX) * (GAME_WIDTH / contentW);
+    const y = (clientY - rect.top - offsetY) * (GAME_HEIGHT / contentH);
+    return { x, y };
   }, []);
 
   // ── Input: Tap to advance phase OR equip power-up ──
@@ -1525,8 +1544,8 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
       ref={canvasRef}
       width={GAME_WIDTH}
       height={GAME_HEIGHT}
-      className="rounded-2xl border-2 border-primary/30 shadow-xl touch-none block"
-      style={{ width: "100%", maxWidth: "400px", maxHeight: "100%", objectFit: "contain", aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}`, flex: "1 1 0", minHeight: 0 }}
+      className="rounded-2xl border-2 border-primary/30 shadow-xl touch-none block mx-auto"
+      style={{ width: "100%", height: "100%", maxWidth: "400px", objectFit: "contain", minHeight: 0 }}
       onClick={handleTap}
       onTouchEnd={handleTap}
     />
