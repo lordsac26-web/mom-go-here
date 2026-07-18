@@ -160,10 +160,10 @@ export default function DailyLoginBonus({ userEmail }) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center px-4"
-      style={{ opacity: 0 }}
+      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center px-4 py-4 overflow-y-auto"
+      style={{ opacity: 0, paddingTop: "max(1rem, env(safe-area-inset-top))", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm my-auto max-h-full overflow-y-auto">
         {/* Header */}
         <div className="text-center mb-5">
           <div className="text-5xl mb-2">📅</div>
