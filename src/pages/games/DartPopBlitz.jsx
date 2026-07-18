@@ -241,25 +241,26 @@ export default function DartPopBlitz() {
         wind={wind}
       />
 
-      <DartPopBlitzCanvas
-        ref={dartCanvasRef}
-        preset={preset}
-        gameState={gameState}
-        activePowerup={activePowerup}
-        setActivePowerup={setActivePowerup}
-        powerupInventory={powerupInventory}
-        setPowerupInventory={setPowerupInventory}
-        onScoreChange={setScore}
-        onStreakChange={setStreak}
-        onTotalPoppedChange={setTotalPopped}
-        onDartsRemainingChange={setDartsRemaining}
-        onGameEnd={handleGameEnd}
-        onWindChange={setWind}
-        aimSpeedMultiplier={aimSpeedMultiplier}
-        sounds={sounds}
-        onPhaseChange={setLauncherPhase}
-        className="flex-1 min-h-0 w-full max-w-[400px] block"
-      />
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+        <DartPopBlitzCanvas
+          ref={dartCanvasRef}
+          preset={preset}
+          gameState={gameState}
+          activePowerup={activePowerup}
+          setActivePowerup={setActivePowerup}
+          powerupInventory={powerupInventory}
+          setPowerupInventory={setPowerupInventory}
+          onScoreChange={setScore}
+          onStreakChange={setStreak}
+          onTotalPoppedChange={setTotalPopped}
+          onDartsRemainingChange={setDartsRemaining}
+          onGameEnd={handleGameEnd}
+          onWindChange={setWind}
+          aimSpeedMultiplier={aimSpeedMultiplier}
+          sounds={sounds}
+          onPhaseChange={setLauncherPhase}
+        />
+      </div>
     </div>
   );
 }
