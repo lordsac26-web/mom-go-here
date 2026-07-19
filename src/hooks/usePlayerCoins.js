@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
 /**
- * Hook to read and manage a player's coin balance.
- * Automatically creates a record for new users.
+ * Read-only hook for a player's coin balance.
+ * All coin mutations happen server-side via the `economy` backend function;
+ * PlayerCoins is read-only from the client, so this hook only reads + reloads.
  */
 export default function usePlayerCoins(userEmail) {
   const [coins, setCoins] = useState(null);
@@ -19,15 +20,9 @@ export default function usePlayerCoins(userEmail) {
         setRecord(results[0]);
         setCoins(results[0].balance ?? 0);
       } else {
-        // Create initial record with starter coins
-        const created = await base44.entities.PlayerCoins.create({
-          user_email: userEmail,
-          balance: 500,
-          total_earned: 500,
-          total_spent: 0,
-        });
-        setRecord(created);
-        setCoins(500);
+        // No record yet — the server creates it on the first award/purchase.
+        setRecord(null);
+        setCoins(0);
       }
     } catch (e) {
       console.error("usePlayerCoins error:", e);
@@ -38,38 +33,5 @@ export default function usePlayerCoins(userEmail) {
 
   useEffect(() => { load(); }, [load]);
 
-  /**
-   * Spend coins. Returns true if successful, false if insufficient funds.
-   */
-  const spend = useCallback(async (amount) => {
-    if (!record) return false;
-    const current = record.balance ?? 0;
-    if (current < amount) return false;
-    const newBalance = current - amount;
-    const newSpent = (record.total_spent ?? 0) + amount;
-    await base44.entities.PlayerCoins.update(record.id, {
-      balance: newBalance,
-      total_spent: newSpent,
-    });
-    setRecord(r => ({ ...r, balance: newBalance, total_spent: newSpent }));
-    setCoins(newBalance);
-    return true;
-  }, [record]);
-
-  /**
-   * Add coins to balance.
-   */
-  const earn = useCallback(async (amount) => {
-    if (!record) return;
-    const newBalance = (record.balance ?? 0) + amount;
-    const newEarned = (record.total_earned ?? 0) + amount;
-    await base44.entities.PlayerCoins.update(record.id, {
-      balance: newBalance,
-      total_earned: newEarned,
-    });
-    setRecord(r => ({ ...r, balance: newBalance, total_earned: newEarned }));
-    setCoins(newBalance);
-  }, [record]);
-
-  return { coins, loading, spend, earn, reload: load };
+  return { coins, record, loading, reload: load };
 }

@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import useConfetti from "../../hooks/useConfetti";
 import { useGameActivity } from "../../hooks/useGameActivity";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
-import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
+import { awardCoinsForStars, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -295,7 +295,7 @@ export default function Solitaire() {
       setWinStars(stars);
 
       const reward = coinsForStars(stars, 25);
-      const awarded = await awardCoins(user.email, reward);
+      const awarded = await awardCoinsForStars(stars, 25);
       setCoinsWon(awarded);
 
       await saveGameScore({

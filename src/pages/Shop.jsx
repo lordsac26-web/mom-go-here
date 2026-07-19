@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import usePlayerCoins from "@/hooks/usePlayerCoins";
@@ -18,44 +19,44 @@ const TABS = [
 export default function Shop() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { coins, loading: coinsLoading, spend } = usePlayerCoins(user?.email);
-  const { inventory, loading: invLoading, update } = usePlayerInventory(user?.email);
+  const { coins, loading: coinsLoading, reload: reloadCoins } = usePlayerCoins(user?.email);
+  const { inventory, loading: invLoading, reload: reloadInventory } = usePlayerInventory(user?.email);
   const [activeTab, setActiveTab] = useState("balloons");
 
   const loading = coinsLoading || invLoading;
 
   async function handleBuy(item, category) {
     if (item.free) return;
-    const ok = await spend(item.price);
-    if (!ok) {
-      toast({ title: "Not enough coins! 🪙", description: `You need ${item.price} coins.`, variant: "destructive", duration: 3000 });
+    try {
+      await base44.functions.invoke("economy", { action: "purchase", category, itemId: item.id });
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 402) {
+        toast({ title: "Not enough coins! 🪙", description: `You need ${item.price} coins.`, variant: "destructive", duration: 3000 });
+      } else {
+        toast({ title: "Purchase failed", description: err?.response?.data?.error || "Please try again.", variant: "destructive", duration: 3000 });
+      }
       return;
     }
 
-    if (category === "balloon") {
-      const updated = [...(inventory?.owned_balloon_skins ?? ["default"]), item.id];
-      await update({ owned_balloon_skins: updated, active_balloon_skin: item.id });
-      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Balloon skin equipped.", duration: 3000 });
-    } else if (category === "wheel") {
-      const updated = [...(inventory?.owned_wheel_themes ?? ["default"]), item.id];
-      await update({ owned_wheel_themes: updated, active_wheel_theme: item.id });
-      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Wheel theme equipped.", duration: 3000 });
-    } else if (category === "powerup") {
-      const current = inventory?.dart_powerups ?? {};
-      const newQty = (current[item.id] ?? 0) + 1;
-      await update({ dart_powerups: { ...current, [item.id]: newQty } });
-      toast({ title: `${item.emoji} ${item.label} added!`, description: `You now have ×${newQty}.`, duration: 3000 });
+    await Promise.all([reloadCoins(), reloadInventory()]);
+
+    if (category === "powerup") {
+      toast({ title: `${item.emoji} ${item.label} added!`, duration: 3000 });
+    } else {
+      toast({ title: `${item.emoji} ${item.label} unlocked!`, description: "Equipped.", duration: 3000 });
     }
   }
 
   async function handleEquip(category, id) {
-    if (category === "balloon") {
-      await update({ active_balloon_skin: id });
-      toast({ title: "Balloon skin equipped!", duration: 3000 });
-    } else if (category === "wheel") {
-      await update({ active_wheel_theme: id });
-      toast({ title: "Wheel theme equipped!", duration: 3000 });
+    try {
+      await base44.functions.invoke("economy", { action: "equip", category, itemId: id });
+    } catch {
+      toast({ title: "Couldn't equip", variant: "destructive", duration: 3000 });
+      return;
     }
+    await reloadInventory();
+    toast({ title: category === "balloon" ? "Balloon skin equipped!" : "Wheel theme equipped!", duration: 3000 });
   }
 
   return (

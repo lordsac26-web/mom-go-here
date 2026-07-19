@@ -15,7 +15,7 @@ import SudokuHintButton from "../../components/sudoku/SudokuHintButton";
 import SudokuStatusBar from "../../components/sudoku/SudokuStatusBar";
 import { getPuzzlesByDifficulty } from "../../components/sudoku/sudokuPuzzles";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
-import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
+import { awardCoinsForStars, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 function getBox(r, c) { return Math.floor(r / 3) * 3 + Math.floor(c / 3); }
 
@@ -269,7 +269,7 @@ export default function Sudoku() {
     // Coin reward scaled by difficulty + stars
     const diffBase = { easy: 15, medium: 25, hard: 40 }[difficulty] || 20;
     const reward = coinsForStars(stars, diffBase);
-    const awarded = await awardCoins(user.email, reward);
+    const awarded = await awardCoinsForStars(stars, diffBase);
     setCoinsWon(awarded);
 
     await saveGameScore({

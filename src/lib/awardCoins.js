@@ -1,31 +1,17 @@
 import { base44 } from "@/api/base44Client";
 
 /**
- * Award coins to a player on a game win. Safe to call fire-and-forget.
- * Creates the PlayerCoins record if it doesn't exist yet.
- * Returns the amount awarded (0 if it failed or no email).
+ * Award coins to a player on a game win via the secure `economy` backend function.
+ * The server computes the coin amount from the star rating — the client cannot
+ * dictate an arbitrary amount. Safe to call fire-and-forget.
+ * Returns the amount awarded (0 if it failed).
  */
-export async function awardCoins(userEmail, amount) {
-  if (!userEmail || !amount || amount <= 0) return 0;
+export async function awardCoinsForStars(stars, base = 20) {
   try {
-    const rows = await base44.entities.PlayerCoins.filter({ user_email: userEmail });
-    const rec = rows[0];
-    if (rec) {
-      await base44.entities.PlayerCoins.update(rec.id, {
-        balance: (rec.balance ?? 0) + amount,
-        total_earned: (rec.total_earned ?? 0) + amount,
-      });
-    } else {
-      await base44.entities.PlayerCoins.create({
-        user_email: userEmail,
-        balance: 500 + amount,
-        total_earned: 500 + amount,
-        total_spent: 0,
-      });
-    }
-    return amount;
+    const res = await base44.functions.invoke("economy", { action: "award", stars, base });
+    return res?.data?.awarded ?? 0;
   } catch (e) {
-    console.error("awardCoins error:", e);
+    console.error("awardCoinsForStars error:", e);
     return 0;
   }
 }

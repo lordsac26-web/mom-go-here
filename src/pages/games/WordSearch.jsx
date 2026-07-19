@@ -20,7 +20,7 @@ import WordSearchHintButton from "../../components/wordsearch/WordSearchHintButt
 import WordSearchStatusBar from "../../components/wordsearch/WordSearchStatusBar";
 import { WORD_LISTS_EASY, WORD_LISTS_ADVANCED } from "../../components/wordsearch/wordLists";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
-import { awardCoins, computeStars, coinsForStars } from "@/lib/awardCoins";
+import { awardCoinsForStars, computeStars, coinsForStars } from "@/lib/awardCoins";
 
 const DIFFICULTIES = {
   easy: { label: "Easy", emoji: "😊", gridSize: 10, wordLists: WORD_LISTS_EASY, desc: "10×10 grid · 8 words" },
@@ -192,7 +192,7 @@ export default function WordSearch() {
     setWinStars(stars);
 
     const reward = coinsForStars(stars, isAdvanced ? 30 : 18);
-    const awarded = await awardCoins(user.email, reward);
+    const awarded = await awardCoinsForStars(stars, isAdvanced ? 30 : 18);
     setCoinsWon(awarded);
 
     await saveGameScore({

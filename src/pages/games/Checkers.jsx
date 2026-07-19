@@ -22,7 +22,7 @@ import {
 } from "../../components/checkers/cosmeticDefinitions";
 import CosmeticPicker from "../../components/checkers/CosmeticPicker";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
-import { awardCoins } from "@/lib/awardCoins";
+import { awardCoinsForStars } from "@/lib/awardCoins";
 
 // Draw rule: after this many consecutive non-capture moves by both sides, it's a draw
 const DRAW_MOVE_LIMIT = 40;
@@ -211,7 +211,7 @@ export default function Checkers() {
     recordCheckersWin();
     checkRareDrops();
     // Reward coins for beating the CPU
-    if (userEmail) awardCoins(userEmail, 50).then(setCoinsWon);
+    if (userEmail) awardCoinsForStars(3, 25).then(setCoinsWon);
   }
 
   function endAsLoss() {

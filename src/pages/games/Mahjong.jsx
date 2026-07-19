@@ -23,7 +23,7 @@ import MahjongHintButton from "../../components/mahjong/MahjongHintButton";
 import MahjongResetDialog from "../../components/mahjong/MahjongResetDialog";
 import { getStarRating } from "../../components/mahjong/MahjongStarRating";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
-import { awardCoins, coinsForStars } from "@/lib/awardCoins";
+import { awardCoinsForStars, coinsForStars } from "@/lib/awardCoins";
 
 const DIFFICULTY_OPTIONS = [
   { key: "easy", label: "Easy (72 tiles)", sub: "Fortress layout" },
@@ -217,7 +217,7 @@ export default function Mahjong() {
     // Coins scaled by star rating + difficulty
     const stars = getStarRating(moveCount, pairs);
     const diffBase = { easy: 15, medium: 25, classic: 40 }[difficulty] || 20;
-    const awarded = await awardCoins(email, coinsForStars(stars, diffBase));
+    const awarded = await awardCoinsForStars(stars, diffBase);
     setCoinsWon(awarded);
 
     await saveGameScore({

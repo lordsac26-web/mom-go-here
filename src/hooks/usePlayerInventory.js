@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
+/**
+ * Read-only hook for a player's inventory.
+ * Purchases/equips happen server-side via the `economy` backend function;
+ * PlayerInventory is read-only from the client, so this hook only reads + reloads.
+ */
 export default function usePlayerInventory(userEmail) {
   const [inventory, setInventory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -10,19 +15,7 @@ export default function usePlayerInventory(userEmail) {
     setLoading(true);
     try {
       const results = await base44.entities.PlayerInventory.filter({ user_email: userEmail });
-      if (results[0]) {
-        setInventory(results[0]);
-      } else {
-        const created = await base44.entities.PlayerInventory.create({
-          user_email: userEmail,
-          owned_balloon_skins: ["default"],
-          owned_wheel_themes: ["default"],
-          dart_powerups: {},
-          active_balloon_skin: "default",
-          active_wheel_theme: "default",
-        });
-        setInventory(created);
-      }
+      setInventory(results[0] ?? null);
     } catch (e) {
       console.error("usePlayerInventory error:", e);
     } finally {
@@ -32,12 +25,5 @@ export default function usePlayerInventory(userEmail) {
 
   useEffect(() => { load(); }, [load]);
 
-  const update = useCallback(async (patch) => {
-    if (!inventory) return;
-    const updated = { ...inventory, ...patch };
-    await base44.entities.PlayerInventory.update(inventory.id, patch);
-    setInventory(updated);
-  }, [inventory]);
-
-  return { inventory, loading, update, reload: load };
+  return { inventory, loading, reload: load };
 }

@@ -114,22 +114,9 @@ export default function DailyLoginBonus({ userEmail }) {
       localStorage.setItem("slots_balance", (current + reward.credits).toString());
     } catch {}
 
-    // Sync to PlayerCoins (shop currency)
+    // Credit shop currency via the secure economy function (PlayerCoins is read-only client-side)
     try {
-      const coinRecords = await base44.entities.PlayerCoins.filter({ user_email: userEmail });
-      if (coinRecords[0]) {
-        await base44.entities.PlayerCoins.update(coinRecords[0].id, {
-          balance: (coinRecords[0].balance ?? 0) + reward.credits,
-          total_earned: (coinRecords[0].total_earned ?? 0) + reward.credits,
-        });
-      } else {
-        await base44.entities.PlayerCoins.create({
-          user_email: userEmail,
-          balance: 500 + reward.credits,
-          total_earned: 500 + reward.credits,
-          total_spent: 0,
-        });
-      }
+      await base44.functions.invoke("economy", { action: "credit", amount: reward.credits });
     } catch {}
 
     // Report to daily missions

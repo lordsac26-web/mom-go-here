@@ -16,7 +16,7 @@ import YahtzeeResetDialog from "../../components/yahtzee/YahtzeeResetDialog";
 import YahtzeeStatusBar from "../../components/yahtzee/YahtzeeStatusBar";
 import YahtzeeScorecard from "../../components/yahtzee/YahtzeeScorecard";
 import YahtzeeGameOver, { getRating } from "../../components/yahtzee/YahtzeeGameOver";
-import { awardCoins, coinsForStars } from "@/lib/awardCoins";
+import { awardCoinsForStars, coinsForStars } from "@/lib/awardCoins";
 
 const UPPER_KEYS = ["ones", "twos", "threes", "fours", "fives", "sixes"];
 const UPPER_BONUS_TARGET = 63;
@@ -132,7 +132,7 @@ export default function Yahtzee() {
     // Award coins scaled by score-based star rating (min 1 star reward)
     if (user?.email) {
       const stars = Math.max(getRating(totalScore).stars, 1);
-      awardCoins(user.email, coinsForStars(stars, 25)).then(setCoinsWon);
+      awardCoinsForStars(stars, 25).then(setCoinsWon);
     }
   }, [gameOver]);
 
