@@ -407,7 +407,7 @@ export default function WordSearch() {
       <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-3 px-2">
         {words.map(w => (
           <SparkleEffect key={w} active={justFoundWord === w} sparkleColor={theme.sparkleColor}>
-            <span className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-sm sm:text-lg font-black border-2 inline-block transition-all duration-300 ${
+            <span className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-base sm:text-lg font-black border-2 inline-block transition-all duration-300 ${
               justFoundWord === w ? "scale-110" : foundWords.includes(w) ? "line-through opacity-60" : ""
             }`}
             style={{
@@ -435,7 +435,7 @@ export default function WordSearch() {
               return (
                 <div key={key}
                   onClick={() => handleCellTap(r, c)}
-                  className={`aspect-square flex items-center justify-center text-base sm:text-xl font-black rounded-sm cursor-pointer transition-colors ${
+                  className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-black rounded-sm cursor-pointer transition-colors ${
                     isJustFound ? "cell-found-glow" : ""
                   } ${isHint ? "animate-pulse" : ""}`}
                   style={{

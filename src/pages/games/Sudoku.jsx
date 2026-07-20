@@ -419,7 +419,7 @@ export default function Sudoku() {
 
                 return (
                   <button key={c} onClick={() => handleSelect(r, c)}
-                    className={`flex-1 aspect-square text-lg sm:text-2xl font-black flex items-center justify-center border border-border transition-all
+                    className={`flex-1 aspect-square text-xl sm:text-2xl font-black flex items-center justify-center border border-border transition-all
                       ${c === 2 || c === 5 ? "border-r-[3px] border-r-foreground" : ""}
                       ${sel ? "bg-primary text-primary-foreground"
                         : err ? "bg-red-800 text-white"

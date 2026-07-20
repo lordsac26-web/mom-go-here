@@ -58,27 +58,27 @@ export default function YahtzeeScorecard({
         <button
           onClick={() => isConfirming ? confirmScore(key) : handleCategoryTap(key)}
           disabled={scored || !canScore}
-          className={`w-full flex items-center justify-between px-4 py-3 border-b border-border text-left transition-all ${
+          className={`w-full flex items-center justify-between px-4 py-4 min-h-[60px] border-b border-border text-left transition-all ${
             isConfirming ? "bg-primary/20 border-primary" :
             scored ? "opacity-50" : canScore ? "hover:bg-muted active:bg-muted/80 cursor-pointer" : "cursor-default"
           }`}
         >
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-foreground">{cat.label}</div>
-            <div className="text-muted-foreground text-sm">{cat.desc}</div>
+            <div className="text-xl font-bold text-foreground">{cat.label}</div>
+            <div className="text-muted-foreground text-base">{cat.desc}</div>
           </div>
           <div className="flex items-center gap-2">
             {isConfirming && (
               <motion.span
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-xs font-bold text-primary bg-primary/20 px-2 py-1 rounded-lg whitespace-nowrap"
+                className="text-sm font-bold text-primary bg-primary/20 px-2.5 py-1.5 rounded-lg whitespace-nowrap"
               >
                 Tap to confirm
               </motion.span>
             )}
             <motion.div
-              className={`text-xl font-black min-w-[3rem] text-right ${
+              className={`text-2xl font-black min-w-[3rem] text-right ${
                 isJust ? "text-green-400" : scored ? "text-primary" : preview !== null && preview > 0 ? "text-green-400" : preview === 0 ? "text-red-400/60" : "text-muted-foreground"
               }`}
               animate={isJust ? { scale: [1, 1.4, 1] } : {}}
@@ -94,9 +94,9 @@ export default function YahtzeeScorecard({
   }
 
   return (
-    <div className="bg-card border-2 border-border rounded-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+    <div className="bg-card border-2 border-border rounded-2xl overflow-hidden flex flex-col">
       <div className="bg-primary px-4 py-2.5 text-primary-foreground font-black text-lg text-center shrink-0">📊 Scorecard</div>
-      <div className="overflow-y-auto flex-1 overscroll-contain">
+      <div>
         {/* Upper Section */}
         <div className="bg-secondary/30 px-4 py-2 border-b border-border flex items-center justify-between">
           <span className="text-sm font-black text-muted-foreground">▲ UPPER SECTION</span>
