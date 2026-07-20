@@ -14,6 +14,8 @@ import MemoryTile from "../../components/memory/MemoryTile";
 import MemoryResetDialog from "../../components/memory/MemoryResetDialog";
 import MemoryStarRating from "../../components/memory/MemoryStarRating";
 import { useMemorySounds } from "../../hooks/useMemorySounds";
+import CoinRewardBadge from "../../components/games/CoinRewardBadge";
+import { awardCoinsForStars } from "@/lib/awardCoins";
 
 const EMOJI_SETS = [
   "🌸", "🦋", "🌈", "⭐", "🍀", "🌺", "🐝", "🦁", "🌙", "🍎",
@@ -68,6 +70,7 @@ export default function MemoryGame() {
   const [bestScores, setBestScores] = useState({});
   const [muted, setMuted] = useState(false);
   const [peekCountdown, setPeekCountdown] = useState(0);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   useGameTimer();
   const lockRef = useRef(false);
@@ -129,6 +132,7 @@ export default function MemoryGame() {
     setSizeIdx(idx);
     matchedRef.current = 0;
     movesRef.current = 0;
+    setCoinsWon(0);
 
     const { pairs } = SIZES[idx];
     const selected = shuffle(EMOJI_SETS).slice(0, pairs);
@@ -182,6 +186,12 @@ export default function MemoryGame() {
     if (!currentBest || moveCount < currentBest.moves) {
       setBestScores(prev => ({ ...prev, [difficulty]: { moves: moveCount, time: seconds } }));
     }
+    // Award coins scaled by star rating + difficulty (mirrors the other classic games)
+    const pairs = SIZES.find(s => s.label === difficulty)?.pairs ?? 6;
+    const stars = getStars(moveCount, pairs);
+    const diffBase = { Easy: 15, Medium: 25, Hard: 40 }[difficulty] || 20;
+    const awarded = await awardCoinsForStars(stars, diffBase);
+    setCoinsWon(awarded);
   }
 
   function handleClick(id) {
@@ -398,6 +408,12 @@ export default function MemoryGame() {
             <span key={n} className={n <= stars ? "text-yellow-400" : "text-gray-600"}>★</span>
           ))}
         </motion.div>
+
+        {coinsWon > 0 && (
+          <div className="mb-4">
+            <CoinRewardBadge amount={coinsWon} />
+          </div>
+        )}
 
         {/* Stats card */}
         <motion.div

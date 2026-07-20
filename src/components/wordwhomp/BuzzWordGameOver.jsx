@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import GameBackButton from "../GameBackButton";
 import BeeFlightTitle from "../BeeFlightTitle";
+import CoinRewardBadge from "../games/CoinRewardBadge";
 
 function getRating(foundCount, totalCount) {
   const pct = totalCount > 0 ? foundCount / totalCount : 0;
@@ -18,7 +19,7 @@ function formatTime(seconds) {
 }
 
 export default function BuzzWordGameOver({
-  score, foundWords, allWords, isRelaxed, elapsedTime, onNewGame,
+  score, foundWords, allWords, isRelaxed, elapsedTime, coinsWon = 0, onNewGame,
 }) {
   const allFound = foundWords.length === allWords.length;
   const rating = getRating(foundWords.length, allWords.length);
@@ -59,6 +60,12 @@ export default function BuzzWordGameOver({
           <span key={n} className={n <= rating.stars ? "text-yellow-400" : "text-gray-700"}>★</span>
         ))}
       </motion.div>
+
+      {coinsWon > 0 && (
+        <div className="mb-4">
+          <CoinRewardBadge amount={coinsWon} />
+        </div>
+      )}
 
       {/* Stats card */}
       <motion.div

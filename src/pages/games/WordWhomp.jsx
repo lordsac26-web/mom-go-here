@@ -19,6 +19,7 @@ import BuzzWordResetDialog from "../../components/wordwhomp/BuzzWordResetDialog"
 import BuzzWordStatusBar from "../../components/wordwhomp/BuzzWordStatusBar";
 import BuzzWordGameOver from "../../components/wordwhomp/BuzzWordGameOver";
 import BuzzWordModeSelect from "../../components/wordwhomp/BuzzWordModeSelect";
+import { awardCoinsForStars } from "@/lib/awardCoins";
 
 // Fisher-Yates shuffle (unbiased)
 function shuffle(arr) {
@@ -79,6 +80,7 @@ export default function WordWhomp() {
   const [timeLeft, setTimeLeft] = useState(TIMED_DURATION);
   const [timerActive, setTimerActive] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [coinsWon, setCoinsWon] = useState(0);
 
   const gameStartRef = useRef(null);
   const statsRecordedRef = useRef(false);
@@ -137,6 +139,11 @@ export default function WordWhomp() {
     statsRecordedRef.current = true;
     const elapsed = gameStartRef.current ? Math.round((Date.now() - gameStartRef.current) / 1000) : 0;
     const allFound = foundWords.length === allWords.length;
+    // Award coins only on a full clear, scaled by mode (timed is harder → higher base)
+    if (allFound) {
+      const awarded = await awardCoinsForStars(3, isRelaxed ? 20 : 30);
+      setCoinsWon(awarded);
+    }
     await saveGameScore({
       game_name: "Buzz Word",
       score: score,
@@ -266,6 +273,7 @@ export default function WordWhomp() {
     setTimeLeft(TIMED_DURATION);
     setTimerActive(!isRelaxed);
     setShowResetConfirm(false);
+    setCoinsWon(0);
     gameStartRef.current = Date.now();
     statsRecordedRef.current = false;
   }
@@ -299,6 +307,7 @@ export default function WordWhomp() {
         allWords={allWords}
         isRelaxed={isRelaxed}
         elapsedTime={elapsedTime}
+        coinsWon={coinsWon}
         onNewGame={newGame}
       />
     );
