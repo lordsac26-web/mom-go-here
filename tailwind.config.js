@@ -42,6 +42,9 @@ module.exports = {
       "from-orange-950", "via-red-900", "to-orange-950",
       "from-emerald-950", "via-green-900", "to-emerald-950",
       "from-slate-950", "via-gray-900", "to-slate-950",
+      "from-pink-950", "via-fuchsia-900", "to-pink-950",
+      "from-red-950", "via-orange-900", "to-red-950",
+      "from-cyan-950", "via-sky-900", "to-cyan-950",
     ],
   theme: {
   	extend: {

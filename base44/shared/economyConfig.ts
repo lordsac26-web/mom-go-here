@@ -13,6 +13,11 @@ export const BALLOON_SKINS: Record<string, { price: number }> = {
   midnight: { price: 750 },
   fire: { price: 900 },
   rainbow: { price: 1200 },
+  mint_fresh: { price: 400 },
+  bubblegum: { price: 550 },
+  royal_indigo: { price: 700 },
+  toxic_lime: { price: 800 },
+  aurora: { price: 1400 },
 };
 
 export const WHEEL_THEMES: Record<string, { price: number }> = {
@@ -23,6 +28,9 @@ export const WHEEL_THEMES: Record<string, { price: number }> = {
   sunset: { price: 500 },
   emerald: { price: 600 },
   monochrome: { price: 700 },
+  candy_pop: { price: 450 },
+  volcano: { price: 650 },
+  arctic: { price: 550 },
 };
 
 export const DART_POWERUPS: Record<string, { price: number; maxOwn: number }> = {
