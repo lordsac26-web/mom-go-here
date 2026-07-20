@@ -15,6 +15,7 @@ import {
 } from "./gameConfig";
 import { updateObstacles, checkDartObstacleCollision, drawObstacles, generateObstacles } from "./obstacleGenerator";
 import { generateBalloons, recalcCollapseTargets, spawnRandomBalloon } from "./levelGenerator";
+import { applyBalloonSkin, getSkinColor } from "./balloonSkins";
 import {
   spawnPowerupBalloon, updatePowerupBalloons, drawPowerupBalloons, checkDartPowerupCollision,
 } from "./powerupBalloons";
@@ -688,7 +689,7 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
   powerupInventory, setPowerupInventory,
   onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange,
   onGameEnd, onWindChange, aimSpeedMultiplier = 1.0, sounds,
-  onPhaseChange, className = "",
+  onPhaseChange, className = "", balloonSkin = null,
 }, ref) {
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -727,8 +728,9 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
       callbacksRef.current.powerupInventory = powerupInventory;
       callbacksRef.current.activePowerup = activePowerup;
       callbacksRef.current.aimSpeedMultiplier = aimSpeedMultiplier;
+      callbacksRef.current.balloonSkin = balloonSkin;
     }
-  }, [powerupInventory, activePowerup, aimSpeedMultiplier]);
+  }, [powerupInventory, activePowerup, aimSpeedMultiplier, balloonSkin]);
 
   // ── Fire dart at locked angle + power ──
   const fireDart = useCallback((angle, powerT) => {
@@ -880,6 +882,7 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
     initIdRef.current = id;
 
     const b = generateBalloons(preset);
+    applyBalloonSkin(b, balloonSkin);
     Object.assign(stateRef.current, {
       balloons: b, darts: [], particles: [],
       obstacles: generateObstacles(preset.obstacles || []),
@@ -906,7 +909,7 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
     const ctx = canvas.getContext("2d");
     const bg = getStaticBg();
 
-    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory, powerupInventory, activePowerup, aimSpeedMultiplier };
+    callbacksRef.current = { onScoreChange, onStreakChange, onTotalPoppedChange, onDartsRemainingChange, onGameEnd, onWindChange, sounds, setPowerupInventory, powerupInventory, activePowerup, aimSpeedMultiplier, balloonSkin };
 
     function loop() {
       const s = stateRef.current;
@@ -974,7 +977,12 @@ const DartPopBlitzCanvas = forwardRef(function DartPopBlitzCanvas({
           if (aliveCount < ENDLESS_MAX_BALLOONS) {
             const count = 1 + Math.floor(Math.random() * 3);
             for (let si = 0; si < count && aliveCount + si < ENDLESS_MAX_BALLOONS; si++) {
-              s.balloons.push(spawnRandomBalloon());
+              const nb = spawnRandomBalloon();
+              if (cb.balloonSkin && (nb.type === "basic" || nb.type === "small")) {
+                const c = getSkinColor(cb.balloonSkin, nb.id);
+                if (c) nb.color = c;
+              }
+              s.balloons.push(nb);
             }
           }
         }

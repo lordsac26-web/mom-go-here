@@ -259,6 +259,7 @@ export default function DartPopBlitz() {
           aimSpeedMultiplier={aimSpeedMultiplier}
           sounds={sounds}
           onPhaseChange={setLauncherPhase}
+          balloonSkin={inventory?.active_balloon_skin || null}
         />
       </div>
     </div>
