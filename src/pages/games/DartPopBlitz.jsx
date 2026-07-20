@@ -100,7 +100,7 @@ export default function DartPopBlitz() {
   const [dartsRemaining, setDartsRemaining] = useState(0);
   const [totalBalloons, setTotalBalloons] = useState(0);
   const [activePowerup, setActivePowerup] = useState(null);
-  const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0, freeze: 0, gravity: 0 });
+  const [powerupInventory, setPowerupInventory] = useState({ multishot: 0, mirv: 0, sniper: 0, freeze: 0, gravity: 0, zipper: 0 });
   const [isEndless, setIsEndless] = useState(false);
   const [wind, setWind] = useState(0);
   const [aimSpeedMultiplier, setAimSpeedMultiplier] = useState(1.0);
