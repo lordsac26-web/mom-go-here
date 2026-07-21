@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import {
   STARTER_BALANCE, BALLOON_SKINS, WHEEL_THEMES, DART_POWERUPS, coinsForStars,
+  PUSHER_DROP_COST, PUSHER_MAX_PAYOUT_PER_CALL,
 } from '../../shared/economyConfig.ts';
 
 // Server-authoritative coin economy.
@@ -118,6 +119,40 @@ Deno.serve(async (req) => {
         total_earned: (rec.total_earned ?? 0) + amount,
       });
       return Response.json({ credited: amount, balance: newBalance });
+    }
+
+    // ── Coin Pusher: spend a coin to drop, or bank coins that fell off the ledge ──
+    // "drop":   deduct PUSHER_DROP_COST (validates balance).
+    // "payout": credit `count` coins, clamped to PUSHER_MAX_PAYOUT_PER_CALL.
+    if (action === 'pusher') {
+      const mode = body.mode;
+      const rec = await getCoins(base44, email);
+      const balance = rec.balance ?? 0;
+
+      if (mode === 'drop') {
+        if (balance < PUSHER_DROP_COST) {
+          return Response.json({ error: 'Insufficient funds', balance }, { status: 402 });
+        }
+        const newBalance = balance - PUSHER_DROP_COST;
+        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
+          balance: newBalance,
+          total_spent: (rec.total_spent ?? 0) + PUSHER_DROP_COST,
+        });
+        return Response.json({ balance: newBalance });
+      }
+
+      if (mode === 'payout') {
+        const count = Math.max(0, Math.min(PUSHER_MAX_PAYOUT_PER_CALL, Math.round(Number(body.count) || 0)));
+        if (count <= 0) return Response.json({ balance });
+        const newBalance = balance + count;
+        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
+          balance: newBalance,
+          total_earned: (rec.total_earned ?? 0) + count,
+        });
+        return Response.json({ awarded: count, balance: newBalance });
+      }
+
+      return Response.json({ error: 'Bad pusher mode' }, { status: 400 });
     }
 
     // ── Equip an already-owned cosmetic (no coin change, but write is server-side) ──

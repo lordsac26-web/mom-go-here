@@ -42,6 +42,13 @@ export const DART_POWERUPS: Record<string, { price: number; maxOwn: number }> = 
   zipper: { price: 300, maxOwn: 5 },
 };
 
+// ── Coin Pusher ──
+// Each drop costs a fixed number of coins; the client reports how many coins
+// fell off the ledge for a payout. Payout per call is clamped so a tampered
+// client can't request an arbitrary win.
+export const PUSHER_DROP_COST = 1;
+export const PUSHER_MAX_PAYOUT_PER_CALL = 40; // realistic ceiling for one physics settle
+
 // Coin reward for a game win, scaled by star rating (1-3).
 // Mirrors coinsForStars() in src/lib/awardCoins.js.
 // `base` is the 1-star reward; it is clamped server-side so a tampered client

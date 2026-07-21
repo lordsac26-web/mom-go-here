@@ -34,6 +34,7 @@ import Scripture from './pages/Scripture';
 import DailyChallenge from './pages/DailyChallenge';
 import Achievements from './pages/Achievements';
 import DartPopBlitz from './pages/games/DartPopBlitz';
+import CoinPusher from './pages/games/CoinPusher';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import Gallery from './pages/Gallery';
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
           <Route path="/daily-challenge" element={<DailyChallenge />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/games/dartpop" element={<DartPopBlitz />} />
+          <Route path="/games/coinpusher" element={<CoinPusher />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/gallery" element={<Gallery />} />
