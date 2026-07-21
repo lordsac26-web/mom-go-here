@@ -19,6 +19,7 @@ import Yahtzee from './pages/games/Yahtzee';
 import WordSearch from './pages/games/WordSearch';
 import Sudoku from './pages/games/Sudoku';
 import Checkers from './pages/games/Checkers';
+import Chess from './pages/games/Chess';
 import Mahjong from './pages/games/Mahjong';
 import Solitaire from './pages/games/Solitaire';
 import AIArtStudio from './pages/games/AIArtStudio';
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
           <Route path="/games/wordsearch" element={<WordSearch />} />
           <Route path="/games/sudoku" element={<Sudoku />} />
           <Route path="/games/checkers" element={<Checkers />} />
+          <Route path="/games/chess" element={<Chess />} />
           <Route path="/games/mahjong" element={<Mahjong />} />
           <Route path="/games/solitaire" element={<Solitaire />} />
           <Route path="/games/artstudio" element={<AIArtStudio />} />

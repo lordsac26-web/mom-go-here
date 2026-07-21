@@ -23,6 +23,10 @@ import {
 import CosmeticPicker from "../../components/checkers/CosmeticPicker";
 import GameVictoryScreen from "../../components/games/GameVictoryScreen";
 import { awardCoinsForStars } from "@/lib/awardCoins";
+import DifficultySelect from "../../components/chess/DifficultySelect";
+
+// Coins awarded for beating each difficulty
+const COIN_REWARD = { easy: 15, medium: 25, hard: 40 };
 
 // Draw rule: after this many consecutive non-capture moves by both sides, it's a draw
 const DRAW_MOVE_LIMIT = 40;
@@ -33,6 +37,9 @@ export default function Checkers() {
   const { checkerFlipSound, winSound, uiClickSound } = useGameAudio();
   const { spark, fireworks, emojiRain } = useConfetti();
   const { reportWin, reportLoss } = useGameActivity();
+
+  // ── Flow state ──
+  const [difficulty, setDifficulty] = useState(null); // null = show selector
 
   // ── Core game state ──
   const [board, setBoard] = useState(initBoard);
@@ -210,8 +217,8 @@ export default function Checkers() {
     reportWin("Checkers");
     recordCheckersWin();
     checkRareDrops();
-    // Reward coins for beating the CPU
-    if (userEmail) awardCoinsForStars(3, 25).then(setCoinsWon);
+    // Reward coins for beating the CPU (scaled by difficulty)
+    if (userEmail) awardCoinsForStars(3, COIN_REWARD[difficulty] || 25).then(setCoinsWon);
   }
 
   function endAsLoss() {
@@ -287,7 +294,7 @@ export default function Checkers() {
 
       const thinkTime = 500 + Math.random() * 700; // 500–1200ms
       setTimeout(() => {
-        const cm = computerMove(newBoard);
+        const cm = computerMove(newBoard, difficulty);
         if (!cm) {
           endAsWin();
           thinkingRef.current = false;
@@ -385,6 +392,21 @@ export default function Checkers() {
     setCoinsWon(0);
   }
 
+  function backToMenu() {
+    doReset();
+    setDifficulty(null);
+  }
+
+  function startGame(level) {
+    setDifficulty(level);
+    doReset();
+  }
+
+  // ── Difficulty selector ──
+  if (!difficulty) {
+    return <DifficultySelect title="Checkers" emoji="⬛" onSelect={startGame} />;
+  }
+
   // ── Win/Lose/Draw screen ──
   if (gameOver) {
     const won = message.includes("You win");
@@ -409,6 +431,8 @@ export default function Checkers() {
         ]}
         primaryLabel="🔄 Play Again"
         onPrimary={doReset}
+        secondaryLabel="⚙️ Change Difficulty"
+        onSecondary={backToMenu}
       >
         {rareDropMsg && (
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -425,7 +449,12 @@ export default function Checkers() {
       {/* Header */}
       <div className="flex items-center justify-between px-2 mb-3">
         <GameBackButton />
-        <div className="text-xl font-black text-white">♟️ Checkers</div>
+        <div className="text-xl font-black text-white">
+          ⬛ Checkers
+          <span className="ml-1.5 text-xs font-bold text-primary align-middle">
+            {{ easy: "🌱 Easy", medium: "🎯 Medium", hard: "🔥 Hard" }[difficulty]}
+          </span>
+        </div>
         <div className="flex gap-1.5">
           <GameInstructions
             title="Checkers"

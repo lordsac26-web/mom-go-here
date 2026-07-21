@@ -8,6 +8,7 @@ const ALL_GAMES = [
   { name: "Word Search", emoji: "🔤", path: "/games/wordsearch", color: "from-yellow-600 to-yellow-800", desc: "Find hidden words in the grid" },
   { name: "Sudoku", emoji: "🔢", path: "/games/sudoku", color: "from-indigo-600 to-indigo-800", desc: "Fill in the number puzzle" },
   { name: "Checkers", emoji: "⬛", path: "/games/checkers", color: "from-orange-600 to-orange-800", desc: "Classic board game vs computer" },
+  { name: "Chess", emoji: "♟️", path: "/games/chess", color: "from-stone-600 to-stone-800", desc: "Play chess vs AI — pick your difficulty" },
   { name: "Yahtzee", emoji: "🎲", path: "/games/yahtzee", color: "from-pink-600 to-pink-800", desc: "Roll dice and score points!" },
   { name: "AI Art Studio", emoji: "🎨", path: "/games/artstudio", color: "from-teal-600 to-teal-800", desc: "Create AI-generated artwork" },
   { name: "Buzz Word!", emoji: "🐝", path: "/games/buzzword", color: "from-amber-600 to-amber-800", desc: "Make words from jumbled letters!" },

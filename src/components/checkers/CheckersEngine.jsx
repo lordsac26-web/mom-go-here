@@ -164,21 +164,81 @@ export function applyMove(board, move) {
 }
 
 /**
- * Simple AI: prioritize jumps with most captures, then random.
+ * Static board evaluation from the computer's (player 2) perspective.
+ * Positive = good for the computer. Kings and advanced pieces are worth more.
  */
-export function computerMove(board) {
+function evaluate(board) {
+  let score = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (!p) continue;
+      let val = p.king ? 3 : 1;
+      // Encourage advancing toward promotion
+      val += p.player === 2 ? r * 0.08 : (7 - r) * 0.08;
+      score += p.player === 2 ? val : -val;
+    }
+  }
+  return score;
+}
+
+/** Minimax with alpha-beta pruning. Player 2 maximizes. */
+function minimax(board, depth, alpha, beta, maximizing) {
+  const player = maximizing ? 2 : 1;
+  const moves = getAllMoves(board, player);
+  if (moves.length === 0) return maximizing ? -1000 - depth : 1000 + depth; // no moves = loss for that side
+  if (depth === 0) return evaluate(board);
+
+  if (maximizing) {
+    let best = -Infinity;
+    for (const m of moves) {
+      const val = minimax(applyMove(board, m), depth - 1, alpha, beta, false);
+      best = Math.max(best, val);
+      alpha = Math.max(alpha, val);
+      if (beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const m of moves) {
+      const val = minimax(applyMove(board, m), depth - 1, alpha, beta, true);
+      best = Math.min(best, val);
+      beta = Math.min(beta, val);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
+/**
+ * AI move (player 2).
+ * difficulty: "easy" | "medium" | "hard"
+ *   easy   → mostly random (with a 55% chance of a purely random legal move)
+ *   medium → minimax depth 3
+ *   hard   → minimax depth 5
+ */
+export function computerMove(board, difficulty = "medium") {
   const moves = getAllMoves(board, 2);
   if (!moves.length) return null;
 
-  // Prefer the longest jump chain
-  const maxJumps = Math.max(...moves.map(m => m.jumps.length));
-  const best = moves.filter(m => m.jumps.length === maxJumps);
-  
-  // Among equal chains, prefer king-making moves
-  const kingMakers = best.filter(m => m.to[0] === 7);
-  const pool = kingMakers.length > 0 ? kingMakers : best;
+  // Jumps are mandatory, so if only jumps exist, still pick the strongest.
+  if (difficulty === "easy" && Math.random() < 0.55) {
+    // Still prefer longer jump chains on easy so mandatory captures look sensible
+    const maxJumps = Math.max(...moves.map(m => m.jumps.length));
+    const pool = maxJumps > 0 ? moves.filter(m => m.jumps.length === maxJumps) : moves;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
 
-  return pool[Math.floor(Math.random() * pool.length)];
+  const depth = difficulty === "easy" ? 2 : difficulty === "hard" ? 5 : 3;
+
+  let bestVal = -Infinity;
+  let bestMoves = [];
+  for (const m of moves) {
+    const val = minimax(applyMove(board, m), depth - 1, -Infinity, Infinity, false);
+    if (val > bestVal) { bestVal = val; bestMoves = [m]; }
+    else if (val === bestVal) bestMoves.push(m);
+  }
+  return bestMoves[Math.floor(Math.random() * bestMoves.length)];
 }
 
 /**
