@@ -47,12 +47,13 @@ export default class CoinPusherEngine {
   }
 
   seed() {
-    for (let index = 0; index < 16; index += 1) this.spawn(0.15 + Math.random() * 0.7, 0.52 + Math.random() * 0.4, false);
+    for (let index = 0; index < 16; index += 1) this.spawn(0.15 + Math.random() * 0.7, 0.42 + Math.random() * 0.43, false);
   }
 
   drop(x) {
     if (this.coins.length < BOARD_CONFIG.maxCoins) {
-      this.spawn(x, 0.24, true);
+      const pusherFront = this.pusher.position.y + BOARD_CONFIG.physics.pusherHeight / 2 + BOARD_CONFIG.coinRadius * BOARD_CONFIG.worldSize * 1.25;
+      this.spawn(x, Math.min(0.86, pusherFront / BOARD_CONFIG.worldSize), true);
       this.onEvent?.({ type: "coin_dropped", x });
     }
   }
@@ -100,7 +101,7 @@ export default class CoinPusherEngine {
 
   movePusher() {
     const { pusherTravelStart, pusherTravelDistance, pusherSpeed } = BOARD_CONFIG.physics;
-    const cycle = (Math.sin(this.elapsed * pusherSpeed) + 1) / 2;
+    const cycle = (1 - Math.cos(this.elapsed * pusherSpeed)) / 2;
     const y = pusherTravelStart + cycle * pusherTravelDistance;
     Body.setPosition(this.pusher, { x: BOARD_CONFIG.worldSize / 2, y });
     this.plateFront = y / BOARD_CONFIG.worldSize;
