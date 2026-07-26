@@ -130,6 +130,17 @@ const CoinPusherCanvas = forwardRef(function CoinPusherCanvas({ onCollect }, ref
       <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-slate-600 to-slate-700/40 z-20" />
       <div className="absolute top-0 bottom-0 right-0 w-3 bg-gradient-to-l from-slate-600 to-slate-700/40 z-20" />
 
+      {/* Drop-zone indicator — shows where dropped coins land */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center"
+        style={{ top: `${plateFront * 100}%`, transform: "translate(-50%, -50%)" }}
+      >
+        <div className="animate-bounce text-sky-300 text-2xl drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]">▼</div>
+        <div className="px-3 py-0.5 rounded-full bg-sky-400/25 border border-sky-300/60 text-sky-200 text-[10px] font-black tracking-wider">
+          DROP ZONE
+        </div>
+      </div>
+
       {/* Back wall shadow */}
       <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/50 to-transparent z-10" />
 
