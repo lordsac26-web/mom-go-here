@@ -58,6 +58,7 @@ const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }
     return () => {
       cancelAnimationFrame(frameId);
       observer.disconnect();
+      engineRef.current?.destroy();
     };
   }, []);
 

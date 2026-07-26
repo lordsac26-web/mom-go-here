@@ -1,12 +1,8 @@
 export const BOARD_CONFIG = {
+  worldSize: 1000,
   coinRadius: 0.065,
   pegRadius: 0.022,
-  minGap: 0.12,
   maxCoins: 80,
-  gravity: 1100,
-  fallSpeed: 0.55,
-  bounceStrength: 0.45,
-  friction: 0.92,
   fixedStep: 1 / 60,
   pegs: [
     { x: 0.5, z: 0.31 },
@@ -14,4 +10,16 @@ export const BOARD_CONFIG = {
     { x: 0.5, z: 0.43 },
     { x: 0.37, z: 0.49 }, { x: 0.63, z: 0.49 },
   ],
+  physics: {
+    gravity: 0.72,
+    coinFriction: 0.12,
+    coinAirFriction: 0.018,
+    coinRestitution: 0.08,
+    wallThickness: 45,
+    pusherHeight: 68,
+    pusherTravelStart: 85,
+    pusherTravelDistance: 200,
+    pusherSpeed: 1.5,
+    collectionLine: 1055,
+  },
 };

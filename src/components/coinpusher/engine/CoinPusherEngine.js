@@ -1,4 +1,9 @@
+import Matter from "matter-js";
 import { BOARD_CONFIG } from "./boardConfig";
+
+const { Bodies, Body, Composite, Engine, Events, Sleeping, World } = Matter;
+const COIN_LABEL = "pusher-coin";
+const PEG_LABEL = "pusher-peg";
 
 export default class CoinPusherEngine {
   constructor(onEvent) {
@@ -8,96 +13,125 @@ export default class CoinPusherEngine {
     this.nextId = 1;
     this.elapsed = 0;
     this.plateFront = 0.1;
+    this.lastImpactAt = -1;
+    this.engine = Engine.create({ gravity: { x: 0, y: BOARD_CONFIG.physics.gravity, scale: 0.001 } });
+    this.world = this.engine.world;
+    this.createMachineBodies();
+    this.handleCollisions();
+  }
+
+  createMachineBodies() {
+    const size = BOARD_CONFIG.worldSize;
+    const { wallThickness, pusherHeight } = BOARD_CONFIG.physics;
+    const staticOptions = { isStatic: true, friction: 0.3, restitution: 0.04 };
+    this.pusher = Bodies.rectangle(size / 2, 85, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: "pusher-plate" });
+    const walls = [
+      Bodies.rectangle(wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
+      Bodies.rectangle(size - wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
+      Bodies.rectangle(size / 2, -wallThickness / 2, size, wallThickness, staticOptions),
+    ];
+    const pegs = BOARD_CONFIG.pegs.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.45 }));
+    World.add(this.world, [this.pusher, ...walls, ...pegs]);
+  }
+
+  handleCollisions() {
+    Events.on(this.engine, "collisionStart", ({ pairs }) => {
+      if (this.elapsed - this.lastImpactAt < 0.045) return;
+      const hitPeg = pairs.some(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PEG_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PEG_LABEL));
+      if (hitPeg) {
+        this.lastImpactAt = this.elapsed;
+        this.onEvent?.({ type: "coin_impact" });
+      }
+    });
   }
 
   seed() {
-    for (let index = 0; index < 16; index += 1) {
-      this.spawn(0.15 + Math.random() * 0.7, 0.52 + Math.random() * 0.4, 0);
-    }
+    for (let index = 0; index < 16; index += 1) this.spawn(0.15 + Math.random() * 0.7, 0.52 + Math.random() * 0.4, false);
   }
 
   drop(x) {
-    if (this.coins.length < BOARD_CONFIG.maxCoins) this.spawn(x, 0.27, 110);
+    if (this.coins.length < BOARD_CONFIG.maxCoins) this.spawn(x, 0.24, true);
   }
 
-  spawn(x, z, y) {
-    const coin = this.pool.pop() || {};
-    Object.assign(coin, {
-      id: this.nextId++,
-      x: Math.max(BOARD_CONFIG.coinRadius, Math.min(1 - BOARD_CONFIG.coinRadius, x)),
-      z,
-      y,
-      vx: 0,
-      vy: 0,
-      vz: y > 0 ? BOARD_CONFIG.fallSpeed : 0,
-      settled: y === 0,
-      spin: Math.random() * 360,
-      pegMask: 0,
-    });
+  spawn(xFraction, zFraction, isDrop) {
+    const size = BOARD_CONFIG.worldSize;
+    const radius = BOARD_CONFIG.coinRadius * size;
+    const x = Math.max(radius + BOARD_CONFIG.physics.wallThickness, Math.min(size - radius - BOARD_CONFIG.physics.wallThickness, xFraction * size));
+    const y = zFraction * size;
+    const coin = this.pool.pop() || { body: Bodies.circle(x, y, radius, this.coinOptions()), lift: 0 };
+
+    if (coin.body.isSleeping) Sleeping.set(coin.body, false);
+    Body.setPosition(coin.body, { x, y });
+    Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 1.6, y: isDrop ? 2.4 : 0 });
+    Body.setAngularVelocity(coin.body, (Math.random() - 0.5) * 0.08);
+    coin.body.angle = 0;
+    coin.id = this.nextId++;
+    coin.lift = isDrop ? 82 : 0;
+    coin.x = xFraction;
+    coin.z = zFraction;
+    coin.y = coin.lift;
+    coin.spin = 0;
     this.coins.push(coin);
+    World.add(this.world, coin.body);
+  }
+
+  coinOptions() {
+    return {
+      label: COIN_LABEL,
+      friction: BOARD_CONFIG.physics.coinFriction,
+      frictionAir: BOARD_CONFIG.physics.coinAirFriction,
+      restitution: BOARD_CONFIG.physics.coinRestitution,
+      density: 0.002,
+      slop: 0.02,
+    };
   }
 
   step(dt) {
     this.elapsed += dt;
-    this.plateFront = 0.08 + ((Math.sin(this.elapsed * 1.5) + 1) / 2) * 0.2;
-
-    for (const coin of this.coins) this.updateCoin(coin, dt);
-    this.resolvePusher();
-    this.resolveCoinSpacing();
+    this.movePusher();
+    Engine.update(this.engine, dt * 1000);
+    this.syncCoins(dt);
     this.collectOverflow();
   }
 
-  updateCoin(coin, dt) {
-    if (coin.y > 0) {
-      coin.vy += BOARD_CONFIG.gravity * dt;
-      coin.y -= coin.vy * dt;
-      coin.z += coin.vz * dt;
-      coin.x += coin.vx * dt;
-      coin.vx *= BOARD_CONFIG.friction;
-
-      BOARD_CONFIG.pegs.forEach((peg, index) => {
-        const bit = 1 << index;
-        const collisionDistance = BOARD_CONFIG.coinRadius + BOARD_CONFIG.pegRadius;
-        if ((coin.pegMask & bit) || Math.abs(coin.z - peg.z) >= collisionDistance || Math.abs(coin.x - peg.x) >= collisionDistance) return;
-        coin.pegMask |= bit;
-        const direction = coin.x === peg.x ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(coin.x - peg.x);
-        coin.vx = direction * BOARD_CONFIG.bounceStrength + (Math.random() - 0.5) * 0.1;
-      });
-
-      if (coin.y <= 0) Object.assign(coin, { y: 0, vy: 0, vz: 0, vx: 0, settled: true });
-    }
-
-    coin.x = Math.max(BOARD_CONFIG.coinRadius, Math.min(1 - BOARD_CONFIG.coinRadius, coin.x));
-    coin.spin += dt * 30;
+  movePusher() {
+    const { pusherTravelStart, pusherTravelDistance, pusherSpeed } = BOARD_CONFIG.physics;
+    const cycle = (Math.sin(this.elapsed * pusherSpeed) + 1) / 2;
+    const y = pusherTravelStart + cycle * pusherTravelDistance;
+    Body.setPosition(this.pusher, { x: BOARD_CONFIG.worldSize / 2, y });
+    this.plateFront = y / BOARD_CONFIG.worldSize;
   }
 
-  resolvePusher() {
+  syncCoins(dt) {
+    const size = BOARD_CONFIG.worldSize;
+    const radius = BOARD_CONFIG.coinRadius * size;
     for (const coin of this.coins) {
-      if (coin.settled && coin.z < this.plateFront + BOARD_CONFIG.coinRadius) coin.z = this.plateFront + BOARD_CONFIG.coinRadius;
-    }
-  }
-
-  resolveCoinSpacing() {
-    const sorted = [...this.coins].sort((a, b) => b.z - a.z);
-    for (let front = 0; front < sorted.length; front += 1) {
-      for (let back = front + 1; back < sorted.length; back += 1) {
-        const leading = sorted[front];
-        const trailing = sorted[back];
-        if (!leading.settled || !trailing.settled || Math.abs(leading.x - trailing.x) > BOARD_CONFIG.minGap) continue;
-        const gap = leading.z - trailing.z;
-        if (gap >= 0 && gap < BOARD_CONFIG.minGap) leading.z += (BOARD_CONFIG.minGap - gap) * 0.5;
-      }
+      coin.x = coin.body.position.x / size;
+      coin.z = coin.body.position.y / size;
+      coin.lift = Math.max(0, coin.lift - dt * 310);
+      coin.y = coin.lift;
+      coin.spin = (coin.body.angle * 180) / Math.PI;
+      if (coin.body.position.x < radius) Body.setPosition(coin.body, { x: radius, y: coin.body.position.y });
+      if (coin.body.position.x > size - radius) Body.setPosition(coin.body, { x: size - radius, y: coin.body.position.y });
     }
   }
 
   collectOverflow() {
-    let collected = 0;
+    let count = 0;
     for (let index = this.coins.length - 1; index >= 0; index -= 1) {
-      if (this.coins[index].z <= 1) continue;
-      this.pool.push(this.coins[index]);
+      const coin = this.coins[index];
+      if (coin.body.position.y <= BOARD_CONFIG.physics.collectionLine) continue;
+      Composite.remove(this.world, coin.body);
       this.coins.splice(index, 1);
-      collected += 1;
+      this.pool.push(coin);
+      count += 1;
     }
-    if (collected) this.onEvent?.({ type: "coins_collected", count: collected });
+    if (count) this.onEvent?.({ type: "coins_collected", count });
+  }
+
+  destroy() {
+    Events.off(this.engine);
+    World.clear(this.world, false);
+    Engine.clear(this.engine);
   }
 }
