@@ -74,11 +74,11 @@ export default function CoinPusher() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-4 pb-28 bg-gradient-to-b from-slate-950 via-sky-950 to-slate-950 select-none">
+    <div className="h-[100dvh] flex flex-col px-3 py-2 gap-2 bg-gradient-to-b from-slate-950 via-sky-950 to-slate-950 select-none overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between shrink-0">
         <GameBackButton />
-        <div className="text-xl font-black text-white">🪙 Coin Pusher</div>
+        <div className="text-lg font-black text-white">🪙 Coin Pusher</div>
         <GameInstructions
           title="Coin Pusher"
           emoji="🪙"
@@ -93,33 +93,32 @@ export default function CoinPusher() {
       </div>
 
       {/* Balance + tray */}
-      <div className="flex items-center justify-between mb-3 px-1">
+      <div className="flex items-center justify-between shrink-0 px-1">
         <div>
-          <p className="text-slate-400 text-xs font-bold">Balance</p>
-          <CoinDisplay coins={loading ? null : coins} size="lg" />
+          <p className="text-slate-400 text-[10px] font-bold leading-tight">Balance</p>
+          <CoinDisplay coins={loading ? null : coins} size="md" />
         </div>
         <div className="text-right">
-          <p className="text-slate-400 text-xs font-bold">Collected</p>
-          <span className="inline-flex items-center gap-1.5 font-black rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-xl px-4 py-2">
+          <p className="text-slate-400 text-[10px] font-bold leading-tight">Collected</p>
+          <span className="inline-flex items-center gap-1 font-black rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-base px-3 py-1">
             🪙 {tray.toLocaleString()}
           </span>
         </div>
       </div>
 
-      {/* Machine */}
-      <CoinPusherCanvas ref={canvasRef} onCollect={handleCollect} />
+      {/* Machine — fills all remaining vertical space */}
+      <div className="flex-1 min-h-0 flex items-stretch">
+        <CoinPusherCanvas ref={canvasRef} onCollect={handleCollect} />
+      </div>
 
       {/* Drop button */}
       <button
         onClick={handleDrop}
         disabled={dropping || (coins ?? 0) < 1}
-        className="mt-4 w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white text-2xl font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-transform border border-white/20 disabled:opacity-50"
+        className="shrink-0 w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xl font-black py-3.5 rounded-2xl shadow-xl active:scale-95 transition-transform border border-white/20 disabled:opacity-50"
       >
         {(coins ?? 0) < 1 ? "Out of Coins" : "⬇️ Drop Coin — 1 🪙"}
       </button>
-      <p className="text-center text-slate-500 text-sm mt-2">
-        Push coins off the front edge to win them!
-      </p>
     </div>
   );
 }

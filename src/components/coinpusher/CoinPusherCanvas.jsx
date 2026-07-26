@@ -123,8 +123,8 @@ const CoinPusherCanvas = forwardRef(function CoinPusherCanvas({ onCollect }, ref
 
   return (
     <div
-      className="relative w-full rounded-2xl overflow-hidden border-2 border-sky-500/40 shadow-inner touch-none"
-      style={{ aspectRatio: "3 / 4", background: "linear-gradient(180deg,#1e293b 0%,#0f172a 100%)" }}
+      className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-sky-500/40 shadow-inner touch-none"
+      style={{ background: "linear-gradient(180deg,#1e293b 0%,#0f172a 100%)" }}
     >
       {/* Side rails */}
       <div className="absolute top-0 bottom-0 left-0 w-3 bg-gradient-to-r from-slate-600 to-slate-700/40 z-20" />
