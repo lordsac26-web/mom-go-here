@@ -20,6 +20,7 @@ export default function CoinPusher() {
 
   const canvasRef = useRef(null);
   const [tray, setTray] = useState(0);         // coins collected this session, not yet banked
+  const [spent, setSpent] = useState(0);       // coins spent on drops this session
   const [dropping, setDropping] = useState(false);
   const [dropCount, setDropCount] = useState(1);
   const [dropX, setDropX] = useState(0.5);  // 0..1 horizontal drop position
@@ -62,6 +63,7 @@ export default function CoinPusher() {
     try {
       await base44.functions.invoke("economy", { action: "pusher", mode: "drop", count: dropCount });
       await reload();
+      setSpent(s => s + dropCount);
       // Stagger the visual drops so each coin gets its own Plinko path.
       for (let i = 0; i < dropCount; i++) {
         setTimeout(() => {
@@ -109,6 +111,12 @@ export default function CoinPusher() {
           <p className="text-slate-400 text-[10px] font-bold leading-tight">Collected</p>
           <span className="inline-flex items-center gap-1 font-black rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-base px-3 py-1">
             🪙 {tray.toLocaleString()}
+          </span>
+        </div>
+        <div className="text-right">
+          <p className="text-slate-400 text-[10px] font-bold leading-tight">Spent</p>
+          <span className="inline-flex items-center gap-1 font-black rounded-full bg-red-500/20 border border-red-400/40 text-red-300 text-base px-3 py-1">
+            🪙 {spent.toLocaleString()}
           </span>
         </div>
       </div>
