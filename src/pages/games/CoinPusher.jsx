@@ -9,6 +9,7 @@ import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import CoinDisplay from "@/components/shop/CoinDisplay";
 import CoinPusherCanvas from "../../components/coinpusher/CoinPusherCanvas";
+import R3FTest from "../../components/coinpusher/_R3FTest";
 
 export default function CoinPusher() {
   const { user } = useAuth();
