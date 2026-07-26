@@ -46,16 +46,14 @@ export default function DailyLoginBonus({ userEmail }) {
     const records = await base44.entities.DailyLoginBonus.filter({ user_email: userEmail });
     let rec = records[0] || null;
 
-    if (!rec) {
-      rec = await base44.entities.DailyLoginBonus.create({
-        user_email: userEmail,
-        current_streak: 0,
-        best_streak: 0,
-        last_claim_date: "",
-        total_claimed: 0,
-        total_days_claimed: 0,
-      });
-    }
+    rec = rec || {
+      user_email: userEmail,
+      current_streak: 0,
+      best_streak: 0,
+      last_claim_date: "",
+      total_claimed: 0,
+      total_days_claimed: 0,
+    };
 
     setRecord(rec);
 
@@ -95,28 +93,17 @@ export default function DailyLoginBonus({ userEmail }) {
 
   async function handleClaim() {
     if (!record || !reward || claimed) return;
+    const response = await base44.functions.invoke("economy", { action: "daily_login" });
+    const result = response?.data;
+    if (!result?.dailyLogin) return;
+    setRecord(result.dailyLogin);
+    setStreakDay(result.dailyLogin.current_streak);
     setClaimed(true);
-
-    const today = getTodayKey();
-    const newBest = Math.max(record.best_streak || 0, streakDay);
-
-    await base44.entities.DailyLoginBonus.update(record.id, {
-      current_streak: streakDay,
-      best_streak: newBest,
-      last_claim_date: today,
-      total_claimed: (record.total_claimed || 0) + reward.credits,
-      total_days_claimed: (record.total_days_claimed || 0) + 1,
-    });
 
     // Also add to slots balance in localStorage
     try {
       const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
-      localStorage.setItem("slots_balance", (current + reward.credits).toString());
-    } catch {}
-
-    // Credit shop currency via the secure economy function (PlayerCoins is read-only client-side)
-    try {
-      await base44.functions.invoke("economy", { action: "credit", amount: reward.credits });
+      localStorage.setItem("slots_balance", (current + result.credited).toString());
     } catch {}
 
     // Report to daily missions

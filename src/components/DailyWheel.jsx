@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { getLevelInfo } from "../hooks/usePlayerXP";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import { motion, AnimatePresence } from "framer-motion";
 import { playRichTone } from "../lib/SoundEngine";
@@ -144,15 +143,13 @@ export default function DailyWheel({ userEmail }) {
     const records = await base44.entities.DailyWheelSpin.filter({ user_email: userEmail });
     let rec = records[0] || null;
 
-    if (!rec) {
-      rec = await base44.entities.DailyWheelSpin.create({
-        user_email: userEmail,
-        last_spin_date: "",
-        total_coins_won: 0,
-        total_xp_won: 0,
-        total_spins: 0,
-      });
-    }
+    rec = rec || {
+      user_email: userEmail,
+      last_spin_date: "",
+      total_coins_won: 0,
+      total_xp_won: 0,
+      total_spins: 0,
+    };
 
     setRecord(rec);
     const today = getTodayKey();
@@ -166,8 +163,14 @@ export default function DailyWheel({ userEmail }) {
     setSpinning(true);
     setResult(null);
 
-    const winIdx = Math.floor(Math.random() * SEGMENT_COUNT);
+    const response = await base44.functions.invoke("economy", { action: "daily_wheel" });
+    const result = response?.data;
+    const winIdx = SEGMENTS.findIndex((segment) => segment.type === result?.prize?.type && segment.value === result?.prize?.value);
     const prize = SEGMENTS[winIdx];
+    if (!prize) {
+      setSpinning(false);
+      return;
+    }
 
     const segmentCenter = winIdx * SEGMENT_ANGLE + SEGMENT_ANGLE / 2;
     const extraSpins = 6 * 360;
@@ -195,40 +198,13 @@ export default function DailyWheel({ userEmail }) {
         burst();
       }
 
-      const today = getTodayKey();
-      const updates = {
-        last_spin_date: today,
-        total_spins: (record.total_spins || 0) + 1,
-      };
-
       if (prize.type === "coins") {
-        updates.total_coins_won = (record.total_coins_won || 0) + prize.value;
-        // Sync to slots localStorage
         try {
           const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
           localStorage.setItem("slots_balance", (current + prize.value).toString());
         } catch {}
-        // Credit shop currency via the secure economy function (PlayerCoins is read-only client-side)
-        try {
-          await base44.functions.invoke("economy", { action: "credit", amount: prize.value });
-        } catch {}
-      } else if (prize.type === "xp") {
-        updates.total_xp_won = (record.total_xp_won || 0) + prize.value;
-        try {
-          const xpRecords = await base44.entities.PlayerXP.filter({ user_email: userEmail });
-          if (xpRecords[0]) {
-            const newXP = (xpRecords[0].total_xp || 0) + prize.value;
-            const info = getLevelInfo(newXP);
-            await base44.entities.PlayerXP.update(xpRecords[0].id, { total_xp: newXP, level: info.level });
-          } else {
-            const info = getLevelInfo(prize.value);
-            await base44.entities.PlayerXP.create({ user_email: userEmail, total_xp: prize.value, level: info.level });
-          }
-        } catch {}
       }
-
-      await base44.entities.DailyWheelSpin.update(record.id, updates);
-      setRecord(prev => ({ ...prev, ...updates }));
+      setRecord(result.dailyWheel);
       reportMissionProgress("spin_wheel");
     }, 4000);
   }, [canSpin, spinning, record, userEmail, tapVibrate, winVibrate, scoreMilestone, fireworks, burst, emojiRain, reportMissionProgress]);

@@ -1,176 +1,147 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import {
   STARTER_BALANCE, BALLOON_SKINS, WHEEL_THEMES, DART_POWERUPS, coinsForStars,
   PUSHER_DROP_COST, PUSHER_MAX_PAYOUT_PER_CALL,
 } from '../../shared/economyConfig.ts';
 
-// Server-authoritative coin economy.
-//   action "award":    { stars }  -> server computes coins from the star rating and credits them.
-//   action "purchase": { category, itemId } -> server validates catalog price + balance, deducts, grants item.
-// PlayerCoins / PlayerInventory are read-only from the client, so all mutations funnel through here.
+const DAILY_LOGIN_REWARDS = [2000, 3000, 4000, 5000, 7500, 10000, 25000];
+const DAILY_WHEEL_PRIZES = [
+  { type: 'coins', value: 500 }, { type: 'xp', value: 25 }, { type: 'coins', value: 1000 }, { type: 'xp', value: 50 },
+  { type: 'coins', value: 2500 }, { type: 'xp', value: 10 }, { type: 'coins', value: 5000 }, { type: 'xp', value: 100 },
+];
 
-// Load-or-create the player's coin record (service role — RLS-agnostic).
-async function getCoins(base44: any, email: string) {
+async function getCoins(base44, email) {
   const rows = await base44.asServiceRole.entities.PlayerCoins.filter({ user_email: email });
   if (rows[0]) return rows[0];
-  return await base44.asServiceRole.entities.PlayerCoins.create({
-    user_email: email, balance: STARTER_BALANCE, total_earned: STARTER_BALANCE, total_spent: 0,
-  });
+  return base44.asServiceRole.entities.PlayerCoins.create({ user_email: email, balance: STARTER_BALANCE, total_earned: STARTER_BALANCE, total_spent: 0 });
 }
 
-async function getInventory(base44: any, email: string) {
+async function getInventory(base44, email) {
   const rows = await base44.asServiceRole.entities.PlayerInventory.filter({ user_email: email });
   if (rows[0]) return rows[0];
-  return await base44.asServiceRole.entities.PlayerInventory.create({
-    user_email: email,
-    owned_balloon_skins: ['default'], owned_wheel_themes: ['default'],
-    dart_powerups: {}, active_balloon_skin: 'default', active_wheel_theme: 'default',
-  });
+  return base44.asServiceRole.entities.PlayerInventory.create({ user_email: email, owned_balloon_skins: ['default'], owned_wheel_themes: ['default'], dart_powerups: {}, active_balloon_skin: 'default', active_wheel_theme: 'default' });
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const email = user.email;
-
     const body = await req.json().catch(() => ({}));
     const { action } = body;
 
-    // ── Award coins for a game win (amount computed server-side from stars) ──
     if (action === 'award') {
       const stars = Math.max(1, Math.min(3, Math.round(Number(body.stars) || 1)));
       const amount = coinsForStars(stars, Number(body.base) || 20);
       const rec = await getCoins(base44, email);
       const newBalance = (rec.balance ?? 0) + amount;
-      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
-        balance: newBalance,
-        total_earned: (rec.total_earned ?? 0) + amount,
-      });
+      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance: newBalance, total_earned: (rec.total_earned ?? 0) + amount });
       return Response.json({ awarded: amount, balance: newBalance });
     }
 
-    // ── Shop purchase (price + balance validated server-side) ──
     if (action === 'purchase') {
       const { category, itemId } = body;
-
-      let price: number | null = null;
+      let price = null;
       if (category === 'balloon') price = BALLOON_SKINS[itemId]?.price ?? null;
       else if (category === 'wheel') price = WHEEL_THEMES[itemId]?.price ?? null;
       else if (category === 'powerup') price = DART_POWERUPS[itemId]?.price ?? null;
-
       if (price === null) return Response.json({ error: 'Unknown item' }, { status: 400 });
 
       const inv = await getInventory(base44, email);
-
-      // Reject re-buying an already-owned cosmetic; enforce power-up stack cap.
-      if (category === 'balloon' && (inv.owned_balloon_skins ?? []).includes(itemId)) {
-        return Response.json({ error: 'Already owned' }, { status: 400 });
-      }
-      if (category === 'wheel' && (inv.owned_wheel_themes ?? []).includes(itemId)) {
-        return Response.json({ error: 'Already owned' }, { status: 400 });
-      }
-      if (category === 'powerup') {
-        const owned = (inv.dart_powerups ?? {})[itemId] ?? 0;
-        const cap = DART_POWERUPS[itemId].maxOwn;
-        if (owned >= cap) return Response.json({ error: 'Max owned' }, { status: 400 });
-      }
+      if (category === 'balloon' && (inv.owned_balloon_skins ?? []).includes(itemId)) return Response.json({ error: 'Already owned' }, { status: 400 });
+      if (category === 'wheel' && (inv.owned_wheel_themes ?? []).includes(itemId)) return Response.json({ error: 'Already owned' }, { status: 400 });
+      if (category === 'powerup' && ((inv.dart_powerups ?? {})[itemId] ?? 0) >= DART_POWERUPS[itemId].maxOwn) return Response.json({ error: 'Max owned' }, { status: 400 });
 
       const rec = await getCoins(base44, email);
       const balance = rec.balance ?? 0;
       if (balance < price) return Response.json({ error: 'Insufficient funds', balance }, { status: 402 });
-
-      // Deduct then grant.
       const newBalance = balance - price;
-      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
-        balance: newBalance,
-        total_spent: (rec.total_spent ?? 0) + price,
-      });
+      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance: newBalance, total_spent: (rec.total_spent ?? 0) + price });
 
-      const invPatch: Record<string, unknown> = {};
-      if (category === 'balloon') {
-        invPatch.owned_balloon_skins = [...(inv.owned_balloon_skins ?? ['default']), itemId];
-        invPatch.active_balloon_skin = itemId;
-      } else if (category === 'wheel') {
-        invPatch.owned_wheel_themes = [...(inv.owned_wheel_themes ?? ['default']), itemId];
-        invPatch.active_wheel_theme = itemId;
-      } else if (category === 'powerup') {
-        const current = inv.dart_powerups ?? {};
-        invPatch.dart_powerups = { ...current, [itemId]: (current[itemId] ?? 0) + 1 };
-      }
+      const invPatch = {};
+      if (category === 'balloon') { invPatch.owned_balloon_skins = [...(inv.owned_balloon_skins ?? ['default']), itemId]; invPatch.active_balloon_skin = itemId; }
+      else if (category === 'wheel') { invPatch.owned_wheel_themes = [...(inv.owned_wheel_themes ?? ['default']), itemId]; invPatch.active_wheel_theme = itemId; }
+      else { invPatch.dart_powerups = { ...(inv.dart_powerups ?? {}), [itemId]: ((inv.dart_powerups ?? {})[itemId] ?? 0) + 1 }; }
       await base44.asServiceRole.entities.PlayerInventory.update(inv.id, invPatch);
-
       return Response.json({ balance: newBalance, inventory: { ...inv, ...invPatch } });
     }
 
-    // ── Credit coins from daily wheel / daily-login bonus ──
-    // Amount is clamped to a daily-reward ceiling so a tampered client can't
-    // request an arbitrary payout. These sources are already once-per-day gated
-    // by their own tracking entities.
-    if (action === 'credit') {
-      const MAX_DAILY_CREDIT = 25000;
-      const amount = Math.max(0, Math.min(MAX_DAILY_CREDIT, Math.round(Number(body.amount) || 0)));
-      if (amount <= 0) return Response.json({ error: 'Invalid amount' }, { status: 400 });
+    if (action === 'daily_login') {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const records = await base44.asServiceRole.entities.DailyLoginBonus.filter({ user_email: email });
+      const existing = records[0];
+      if (existing?.last_claim_date === today) return Response.json({ error: 'Already claimed today' }, { status: 409 });
+      const streak = existing?.last_claim_date === yesterday ? (existing.current_streak ?? 0) + 1 : 1;
+      const amount = DAILY_LOGIN_REWARDS[(streak - 1) % DAILY_LOGIN_REWARDS.length];
+      const dailyLogin = {
+        user_email: email, current_streak: streak, best_streak: Math.max(existing?.best_streak ?? 0, streak), last_claim_date: today,
+        total_claimed: (existing?.total_claimed ?? 0) + amount, total_days_claimed: (existing?.total_days_claimed ?? 0) + 1,
+      };
+      if (existing) await base44.asServiceRole.entities.DailyLoginBonus.update(existing.id, dailyLogin);
+      else await base44.asServiceRole.entities.DailyLoginBonus.create(dailyLogin);
       const rec = await getCoins(base44, email);
-      const newBalance = (rec.balance ?? 0) + amount;
-      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
-        balance: newBalance,
-        total_earned: (rec.total_earned ?? 0) + amount,
-      });
-      return Response.json({ credited: amount, balance: newBalance });
+      const balance = (rec.balance ?? 0) + amount;
+      await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance, total_earned: (rec.total_earned ?? 0) + amount });
+      return Response.json({ credited: amount, balance, dailyLogin });
     }
 
-    // ── Coin Pusher: spend a coin to drop, or bank coins that fell off the ledge ──
-    // "drop":   deduct PUSHER_DROP_COST (validates balance).
-    // "payout": credit `count` coins, clamped to PUSHER_MAX_PAYOUT_PER_CALL.
+    if (action === 'daily_wheel') {
+      const today = new Date().toISOString().slice(0, 10);
+      const records = await base44.asServiceRole.entities.DailyWheelSpin.filter({ user_email: email });
+      const existing = records[0];
+      if (existing?.last_spin_date === today) return Response.json({ error: 'Already spun today' }, { status: 409 });
+      const prize = DAILY_WHEEL_PRIZES[Math.floor(Math.random() * DAILY_WHEEL_PRIZES.length)];
+      const dailyWheel = {
+        user_email: email, last_spin_date: today, total_spins: (existing?.total_spins ?? 0) + 1,
+        total_coins_won: (existing?.total_coins_won ?? 0) + (prize.type === 'coins' ? prize.value : 0),
+        total_xp_won: (existing?.total_xp_won ?? 0) + (prize.type === 'xp' ? prize.value : 0),
+      };
+      if (existing) await base44.asServiceRole.entities.DailyWheelSpin.update(existing.id, dailyWheel);
+      else await base44.asServiceRole.entities.DailyWheelSpin.create(dailyWheel);
+
+      let balance = null;
+      if (prize.type === 'coins') {
+        const rec = await getCoins(base44, email);
+        balance = (rec.balance ?? 0) + prize.value;
+        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance, total_earned: (rec.total_earned ?? 0) + prize.value });
+      }
+      return Response.json({ prize, balance, dailyWheel });
+    }
+
     if (action === 'pusher') {
-      const mode = body.mode;
       const rec = await getCoins(base44, email);
       const balance = rec.balance ?? 0;
-
-      if (mode === 'drop') {
+      if (body.mode === 'drop') {
         const count = Math.max(1, Math.min(3, Math.round(Number(body.count) || 1)));
         const cost = PUSHER_DROP_COST * count;
-        if (balance < cost) {
-          return Response.json({ error: 'Insufficient funds', balance }, { status: 402 });
-        }
+        if (balance < cost) return Response.json({ error: 'Insufficient funds', balance }, { status: 402 });
         const newBalance = balance - cost;
-        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
-          balance: newBalance,
-          total_spent: (rec.total_spent ?? 0) + cost,
-        });
+        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance: newBalance, total_spent: (rec.total_spent ?? 0) + cost });
         return Response.json({ balance: newBalance, dropped: count });
       }
-
-      if (mode === 'payout') {
+      if (body.mode === 'payout') {
         const count = Math.max(0, Math.min(PUSHER_MAX_PAYOUT_PER_CALL, Math.round(Number(body.count) || 0)));
         if (count <= 0) return Response.json({ balance });
         const newBalance = balance + count;
-        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
-          balance: newBalance,
-          total_earned: (rec.total_earned ?? 0) + count,
-        });
+        await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance: newBalance, total_earned: (rec.total_earned ?? 0) + count });
         return Response.json({ awarded: count, balance: newBalance });
       }
-
       return Response.json({ error: 'Bad pusher mode' }, { status: 400 });
     }
 
-    // ── Equip an already-owned cosmetic (no coin change, but write is server-side) ──
     if (action === 'equip') {
       const { category, itemId } = body;
       const inv = await getInventory(base44, email);
-      const patch: Record<string, unknown> = {};
+      const patch = {};
       if (category === 'balloon') {
         if (!(inv.owned_balloon_skins ?? ['default']).includes(itemId)) return Response.json({ error: 'Not owned' }, { status: 400 });
         patch.active_balloon_skin = itemId;
       } else if (category === 'wheel') {
         if (!(inv.owned_wheel_themes ?? ['default']).includes(itemId)) return Response.json({ error: 'Not owned' }, { status: 400 });
         patch.active_wheel_theme = itemId;
-      } else {
-        return Response.json({ error: 'Bad category' }, { status: 400 });
-      }
+      } else return Response.json({ error: 'Bad category' }, { status: 400 });
       await base44.asServiceRole.entities.PlayerInventory.update(inv.id, patch);
       return Response.json({ inventory: { ...inv, ...patch } });
     }
@@ -179,4 +150,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}
