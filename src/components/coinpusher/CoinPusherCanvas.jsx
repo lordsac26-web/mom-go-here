@@ -40,7 +40,7 @@ function makeCoin(x, z, y = 0) {
   };
 }
 
-const CoinPusherCanvas = forwardRef(function CoinPusherCanvas({ onCollect }, ref) {
+const CoinPusherCanvas = forwardRef(function CoinPusherCanvas({ onCollect, dropX = 0.5 }, ref) {
   const coinsRef = useRef([]);
   const [, setTick] = useState(0);
   const onCollectRef = useRef(onCollect);
@@ -179,8 +179,8 @@ const CoinPusherCanvas = forwardRef(function CoinPusherCanvas({ onCollect }, ref
 
       {/* Drop-zone indicator — shows where dropped coins land */}
       <div
-        className="absolute left-1/2 z-30 pointer-events-none flex flex-col items-center"
-        style={{ top: `${plateFront * 100}%`, transform: "translate(-50%, -50%)" }}
+        className="absolute z-30 pointer-events-none flex flex-col items-center transition-[left] duration-75"
+        style={{ left: `${dropX * 100}%`, top: `${plateFront * 100}%`, transform: "translate(-50%, -50%)" }}
       >
         <div className="animate-bounce text-sky-300 text-2xl drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]">▼</div>
         <div className="px-3 py-0.5 rounded-full bg-sky-400/25 border border-sky-300/60 text-sky-200 text-[10px] font-black tracking-wider">

@@ -9,6 +9,7 @@ import GameBackButton from "../../components/GameBackButton";
 import GameInstructions from "../../components/GameInstructions";
 import CoinDisplay from "@/components/shop/CoinDisplay";
 import CoinPusherCanvas from "../../components/coinpusher/CoinPusherCanvas";
+import { Slider } from "@/components/ui/slider";
 
 export default function CoinPusher() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function CoinPusher() {
   const [tray, setTray] = useState(0);         // coins collected this session, not yet banked
   const [dropping, setDropping] = useState(false);
   const [dropCount, setDropCount] = useState(1);
+  const [dropX, setDropX] = useState(0.5);  // 0..1 horizontal drop position
   const pendingBankRef = useRef(0);            // buffered payout count awaiting server flush
   const flushTimerRef = useRef(null);
 
@@ -63,7 +65,7 @@ export default function CoinPusher() {
       // Stagger the visual drops so each coin gets its own Plinko path.
       for (let i = 0; i < dropCount; i++) {
         setTimeout(() => {
-          canvasRef.current?.dropCoin(0.40 + Math.random() * 0.20);
+          canvasRef.current?.dropCoin(dropX + (Math.random() - 0.5) * 0.04);
         }, i * 220);
       }
     } catch (err) {
@@ -113,7 +115,22 @@ export default function CoinPusher() {
 
       {/* Machine — fills all remaining vertical space */}
       <div className="flex-1 min-h-0 flex items-stretch">
-        <CoinPusherCanvas ref={canvasRef} onCollect={handleCollect} />
+        <CoinPusherCanvas ref={canvasRef} onCollect={handleCollect} dropX={dropX} />
+      </div>
+
+      {/* Drop position slider */}
+      <div className="shrink-0 flex items-center gap-3 px-1">
+        <span className="text-slate-400 text-xs font-bold">◀</span>
+        <Slider
+          value={[Math.round(dropX * 100)]}
+          onValueChange={([v]) => setDropX(v / 100)}
+          min={15}
+          max={85}
+          step={1}
+          disabled={dropping}
+          className="flex-1"
+        />
+        <span className="text-slate-400 text-xs font-bold">▶</span>
       </div>
 
       {/* Quantity selector + drop button */}
