@@ -130,15 +130,17 @@ Deno.serve(async (req) => {
       const balance = rec.balance ?? 0;
 
       if (mode === 'drop') {
-        if (balance < PUSHER_DROP_COST) {
+        const count = Math.max(1, Math.min(3, Math.round(Number(body.count) || 1)));
+        const cost = PUSHER_DROP_COST * count;
+        if (balance < cost) {
           return Response.json({ error: 'Insufficient funds', balance }, { status: 402 });
         }
-        const newBalance = balance - PUSHER_DROP_COST;
+        const newBalance = balance - cost;
         await base44.asServiceRole.entities.PlayerCoins.update(rec.id, {
           balance: newBalance,
-          total_spent: (rec.total_spent ?? 0) + PUSHER_DROP_COST,
+          total_spent: (rec.total_spent ?? 0) + cost,
         });
-        return Response.json({ balance: newBalance });
+        return Response.json({ balance: newBalance, dropped: count });
       }
 
       if (mode === 'payout') {

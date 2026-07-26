@@ -20,6 +20,7 @@ export default function CoinPusher() {
   const canvasRef = useRef(null);
   const [tray, setTray] = useState(0);         // coins collected this session, not yet banked
   const [dropping, setDropping] = useState(false);
+  const [dropCount, setDropCount] = useState(1);
   const pendingBankRef = useRef(0);            // buffered payout count awaiting server flush
   const flushTimerRef = useRef(null);
 
@@ -57,10 +58,14 @@ export default function CoinPusher() {
     tapVibrate();
     setDropping(true);
     try {
-      await base44.functions.invoke("economy", { action: "pusher", mode: "drop" });
+      await base44.functions.invoke("economy", { action: "pusher", mode: "drop", count: dropCount });
       await reload();
-      // Slight random x so repeated taps don't stack perfectly.
-      canvasRef.current?.dropCoin(0.35 + Math.random() * 0.3);
+      // Stagger the visual drops so each coin gets its own Plinko path.
+      for (let i = 0; i < dropCount; i++) {
+        setTimeout(() => {
+          canvasRef.current?.dropCoin(0.40 + Math.random() * 0.20);
+        }, i * 220);
+      }
     } catch (err) {
       const status = err?.response?.status;
       if (status === 402) {
@@ -111,14 +116,34 @@ export default function CoinPusher() {
         <CoinPusherCanvas ref={canvasRef} onCollect={handleCollect} />
       </div>
 
-      {/* Drop button */}
-      <button
-        onClick={handleDrop}
-        disabled={dropping || (coins ?? 0) < 1}
-        className="shrink-0 w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xl font-black py-3.5 rounded-2xl shadow-xl active:scale-95 transition-transform border border-white/20 disabled:opacity-50"
-      >
-        {(coins ?? 0) < 1 ? "Out of Coins" : "⬇️ Drop Coin — 1 🪙"}
-      </button>
+      {/* Quantity selector + drop button */}
+      <div className="shrink-0 flex items-center gap-2">
+        <div className="flex gap-1.5 bg-slate-800/60 rounded-2xl p-1.5 border border-slate-700/60">
+          {[1, 2, 3].map((n) => (
+            <button
+              key={n}
+              onClick={() => { setDropCount(n); uiClickSound(); tapVibrate(); }}
+              disabled={dropping}
+              className={`w-11 h-11 rounded-xl font-black text-lg transition-all active:scale-90 ${
+                dropCount === n
+                  ? "bg-sky-500 text-white shadow-lg scale-105"
+                  : "bg-transparent text-slate-400"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleDrop}
+          disabled={dropping || (coins ?? 0) < dropCount}
+          className="flex-1 bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xl font-black py-3.5 rounded-2xl shadow-xl active:scale-95 transition-transform border border-white/20 disabled:opacity-50"
+        >
+          {(coins ?? 0) < dropCount
+            ? "Out of Coins"
+            : `⬇️ Drop ${dropCount > 1 ? `${dropCount} Coins` : "Coin"} — ${dropCount} 🪙`}
+        </button>
+      </div>
     </div>
   );
 }
