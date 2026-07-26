@@ -2,10 +2,12 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import CoinPusherEngine from "./engine/CoinPusherEngine";
 import { BOARD_CONFIG } from "./engine/boardConfig";
 import { renderCoinPusher } from "./renderer/CoinPusherRenderer";
+import CoinPusherFeedback from "./renderer/CoinPusherFeedback";
 
 const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }, ref) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
+  const feedbackRef = useRef(null);
   const onCollectRef = useRef(onCollect);
   const dropXRef = useRef(dropX);
 
@@ -13,7 +15,9 @@ const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }
   dropXRef.current = dropX;
 
   if (!engineRef.current) {
+    feedbackRef.current = new CoinPusherFeedback();
     engineRef.current = new CoinPusherEngine((event) => {
+      feedbackRef.current?.emit(event);
       if (event.type === "coins_collected") onCollectRef.current?.(event.count);
     });
     engineRef.current.seed();
@@ -47,10 +51,11 @@ const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }
       lastTime = time;
       while (accumulator >= BOARD_CONFIG.fixedStep) {
         engineRef.current.step(BOARD_CONFIG.fixedStep);
+        feedbackRef.current.step(BOARD_CONFIG.fixedStep);
         accumulator -= BOARD_CONFIG.fixedStep;
       }
       const bounds = canvas.getBoundingClientRect();
-      renderCoinPusher(context, bounds.width, bounds.height, engineRef.current, dropXRef.current);
+      renderCoinPusher(context, bounds.width, bounds.height, engineRef.current, dropXRef.current, feedbackRef.current);
       frameId = requestAnimationFrame(frame);
     };
 

@@ -18,9 +18,14 @@ function renderCoins(context, width, height, coins) {
   });
 }
 
-export function renderCoinPusher(context, width, height, engine, dropX) {
+export function renderCoinPusher(context, width, height, engine, dropX, feedback) {
   context.clearRect(0, 0, width, height);
+  const offset = feedback?.offset() || { x: 0, y: 0 };
+  context.save();
+  context.translate(offset.x, offset.y);
   renderMachine(context, width, height, engine, dropX);
   renderCoins(context, width, height, engine.coins);
+  context.restore();
+  feedback?.render(context, width, height);
   renderGlass(context, width, height);
 }

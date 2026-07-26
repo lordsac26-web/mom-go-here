@@ -37,10 +37,11 @@ export default class CoinPusherEngine {
   handleCollisions() {
     Events.on(this.engine, "collisionStart", ({ pairs }) => {
       if (this.elapsed - this.lastImpactAt < 0.045) return;
-      const hitPeg = pairs.some(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PEG_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PEG_LABEL));
-      if (hitPeg) {
+      const impact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PEG_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PEG_LABEL));
+      if (impact) {
+        const coin = impact.bodyA.label === COIN_LABEL ? impact.bodyA : impact.bodyB;
         this.lastImpactAt = this.elapsed;
-        this.onEvent?.({ type: "coin_impact" });
+        this.onEvent?.({ type: "coin_impact", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize });
       }
     });
   }
@@ -50,7 +51,10 @@ export default class CoinPusherEngine {
   }
 
   drop(x) {
-    if (this.coins.length < BOARD_CONFIG.maxCoins) this.spawn(x, 0.24, true);
+    if (this.coins.length < BOARD_CONFIG.maxCoins) {
+      this.spawn(x, 0.24, true);
+      this.onEvent?.({ type: "coin_dropped", x });
+    }
   }
 
   spawn(xFraction, zFraction, isDrop) {

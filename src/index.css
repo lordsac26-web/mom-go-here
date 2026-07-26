@@ -231,3 +231,12 @@
   animation: slot-win-pulse 0.75s ease-in-out infinite;
   will-change: transform;
 }
+
+@keyframes coin-hud-pop {
+  0% { transform: scale(0.82); filter: brightness(1.8); }
+  65% { transform: scale(1.12); filter: brightness(1.25); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.coin-hud-pop {
+  animation: coin-hud-pop 0.38s ease-out;
+}
