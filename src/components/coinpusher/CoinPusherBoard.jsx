@@ -61,7 +61,7 @@ const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }
     };
   }, []);
 
-  return <canvas ref={canvasRef} aria-label="Coin pusher machine" className="h-full w-full rounded-2xl border-2 border-sky-500/40 shadow-inner touch-none" />;
+  return <canvas ref={canvasRef} aria-label="Coin pusher machine" className="h-full w-full rounded-2xl border-2 border-sky-400/60 shadow-[0_0_30px_rgba(14,165,233,0.22),inset_0_0_28px_rgba(56,189,248,0.16)] touch-none" />;
 });
 
 export default CoinPusherBoard;
