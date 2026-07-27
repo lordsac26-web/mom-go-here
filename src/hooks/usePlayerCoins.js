@@ -20,9 +20,9 @@ export default function usePlayerCoins(userEmail) {
         setRecord(results[0]);
         setCoins(results[0].balance ?? 0);
       } else {
-        // No record yet — the server creates it on the first award/purchase.
+        const response = await base44.functions.invoke("economy", { action: "pusher", mode: "balance" });
         setRecord(null);
-        setCoins(0);
+        setCoins(response.data.balance ?? 0);
       }
     } catch (e) {
       console.error("usePlayerCoins error:", e);

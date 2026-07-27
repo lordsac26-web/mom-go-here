@@ -125,6 +125,7 @@ export default async function(req) {
     if (action === 'pusher') {
       const rec = await getCoins(base44, email);
       const balance = rec.balance ?? 0;
+      if (body.mode === 'balance') return Response.json({ balance });
       if (body.mode === 'drop') {
         const count = Math.max(1, Math.min(3, Math.round(Number(body.count) || 1)));
         const cost = PUSHER_DROP_COST * count;
