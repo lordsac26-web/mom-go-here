@@ -4,20 +4,23 @@ import { BOARD_CONFIG } from "./engine/boardConfig";
 import { renderCoinPusher } from "./renderer/CoinPusherRenderer";
 import CoinPusherFeedback from "./renderer/CoinPusherFeedback";
 
-const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect }, ref) {
+const CoinPusherBoard = forwardRef(function CoinPusherBoard({ dropX, onCollect, onGameEvent }, ref) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const feedbackRef = useRef(null);
   const onCollectRef = useRef(onCollect);
+  const onGameEventRef = useRef(onGameEvent);
   const dropXRef = useRef(dropX);
 
   onCollectRef.current = onCollect;
+  onGameEventRef.current = onGameEvent;
   dropXRef.current = dropX;
 
   if (!engineRef.current) {
     feedbackRef.current = new CoinPusherFeedback();
     engineRef.current = new CoinPusherEngine((event) => {
       feedbackRef.current?.emit(event);
+      onGameEventRef.current?.(event);
       if (event.type === "coins_collected") onCollectRef.current?.(event.count);
     });
     engineRef.current.seed();

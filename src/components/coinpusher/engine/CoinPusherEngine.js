@@ -3,6 +3,7 @@ import { BOARD_CONFIG } from "./boardConfig";
 
 const { Bodies, Body, Composite, Engine, Events, Sleeping, World } = Matter;
 const COIN_LABEL = "pusher-coin";
+const PUSHER_LABEL = "pusher-plate";
 const PEG_LABEL = "pusher-peg";
 const BARRIER_LABEL = "coin-barrier";
 const LIP_LABEL = "collection-lip";
@@ -17,6 +18,7 @@ export default class CoinPusherEngine {
     this.plateFront = 0.1;
     this.pusherDirection = 0;
     this.lastImpactAt = -1;
+    this.lastPusherImpactAt = -1;
     this.barrier = null;
     this.barrierHealth = 0;
     this.barrierMaxHealth = 0;
@@ -31,7 +33,7 @@ export default class CoinPusherEngine {
     const size = BOARD_CONFIG.worldSize;
     const { wallThickness, pusherHeight } = BOARD_CONFIG.physics;
     const staticOptions = { isStatic: true, friction: 0.3, restitution: 0.04 };
-    this.pusher = Bodies.rectangle(size / 2, BOARD_CONFIG.physics.pusherTravelStart, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: "pusher-plate" });
+    this.pusher = Bodies.rectangle(size / 2, BOARD_CONFIG.physics.pusherTravelStart, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: PUSHER_LABEL });
     const walls = [
       Bodies.rectangle(wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
       Bodies.rectangle(size - wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
@@ -51,6 +53,11 @@ export default class CoinPusherEngine {
         const coin = impact.bodyA.label === COIN_LABEL ? impact.bodyA : impact.bodyB;
         this.lastImpactAt = this.elapsed;
         this.onEvent?.({ type: "coin_impact", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize });
+      }
+      const pusherImpact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PUSHER_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PUSHER_LABEL));
+      if (pusherImpact && this.elapsed - this.lastPusherImpactAt >= 0.22) {
+        this.lastPusherImpactAt = this.elapsed;
+        this.onEvent?.({ type: "pusher_impact" });
       }
       const barrierImpact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === BARRIER_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === BARRIER_LABEL));
       if (barrierImpact && this.barrier) {
@@ -178,6 +185,7 @@ export default class CoinPusherEngine {
         if (progress === 1) {
           coin.lift = 0;
           coin.settleElapsed = null;
+          if (coin.loading) this.onEvent?.({ type: "shelf_landed" });
         }
       }
       if (coin.loading) {

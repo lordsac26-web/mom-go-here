@@ -84,6 +84,25 @@ export function useGameAudio() {
     playChirp({ pitch: 1000, volume: 0.1 * v });
   };
 
+  const coinShelfSound = () => {
+    if (!ok()) return;
+    const v = vol();
+    playRichTone({ frequency: 520, freqEnd: 440, duration: 0.16, volume: 0.06 * v, type: "sine", harmonic: 2 });
+    playNoiseBurst({ duration: 0.025, volume: 0.018 * v, filterType: "bandpass", filterFreq: 1800, filterQ: 2 });
+  };
+
+  const coinPusherSound = () => {
+    if (!ok()) return;
+    const v = vol();
+    playRichTone({ frequency: 220, freqEnd: 175, duration: 0.12, volume: 0.045 * v, type: "triangle" });
+  };
+
+  const barrierBreakSound = () => {
+    if (!ok()) return;
+    const v = vol();
+    playMelody([392, 523, 659], { spacing: 0.1, noteDuration: 0.16, volume: 0.055 * v, type: "sine", harmonic: 2 });
+  };
+
   return {
     diceshakeSound,
     diceCollideSound,
@@ -93,6 +112,9 @@ export function useGameAudio() {
     matchSound,
     winSound,
     uiClickSound,
+    coinShelfSound,
+    coinPusherSound,
+    barrierBreakSound,
     initAudioContext,
   };
 }

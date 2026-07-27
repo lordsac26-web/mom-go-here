@@ -14,7 +14,7 @@ export default function CoinPusher() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { tapVibrate, successVibrate } = useHaptics();
-  const { uiClickSound, matchSound } = useGameAudio();
+  const { uiClickSound, matchSound, coinShelfSound, coinPusherSound, barrierBreakSound } = useGameAudio();
   const gameRef = useRef(null);
   const [dropCount, setDropCount] = useState(1);
   const [dropX, setDropX] = useState(0.5);
@@ -41,7 +41,16 @@ export default function CoinPusher() {
       </header>
       <CoinPusherHUD balance={session.coins} loading={session.loading} collected={session.collected} spent={session.spent} />
       <main className="flex min-h-0 flex-1 items-stretch">
-        <CoinPusherBoard ref={gameRef} onCollect={session.onCollect} dropX={dropX} />
+        <CoinPusherBoard
+          ref={gameRef}
+          onCollect={session.onCollect}
+          dropX={dropX}
+          onGameEvent={(event) => {
+            if (event.type === "shelf_landed") coinShelfSound();
+            if (event.type === "pusher_impact") coinPusherSound();
+            if (event.type === "barrier_broken") barrierBreakSound();
+          }}
+        />
       </main>
       <CoinPusherControls balance={session.coins} dropping={session.dropping} dropCount={dropCount} dropX={dropX} onCountChange={chooseCount} onPositionChange={setDropX} onDrop={() => session.drop(dropCount, dropX)} />
     </div>
