@@ -26,6 +26,7 @@ export const BOARD_CONFIG = {
     pusherTravelStart: 155,
     pusherTravelDistance: 485,
     pusherSpeed: 1.15,
+    pusherReleaseProgress: 0.18,
     maxStackHeight: 3,
     collectionLine: 990,
   },

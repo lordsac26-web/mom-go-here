@@ -140,12 +140,13 @@ export default class CoinPusherEngine {
   syncCoins(dt) {
     const size = BOARD_CONFIG.worldSize;
     const radius = BOARD_CONFIG.coinRadius * size;
-    const { pusherHeight } = BOARD_CONFIG.physics;
+    const { pusherHeight, pusherTravelStart, pusherTravelDistance, pusherReleaseProgress } = BOARD_CONFIG.physics;
+    const releaseLine = pusherTravelStart + pusherTravelDistance * pusherReleaseProgress;
     for (const coin of this.coins) {
       coin.lift = Math.max(0, coin.lift - dt * 310);
       if (coin.loading) {
         Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y - pusherHeight * 0.2 });
-        if (coin.lift === 0 && this.pusherDirection < 0) {
+        if (coin.lift === 0 && this.pusherDirection < 0 && this.pusher.position.y <= releaseLine) {
           coin.loading = false;
           coin.stackLevel = 0;
           Body.setStatic(coin.body, false);
