@@ -68,6 +68,9 @@ export default class CoinPusherEngine {
       const impact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PEG_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PEG_LABEL));
       if (impact && this.elapsed - this.lastImpactAt >= 0.045) {
         const coin = impact.bodyA.label === COIN_LABEL ? impact.bodyA : impact.bodyB;
+        const bounceSpeed = Math.max(1.4, Math.abs(coin.velocity.y) * 0.9 + 1.2);
+        Body.setVelocity(coin, { x: coin.velocity.x + (Math.random() - 0.5) * 3.2, y: -Math.min(6, bounceSpeed) });
+        Body.setAngularVelocity(coin, coin.angularVelocity + (Math.random() - 0.5) * 0.22);
         this.lastImpactAt = this.elapsed;
         this.onEvent?.({ type: "coin_impact", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize });
       }
