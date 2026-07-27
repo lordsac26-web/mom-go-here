@@ -65,7 +65,7 @@ export function renderMachine(context, width, height, engine, dropX) {
   }
   context.shadowColor = "transparent";
 
-  BOARD_CONFIG.pegs.forEach((peg) => {
+  engine.pegLayout.forEach((peg) => {
     const x = peg.x * width;
     const y = peg.z * height;
     const radius = BOARD_CONFIG.pegRadius * 2 * width;

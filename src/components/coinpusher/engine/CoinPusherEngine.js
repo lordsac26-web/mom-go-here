@@ -39,11 +39,28 @@ export default class CoinPusherEngine {
       Bodies.rectangle(size - wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
       Bodies.rectangle(size / 2, -wallThickness / 2, size, wallThickness, staticOptions),
     ];
-    const pegs = BOARD_CONFIG.pegs.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.45 }));
+    this.pegLayout = this.generatePegLayout();
+    const pegs = this.pegLayout.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.9 }));
     const { frontLip } = BOARD_CONFIG;
     this.frontLip = Bodies.rectangle(size / 2, frontLip.z * size, size - wallThickness * 2, frontLip.height * size, { ...staticOptions, isSensor: true, label: LIP_LABEL });
     World.add(this.world, [this.pusher, ...walls, ...pegs, this.frontLip]);
     this.spawnBarrier();
+  }
+
+  generatePegLayout() {
+    const { count, minX, maxX, minZ, maxZ, minimumSpacing } = BOARD_CONFIG.pegField;
+    const layout = [];
+    let attempts = 0;
+    while (layout.length < count && attempts < 200) {
+      attempts += 1;
+      const candidate = { x: minX + Math.random() * (maxX - minX), z: minZ + Math.random() * (maxZ - minZ) };
+      if (layout.every((peg) => Math.hypot(peg.x - candidate.x, peg.z - candidate.z) >= minimumSpacing)) layout.push(candidate);
+    }
+    while (layout.length < count) {
+      const index = layout.length;
+      layout.push({ x: minX + (index % 4) * (maxX - minX) / 3, z: minZ + Math.floor(index / 4) * (maxZ - minZ) / 2 });
+    }
+    return layout;
   }
 
   handleCollisions() {
@@ -147,7 +164,7 @@ export default class CoinPusherEngine {
       label: COIN_LABEL,
       friction: BOARD_CONFIG.physics.coinFriction,
       frictionAir: BOARD_CONFIG.physics.coinAirFriction,
-      restitution: BOARD_CONFIG.physics.coinRestitution,
+      restitution: Math.max(BOARD_CONFIG.physics.coinRestitution, 0.3),
       density: 0.002,
       slop: 0.02,
     };

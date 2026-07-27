@@ -4,11 +4,14 @@ export const BOARD_CONFIG = {
   pegRadius: 0.022,
   maxCoins: 80,
   fixedStep: 1 / 60,
-  pegs: [
-    { x: 0.5, z: 0.3 },
-    { x: 0.3, z: 0.43 }, { x: 0.7, z: 0.43 },
-    { x: 0.5, z: 0.56 },
-  ],
+  pegField: {
+    count: 7,
+    minX: 0.18,
+    maxX: 0.82,
+    minZ: 0.28,
+    maxZ: 0.59,
+    minimumSpacing: 0.16,
+  },
   barrier: {
     width: 0.46,
     height: 0.032,
