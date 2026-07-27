@@ -1,7 +1,7 @@
 import { BOARD_CONFIG } from "../engine/boardConfig";
 import { getCoinSprite } from "./coinSprites";
 import { renderBarrier, renderGlass, renderMachine } from "./machineRenderer";
-import { renderAttackLane, renderStackMarkers } from "./targetingRenderer";
+import { renderAttackLane } from "./targetingRenderer";
 
 function renderCoins(context, width, height, coins) {
   const radius = BOARD_CONFIG.coinRadius * width;
@@ -15,6 +15,18 @@ function renderCoins(context, width, height, coins) {
     context.translate(x, y);
     context.rotate((coin.spin * Math.PI) / 180);
     context.drawImage(sprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+    if (coin.loading) {
+      const stackColors = ["rgba(250, 204, 21, 0.26)", "rgba(59, 130, 246, 0.72)", "rgba(239, 68, 68, 0.72)"];
+      context.globalCompositeOperation = "source-atop";
+      context.fillStyle = stackColors[coin.stackLevel] || stackColors[0];
+      context.fillRect(-spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+      context.globalCompositeOperation = "source-over";
+      context.fillStyle = "#ffffff";
+      context.font = `900 ${Math.max(14, radius * 0.8)}px Nunito, sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(coin.stackLevel + 1), 0, 1);
+    }
     context.restore();
   });
 }
@@ -27,7 +39,6 @@ export function renderCoinPusher(context, width, height, engine, dropX, feedback
   renderMachine(context, width, height, engine, dropX);
   renderAttackLane(context, width, height, engine, dropX);
   renderCoins(context, width, height, engine.coins);
-  renderStackMarkers(context, width, height, engine.coins);
   renderBarrier(context, width, height, engine);
   context.restore();
   feedback?.render(context, width, height);

@@ -22,31 +22,3 @@ export function renderAttackLane(context, width, height, engine, dropX) {
   context.fillText(isAligned ? "ATTACK LINE" : "DROP LINE", x, height * 0.88);
   context.restore();
 }
-
-export function renderStackMarkers(context, width, height, coins) {
-  const stacks = coins.filter((coin) => coin.loading).reduce((groups, coin) => {
-    const key = Math.round(coin.x * 100);
-    if (!groups[key] || groups[key].stackLevel < coin.stackLevel) groups[key] = coin;
-    return groups;
-  }, {});
-
-  Object.values(stacks).forEach((coin) => {
-    const x = coin.x * width;
-    const y = coin.z * height - coin.y;
-    const radius = BOARD_CONFIG.coinRadius * width * 1.45;
-    context.save();
-    context.strokeStyle = "#fef08a";
-    context.lineWidth = 3;
-    context.shadowColor = "#facc15";
-    context.shadowBlur = 12;
-    context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
-    context.stroke();
-    context.shadowColor = "transparent";
-    context.fillStyle = "#fef08a";
-    context.font = "900 12px Nunito, sans-serif";
-    context.textAlign = "center";
-    context.fillText(`STACK ${coin.stackLevel + 1}/3`, x, y - radius - 8);
-    context.restore();
-  });
-}
