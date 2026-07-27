@@ -64,6 +64,7 @@ export default function DailyWheel({ userEmail }) {
   const [theme, setTheme] = useState(null);
   const totalRotationRef = useRef(0);
   const tickIntervalRef = useRef(null);
+  const resultTimerRef = useRef(null);
   const { reportMissionProgress } = useDailyMissions();
   const { fireworks, emojiRain, burst } = useConfetti();
   const { tapVibrate, winVibrate, scoreMilestone } = useHaptics();
@@ -120,6 +121,7 @@ export default function DailyWheel({ userEmail }) {
         clearTimeout(tickIntervalRef.current);
         clearInterval(tickIntervalRef.current);
       }
+      if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
     };
   }, []);
 
@@ -138,6 +140,9 @@ export default function DailyWheel({ userEmail }) {
   const themedSegments = theme?.colors
     ? SEGMENTS.map((seg, i) => ({ ...seg, color: theme.colors[i % theme.colors.length], colorEnd: theme.colors[i % theme.colors.length] }))
     : SEGMENTS;
+  const winningSegmentIndex = result
+    ? SEGMENTS.findIndex((segment) => segment.type === result.type && segment.value === result.value)
+    : -1;
 
   async function checkSpin() {
     const records = await base44.entities.DailyWheelSpin.filter({ user_email: userEmail });
@@ -179,7 +184,7 @@ export default function DailyWheel({ userEmail }) {
     setRotation(targetRotation);
     startTickSound();
 
-    setTimeout(async () => {
+    resultTimerRef.current = setTimeout(async () => {
       setResult(prize);
       setCanSpin(false);
       setSpinning(false);
@@ -384,6 +389,7 @@ export default function DailyWheel({ userEmail }) {
                         ))}
                       </defs>
                       {themedSegments.map((seg, i) => {
+                        const isWinner = i === winningSegmentIndex;
                         const startAngle = (i * SEGMENT_ANGLE * Math.PI) / 180;
                         const endAngle = ((i + 1) * SEGMENT_ANGLE * Math.PI) / 180;
                         const x1 = 100 + 100 * Math.sin(startAngle);
@@ -399,12 +405,12 @@ export default function DailyWheel({ userEmail }) {
                         const textRotation = (i + 0.5) * SEGMENT_ANGLE;
 
                         return (
-                          <g key={i}>
+                          <g key={i} opacity={result && !isWinner ? 0.45 : 1} style={{ transition: "opacity 250ms ease" }}>
                             <path
                               d={`M100,100 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z`}
                               fill={`url(#grad-${i})`}
-                              stroke="#fde047"
-                              strokeWidth="0.8"
+                              stroke={isWinner ? "#ffffff" : "#fde047"}
+                              strokeWidth={isWinner ? "3" : "0.8"}
                             />
                             {/* Emoji near outer edge */}
                             <text
@@ -513,6 +519,8 @@ export default function DailyWheel({ userEmail }) {
                     initial={{ scale: 0.5, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    role="status"
+                    aria-live="assertive"
                     className={`relative rounded-2xl p-4 border-2 text-center overflow-hidden ${
                       result.jackpot
                         ? "bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 border-yellow-200"
@@ -536,6 +544,9 @@ export default function DailyWheel({ userEmail }) {
                     </p>
                     <p className="text-3xl font-black text-gray-900 drop-shadow">
                       +{result.type === "coins" ? `${result.value.toLocaleString()} Coins` : `${result.value} XP`}
+                    </p>
+                    <p className="mt-1 text-sm font-black text-yellow-950">
+                      ✓ Added to your {result.type === "coins" ? "coin balance" : "XP total"}
                     </p>
                   </motion.div>
                 )}
