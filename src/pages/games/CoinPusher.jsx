@@ -37,7 +37,7 @@ export default function CoinPusher() {
       <header className="flex shrink-0 items-center justify-between">
         <GameBackButton />
         <h1 className="text-lg font-black text-white">🪙 Coin Pusher</h1>
-        <GameInstructions title="Coin Pusher" emoji="🪙" steps={["Choose a drop position and quantity.", "Tap DROP COIN to place coins on the moving shelf.", "Build a pile and let the pusher move coins toward the front edge.", "Coins that fall into the tray are added to your balance automatically."]} />
+        <GameInstructions title="Coin Pusher" emoji="🪙" steps={["Choose a drop position and quantity.", "Tap DROP COIN to stack up to three coins on the rear pusher shelf.", "When the shelf pulls back, your coins drop into the playfield and move toward the front edge.", "Coins that fall into the tray are added to your balance automatically."]} />
       </header>
       <CoinPusherHUD balance={session.coins} loading={session.loading} collected={session.collected} spent={session.spent} />
       <main className="flex min-h-0 flex-1 items-stretch">

@@ -14,6 +14,7 @@ export default class CoinPusherEngine {
     this.nextId = 1;
     this.elapsed = 0;
     this.plateFront = 0.1;
+    this.pusherDirection = 0;
     this.lastImpactAt = -1;
     this.gateHits = 0;
     this.gateOpen = false;
@@ -27,7 +28,7 @@ export default class CoinPusherEngine {
     const size = BOARD_CONFIG.worldSize;
     const { wallThickness, pusherHeight } = BOARD_CONFIG.physics;
     const staticOptions = { isStatic: true, friction: 0.3, restitution: 0.04 };
-    this.pusher = Bodies.rectangle(size / 2, 85, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: "pusher-plate" });
+    this.pusher = Bodies.rectangle(size / 2, BOARD_CONFIG.physics.pusherTravelStart, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: "pusher-plate" });
     const walls = [
       Bodies.rectangle(wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
       Bodies.rectangle(size - wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
@@ -67,13 +68,23 @@ export default class CoinPusherEngine {
 
   drop(x) {
     if (this.coins.length < BOARD_CONFIG.maxCoins) {
-      const pusherFront = this.pusher.position.y + BOARD_CONFIG.physics.pusherHeight / 2 + BOARD_CONFIG.coinRadius * BOARD_CONFIG.worldSize * 1.25;
-      this.spawn(x, Math.min(0.86, pusherFront / BOARD_CONFIG.worldSize), true);
-      this.onEvent?.({ type: "coin_dropped", x });
+      const shelfSlot = this.getShelfSlot(x);
+      this.spawn(shelfSlot.x, 0, true, shelfSlot);
+      this.onEvent?.({ type: "coin_dropped", x: shelfSlot.x });
     }
   }
 
-  spawn(xFraction, zFraction, isDrop) {
+  getShelfSlot(x) {
+    const radius = BOARD_CONFIG.coinRadius;
+    const shelfCoins = this.coins.filter((coin) => coin.loading && Math.abs(coin.x - x) < radius * 1.3);
+    const stackLevel = shelfCoins.length < BOARD_CONFIG.physics.maxStackHeight ? shelfCoins.length : 0;
+    const shiftedX = shelfCoins.length >= BOARD_CONFIG.physics.maxStackHeight
+      ? x + (x <= 0.5 ? radius * 2.2 : -radius * 2.2)
+      : x;
+    return { x: Math.max(0.15, Math.min(0.85, shiftedX)), loading: true, stackLevel };
+  }
+
+  spawn(xFraction, zFraction, isDrop, { loading = false, stackLevel = 0 } = {}) {
     const size = BOARD_CONFIG.worldSize;
     const radius = BOARD_CONFIG.coinRadius * size;
     const x = Math.max(radius + BOARD_CONFIG.physics.wallThickness, Math.min(size - radius - BOARD_CONFIG.physics.wallThickness, xFraction * size));
@@ -81,15 +92,18 @@ export default class CoinPusherEngine {
     const coin = this.pool.pop() || { body: Bodies.circle(x, y, radius, this.coinOptions()), lift: 0 };
 
     if (coin.body.isSleeping) Sleeping.set(coin.body, false);
-    Body.setPosition(coin.body, { x, y });
-    Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 1.6, y: isDrop ? 2.4 : 0 });
-    Body.setAngularVelocity(coin.body, (Math.random() - 0.5) * 0.08);
+    Body.setStatic(coin.body, loading);
+    Body.setPosition(coin.body, { x, y: loading ? this.pusher.position.y : y });
+    Body.setVelocity(coin.body, { x: loading ? 0 : (Math.random() - 0.5) * 1.6, y: loading ? 0 : (isDrop ? 2.4 : 0) });
+    Body.setAngularVelocity(coin.body, loading ? 0 : (Math.random() - 0.5) * 0.08);
     coin.body.angle = 0;
     coin.id = this.nextId++;
     coin.lift = isDrop ? 82 : 0;
+    coin.loading = loading;
+    coin.stackLevel = stackLevel;
     coin.x = xFraction;
-    coin.z = zFraction;
-    coin.y = coin.lift;
+    coin.z = loading ? this.pusher.position.y / size : zFraction;
+    coin.y = coin.lift + stackLevel * radius * 0.75;
     coin.spin = 0;
     this.coins.push(coin);
     World.add(this.world, coin.body);
@@ -115,21 +129,33 @@ export default class CoinPusherEngine {
   }
 
   movePusher() {
-    const { pusherTravelStart, pusherTravelDistance, pusherSpeed } = BOARD_CONFIG.physics;
+    const { pusherTravelStart, pusherTravelDistance, pusherSpeed, pusherHeight } = BOARD_CONFIG.physics;
     const cycle = (1 - Math.cos(this.elapsed * pusherSpeed)) / 2;
     const y = pusherTravelStart + cycle * pusherTravelDistance;
+    this.pusherDirection = y - this.pusher.position.y;
     Body.setPosition(this.pusher, { x: BOARD_CONFIG.worldSize / 2, y });
-    this.plateFront = y / BOARD_CONFIG.worldSize;
+    this.plateFront = (y + pusherHeight / 2) / BOARD_CONFIG.worldSize;
   }
 
   syncCoins(dt) {
     const size = BOARD_CONFIG.worldSize;
     const radius = BOARD_CONFIG.coinRadius * size;
+    const { pusherHeight } = BOARD_CONFIG.physics;
     for (const coin of this.coins) {
+      coin.lift = Math.max(0, coin.lift - dt * 310);
+      if (coin.loading) {
+        Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y - pusherHeight * 0.2 });
+        if (coin.lift === 0 && this.pusherDirection < 0) {
+          coin.loading = false;
+          coin.stackLevel = 0;
+          Body.setStatic(coin.body, false);
+          Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y + pusherHeight / 2 + radius * 1.1 });
+          Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 1.2, y: 1.1 });
+        }
+      }
       coin.x = coin.body.position.x / size;
       coin.z = coin.body.position.y / size;
-      coin.lift = Math.max(0, coin.lift - dt * 310);
-      coin.y = coin.lift;
+      coin.y = coin.lift + coin.stackLevel * radius * 0.75;
       coin.spin = (coin.body.angle * 180) / Math.PI;
       if (coin.body.position.x < radius) Body.setPosition(coin.body, { x: radius, y: coin.body.position.y });
       if (coin.body.position.x > size - radius) Body.setPosition(coin.body, { x: size - radius, y: coin.body.position.y });

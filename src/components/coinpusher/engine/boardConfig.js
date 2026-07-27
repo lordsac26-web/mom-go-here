@@ -23,9 +23,10 @@ export const BOARD_CONFIG = {
     coinRestitution: 0.05,
     wallThickness: 45,
     pusherHeight: 68,
-    pusherTravelStart: 250,
-    pusherTravelDistance: 440,
+    pusherTravelStart: 155,
+    pusherTravelDistance: 485,
     pusherSpeed: 1.15,
+    maxStackHeight: 3,
     collectionLine: 990,
   },
 };

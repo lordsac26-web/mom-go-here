@@ -103,7 +103,8 @@ export function renderMachine(context, width, height, engine, dropX) {
   }
 
   context.save();
-  context.translate(dropX * width, plateHeight + 10);
+  const shelfMarkerY = plateHeight - (BOARD_CONFIG.physics.pusherHeight / BOARD_CONFIG.worldSize) * height * 0.7;
+  context.translate(dropX * width, shelfMarkerY);
   context.shadowColor = "#38bdf8";
   context.shadowBlur = 14;
   context.fillStyle = "#bae6fd";
