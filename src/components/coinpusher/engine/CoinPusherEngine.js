@@ -122,6 +122,8 @@ export default class CoinPusherEngine {
     coin.body.angle = 0;
     coin.id = this.nextId++;
     coin.lift = isDrop ? 82 : 0;
+    coin.settleElapsed = isDrop ? 0 : null;
+    coin.settleStartLift = isDrop ? 82 : 0;
     coin.loading = loading;
     coin.stackLevel = stackLevel;
     coin.stackAnchor = null;
@@ -168,7 +170,16 @@ export default class CoinPusherEngine {
     const { pusherHeight, pusherTravelStart, pusherTravelDistance, pusherReleaseProgress } = BOARD_CONFIG.physics;
     const releaseLine = pusherTravelStart + pusherTravelDistance * pusherReleaseProgress;
     for (const coin of this.coins) {
-      coin.lift = Math.max(0, coin.lift - dt * 310);
+      if (coin.settleElapsed !== null) {
+        coin.settleElapsed = Math.min(0.48, coin.settleElapsed + dt);
+        const progress = coin.settleElapsed / 0.48;
+        const eased = 1 - (1 - progress) ** 3;
+        coin.lift = (1 - eased) * coin.settleStartLift + Math.sin(progress * Math.PI) * 7;
+        if (progress === 1) {
+          coin.lift = 0;
+          coin.settleElapsed = null;
+        }
+      }
       if (coin.loading) {
         Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y - pusherHeight * 0.2 });
         if (coin.lift === 0 && this.pusherDirection < 0 && this.pusher.position.y <= releaseLine) {
@@ -187,7 +198,8 @@ export default class CoinPusherEngine {
         coin.stackAnchor = null;
       }
       coin.y = coin.lift + coin.stackLevel * radius * BOARD_CONFIG.physics.stackLayerLift;
-      coin.spin = (coin.body.angle * 180) / Math.PI;
+      const settleProgress = coin.settleElapsed === null ? 1 : coin.settleElapsed / 0.48;
+      coin.spin = (coin.body.angle * 180) / Math.PI + Math.sin(settleProgress * Math.PI * 2) * (1 - settleProgress) * 5;
       if (coin.body.position.x < radius) Body.setPosition(coin.body, { x: radius, y: coin.body.position.y });
       if (coin.body.position.x > size - radius) Body.setPosition(coin.body, { x: size - radius, y: coin.body.position.y });
     }
