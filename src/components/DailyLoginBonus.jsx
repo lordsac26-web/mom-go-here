@@ -30,6 +30,8 @@ export default function DailyLoginBonus({ userEmail }) {
   const [record, setRecord] = useState(null);
   const [reward, setReward] = useState(null);
   const [claimed, setClaimed] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState("");
   const [streakDay, setStreakDay] = useState(1);
   const overlayRef = useRef(null);
   const cardRefs = useRef([]);
@@ -92,39 +94,30 @@ export default function DailyLoginBonus({ userEmail }) {
   }, [show]);
 
   async function handleClaim() {
-    if (!record || !reward || claimed) return;
-    const response = await base44.functions.invoke("economy", { action: "daily_login" });
-    const result = response?.data;
-    if (!result?.dailyLogin) return;
-    setRecord(result.dailyLogin);
-    setStreakDay(result.dailyLogin.current_streak);
-    setClaimed(true);
-
-    // Also add to slots balance in localStorage
+    if (!record || !reward || claimed || claiming) return;
+    setClaiming(true);
+    setClaimError("");
     try {
-      const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
-      localStorage.setItem("slots_balance", (current + result.credited).toString());
-    } catch {}
-
-    // Report to daily missions
-    reportMissionProgress("daily_login");
-
-    // Celebrate animation
-    if (claimRef.current) {
-      gsap.to(claimRef.current, {
-        scale: 1.2, duration: 0.2, yoyo: true, repeat: 1,
-        ease: "power2.out",
-      });
+      const response = await base44.functions.invoke("economy", { action: "daily_login" });
+      const result = response?.data;
+      if (!result?.dailyLogin) throw new Error("Your reward could not be claimed.");
+      setRecord(result.dailyLogin);
+      setStreakDay(result.dailyLogin.current_streak);
+      setClaimed(true);
+      try {
+        const current = parseInt(localStorage.getItem("slots_balance") || "0", 10);
+        localStorage.setItem("slots_balance", (current + result.credited).toString());
+      } catch {}
+      reportMissionProgress("daily_login");
+      if (claimRef.current) gsap.to(claimRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, ease: "power2.out" });
+      setTimeout(() => {
+        if (overlayRef.current) gsap.to(overlayRef.current, { opacity: 0, duration: 0.3, onComplete: () => setShow(false) });
+      }, 1500);
+    } catch (error) {
+      setClaimError(error.message || "Your reward could not be claimed. Please try again.");
+    } finally {
+      setClaiming(false);
     }
-
-    // Close after delay
-    setTimeout(() => {
-      if (overlayRef.current) {
-        gsap.to(overlayRef.current, {
-          opacity: 0, duration: 0.3, onComplete: () => setShow(false),
-        });
-      }
-    }, 1500);
   }
 
   if (!show || !reward) return null;
@@ -134,14 +127,14 @@ export default function DailyLoginBonus({ userEmail }) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center px-4 py-4 overflow-y-auto"
+      className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-black/85 px-4 py-3"
       style={{ opacity: 0, paddingTop: "max(1rem, env(safe-area-inset-top))", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
-      <div className="w-full max-w-sm my-auto max-h-full overflow-y-auto">
+      <div className="w-full max-w-sm">
         {/* Header */}
-        <div className="text-center mb-5">
-          <div className="text-5xl mb-2">📅</div>
-          <h2 className="text-3xl font-black text-primary">Daily Bonus!</h2>
+        <div className="mb-3 text-center">
+          <div className="mb-1 text-4xl">📅</div>
+          <h2 className="text-2xl font-black text-primary">Daily Bonus!</h2>
           <p className="text-muted-foreground text-sm mt-1">
             Come back every day for bigger rewards!
           </p>
@@ -158,7 +151,7 @@ export default function DailyLoginBonus({ userEmail }) {
         </div>
 
         {/* 7-Day Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1.5 mb-5">
+        <div className="mb-3 grid grid-cols-7 gap-1">
           {DAILY_REWARDS.map((day, i) => {
             const isToday = i === currentDayIndex;
             const isPast = i < currentDayIndex;
@@ -166,7 +159,7 @@ export default function DailyLoginBonus({ userEmail }) {
               <div
                 key={i}
                 ref={el => cardRefs.current[i] = el}
-                className={`flex flex-col items-center p-1.5 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center rounded-lg border-2 p-1 transition-all ${
                   isToday
                     ? "border-primary bg-primary/20 shadow-[0_0_16px_rgba(234,179,8,0.3)] scale-110 relative z-10"
                     : isPast
@@ -188,8 +181,8 @@ export default function DailyLoginBonus({ userEmail }) {
         </div>
 
         {/* Today's Reward Card */}
-        <div className="bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 rounded-2xl p-4 border-2 border-yellow-300 mb-4 text-center">
-          <span className="text-4xl">{reward.emoji}</span>
+        <div className="mb-3 rounded-2xl border-2 border-yellow-300 bg-gradient-to-r from-yellow-600 via-amber-500 to-yellow-600 p-3 text-center">
+          <span className="text-3xl">{reward.emoji}</span>
           <div className="text-xs font-bold text-yellow-900/80 uppercase tracking-wider mt-1">
             {reward.label}
           </div>
@@ -203,16 +196,17 @@ export default function DailyLoginBonus({ userEmail }) {
         <button
           ref={claimRef}
           onClick={handleClaim}
-          disabled={claimed}
-          className={`w-full text-xl font-black py-4 rounded-2xl border-2 transition-all active:scale-95 ${
+          disabled={claimed || claiming}
+          className={`w-full rounded-2xl border-2 py-3 text-lg font-black transition-all active:scale-95 ${
             claimed
               ? "bg-green-600 border-green-400 text-white"
               : "bg-primary border-yellow-300 text-primary-foreground hover:brightness-110"
           }`}
           style={{ opacity: 0 }}
         >
-          {claimed ? "✅ Claimed!" : `🎁 Claim +${reward.credits.toLocaleString()}`}
+          {claiming ? "Claiming..." : claimed ? "✅ Claimed!" : `🎁 Claim +${reward.credits.toLocaleString()}`}
         </button>
+        {claimError && <p className="mt-2 text-center text-sm font-bold text-red-300">{claimError}</p>}
 
         {/* Skip button */}
         {!claimed && (
@@ -224,7 +218,7 @@ export default function DailyLoginBonus({ userEmail }) {
                 });
               }
             }}
-            className="w-full text-center text-sm text-muted-foreground mt-3 py-2 hover:text-foreground transition-colors"
+            className="mt-2 w-full py-1 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             Remind me later
           </button>

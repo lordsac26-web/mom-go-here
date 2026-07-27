@@ -9,6 +9,11 @@ const DAILY_WHEEL_PRIZES = [
   { type: 'coins', value: 500 }, { type: 'xp', value: 25 }, { type: 'coins', value: 1000 }, { type: 'xp', value: 50 },
   { type: 'coins', value: 2500 }, { type: 'xp', value: 10 }, { type: 'coins', value: 5000 }, { type: 'xp', value: 100 },
 ];
+const XP_LEVELS = [0, 100, 250, 500, 850, 1300, 1900, 2700, 3700, 5000, 6600, 8500, 10800, 13500, 16800, 20500, 25000, 30500, 37000, 45000, 55000, 67000, 82000, 100000, 125000];
+
+function levelForXp(totalXp: number) {
+  return XP_LEVELS.reduce((level, threshold, index) => totalXp >= threshold ? index + 1 : level, 1);
+}
 
 async function getCoins(base44, email) {
   const rows = await base44.asServiceRole.entities.PlayerCoins.filter({ user_email: email });
@@ -42,7 +47,7 @@ export default async function(req) {
 
     if (action === 'purchase') {
       const { category, itemId } = body;
-      let price = null;
+      let price: number | null = null;
       if (category === 'balloon') price = BALLOON_SKINS[itemId]?.price ?? null;
       else if (category === 'wheel') price = WHEEL_THEMES[itemId]?.price ?? null;
       else if (category === 'powerup') price = DART_POWERUPS[itemId]?.price ?? null;
@@ -59,7 +64,7 @@ export default async function(req) {
       const newBalance = balance - price;
       await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance: newBalance, total_spent: (rec.total_spent ?? 0) + price });
 
-      const invPatch = {};
+      const invPatch: Record<string, unknown> = {};
       if (category === 'balloon') { invPatch.owned_balloon_skins = [...(inv.owned_balloon_skins ?? ['default']), itemId]; invPatch.active_balloon_skin = itemId; }
       else if (category === 'wheel') { invPatch.owned_wheel_themes = [...(inv.owned_wheel_themes ?? ['default']), itemId]; invPatch.active_wheel_theme = itemId; }
       else { invPatch.dart_powerups = { ...(inv.dart_powerups ?? {}), [itemId]: ((inv.dart_powerups ?? {})[itemId] ?? 0) + 1 }; }
@@ -106,6 +111,13 @@ export default async function(req) {
         const rec = await getCoins(base44, email);
         balance = (rec.balance ?? 0) + prize.value;
         await base44.asServiceRole.entities.PlayerCoins.update(rec.id, { balance, total_earned: (rec.total_earned ?? 0) + prize.value });
+      } else {
+        const xpRecords = await base44.asServiceRole.entities.PlayerXP.filter({ user_email: email });
+        const xpRecord = xpRecords[0];
+        const totalXp = (xpRecord?.total_xp ?? 0) + prize.value;
+        const xpPatch = { total_xp: totalXp, level: levelForXp(totalXp) };
+        if (xpRecord) await base44.asServiceRole.entities.PlayerXP.update(xpRecord.id, xpPatch);
+        else await base44.asServiceRole.entities.PlayerXP.create({ user_email: email, ...xpPatch });
       }
       return Response.json({ prize, balance, dailyWheel });
     }
@@ -134,7 +146,7 @@ export default async function(req) {
     if (action === 'equip') {
       const { category, itemId } = body;
       const inv = await getInventory(base44, email);
-      const patch = {};
+      const patch: Record<string, unknown> = {};
       if (category === 'balloon') {
         if (!(inv.owned_balloon_skins ?? ['default']).includes(itemId)) return Response.json({ error: 'Not owned' }, { status: 400 });
         patch.active_balloon_skin = itemId;
