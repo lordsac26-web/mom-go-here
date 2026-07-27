@@ -1,6 +1,7 @@
 import { BOARD_CONFIG } from "../engine/boardConfig";
 import { getCoinSprite } from "./coinSprites";
 import { renderBarrier, renderGlass, renderMachine } from "./machineRenderer";
+import { renderAttackLane, renderStackMarkers } from "./targetingRenderer";
 
 function renderCoins(context, width, height, coins) {
   const radius = BOARD_CONFIG.coinRadius * width;
@@ -24,7 +25,9 @@ export function renderCoinPusher(context, width, height, engine, dropX, feedback
   context.save();
   context.translate(offset.x, offset.y);
   renderMachine(context, width, height, engine, dropX);
+  renderAttackLane(context, width, height, engine, dropX);
   renderCoins(context, width, height, engine.coins);
+  renderStackMarkers(context, width, height, engine.coins);
   renderBarrier(context, width, height, engine);
   context.restore();
   feedback?.render(context, width, height);
