@@ -81,6 +81,27 @@ export function renderMachine(context, width, height, engine, dropX) {
     context.fill();
   });
 
+  if (!engine.gateOpen) {
+    const { gate } = BOARD_CONFIG;
+    const gateWidth = gate.width * width;
+    const gateHeight = Math.max(10, gate.height * height);
+    const gateX = gate.x * width - gateWidth / 2;
+    const gateY = gate.z * height - gateHeight / 2;
+    context.save();
+    context.shadowColor = "#facc15";
+    context.shadowBlur = 14;
+    context.fillStyle = "#a16207";
+    context.fillRect(gateX, gateY, gateWidth, gateHeight);
+    context.fillStyle = "#fde047";
+    context.fillRect(gateX + 3, gateY + 3, gateWidth - 6, 3);
+    context.shadowColor = "transparent";
+    context.fillStyle = "#fff7ed";
+    context.font = "900 12px Nunito, sans-serif";
+    context.textAlign = "center";
+    context.fillText(`GATE ${engine.gateHits}/${gate.hitsToOpen}`, gate.x * width, gateY - 7);
+    context.restore();
+  }
+
   context.save();
   context.translate(dropX * width, plateHeight + 10);
   context.shadowColor = "#38bdf8";

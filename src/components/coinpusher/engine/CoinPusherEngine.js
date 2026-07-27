@@ -4,6 +4,7 @@ import { BOARD_CONFIG } from "./boardConfig";
 const { Bodies, Body, Composite, Engine, Events, Sleeping, World } = Matter;
 const COIN_LABEL = "pusher-coin";
 const PEG_LABEL = "pusher-peg";
+const GATE_LABEL = "coin-gate";
 
 export default class CoinPusherEngine {
   constructor(onEvent) {
@@ -14,6 +15,8 @@ export default class CoinPusherEngine {
     this.elapsed = 0;
     this.plateFront = 0.1;
     this.lastImpactAt = -1;
+    this.gateHits = 0;
+    this.gateOpen = false;
     this.engine = Engine.create({ gravity: { x: 0, y: BOARD_CONFIG.physics.gravity, scale: 0.001 } });
     this.world = this.engine.world;
     this.createMachineBodies();
@@ -31,19 +34,31 @@ export default class CoinPusherEngine {
       Bodies.rectangle(size / 2, -wallThickness / 2, size, wallThickness, staticOptions),
     ];
     const pegs = BOARD_CONFIG.pegs.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.45 }));
-    World.add(this.world, [this.pusher, ...walls, ...pegs]);
+    const { gate } = BOARD_CONFIG;
+    this.gate = Bodies.rectangle(gate.x * size, gate.z * size, gate.width * size, gate.height * size, { ...staticOptions, label: GATE_LABEL, restitution: 0.1 });
+    World.add(this.world, [this.pusher, ...walls, ...pegs, this.gate]);
   }
 
   handleCollisions() {
     Events.on(this.engine, "collisionStart", ({ pairs }) => {
-      if (this.elapsed - this.lastImpactAt < 0.045) return;
       const impact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === PEG_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === PEG_LABEL));
-      if (impact) {
+      if (impact && this.elapsed - this.lastImpactAt >= 0.045) {
         const coin = impact.bodyA.label === COIN_LABEL ? impact.bodyA : impact.bodyB;
         this.lastImpactAt = this.elapsed;
         this.onEvent?.({ type: "coin_impact", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize });
       }
+      const gateImpact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === GATE_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === GATE_LABEL));
+      if (gateImpact && !this.gateOpen) this.hitGate();
     });
+  }
+
+  hitGate() {
+    this.gateHits += 1;
+    this.onEvent?.({ type: "gate_hit", hits: this.gateHits, target: BOARD_CONFIG.gate.hitsToOpen });
+    if (this.gateHits < BOARD_CONFIG.gate.hitsToOpen) return;
+    this.gateOpen = true;
+    Composite.remove(this.world, this.gate);
+    this.onEvent?.({ type: "gate_opened" });
   }
 
   seed() {

@@ -5,11 +5,17 @@ export const BOARD_CONFIG = {
   maxCoins: 80,
   fixedStep: 1 / 60,
   pegs: [
-    { x: 0.5, z: 0.31 },
-    { x: 0.37, z: 0.37 }, { x: 0.63, z: 0.37 },
-    { x: 0.5, z: 0.43 },
-    { x: 0.37, z: 0.49 }, { x: 0.63, z: 0.49 },
+    { x: 0.5, z: 0.3 },
+    { x: 0.3, z: 0.43 }, { x: 0.7, z: 0.43 },
+    { x: 0.5, z: 0.56 },
   ],
+  gate: {
+    x: 0.5,
+    z: 0.77,
+    width: 0.62,
+    height: 0.03,
+    hitsToOpen: 8,
+  },
   physics: {
     gravity: 0,
     coinFriction: 0.32,
