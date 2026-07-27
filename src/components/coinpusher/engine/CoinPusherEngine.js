@@ -7,6 +7,7 @@ const PUSHER_LABEL = "pusher-plate";
 const PEG_LABEL = "pusher-peg";
 const BARRIER_LABEL = "coin-barrier";
 const LIP_LABEL = "collection-lip";
+const SCRAPER_LABEL = "rear-scraper";
 
 export default class CoinPusherEngine {
   constructor(onEvent) {
@@ -31,7 +32,7 @@ export default class CoinPusherEngine {
 
   createMachineBodies() {
     const size = BOARD_CONFIG.worldSize;
-    const { wallThickness, pusherHeight } = BOARD_CONFIG.physics;
+    const { wallThickness, pusherHeight, pusherTravelStart, pusherTravelDistance } = BOARD_CONFIG.physics;
     const staticOptions = { isStatic: true, friction: 0.3, restitution: 0.04 };
     this.pusher = Bodies.rectangle(size / 2, BOARD_CONFIG.physics.pusherTravelStart, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: PUSHER_LABEL });
     const walls = [
@@ -41,9 +42,11 @@ export default class CoinPusherEngine {
     ];
     this.pegLayout = this.generatePegLayout();
     const pegs = this.pegLayout.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.9 }));
-    const { frontLip } = BOARD_CONFIG;
+    const { frontLip, backScraper } = BOARD_CONFIG;
+    const scraperY = pusherTravelStart + pusherTravelDistance * backScraper.releaseProgress;
+    this.backScraper = Bodies.rectangle(size / 2, scraperY, size - wallThickness * 2, backScraper.height * size, { ...staticOptions, label: SCRAPER_LABEL });
     this.frontLip = Bodies.rectangle(size / 2, frontLip.z * size, size - wallThickness * 2, frontLip.height * size, { ...staticOptions, isSensor: true, label: LIP_LABEL });
-    World.add(this.world, [this.pusher, ...walls, ...pegs, this.frontLip]);
+    World.add(this.world, [this.pusher, ...walls, ...pegs, this.backScraper, this.frontLip]);
     this.spawnBarrier();
   }
 
@@ -194,8 +197,8 @@ export default class CoinPusherEngine {
   syncCoins(dt) {
     const size = BOARD_CONFIG.worldSize;
     const radius = BOARD_CONFIG.coinRadius * size;
-    const { pusherHeight, pusherTravelStart, pusherTravelDistance, pusherReleaseProgress } = BOARD_CONFIG.physics;
-    const releaseLine = pusherTravelStart + pusherTravelDistance * pusherReleaseProgress;
+    const { pusherHeight, pusherTravelStart, pusherTravelDistance } = BOARD_CONFIG.physics;
+    const releaseLine = pusherTravelStart + pusherTravelDistance * BOARD_CONFIG.backScraper.releaseProgress;
     for (const coin of this.coins) {
       if (coin.settleElapsed !== null) {
         coin.settleElapsed = Math.min(0.48, coin.settleElapsed + dt);

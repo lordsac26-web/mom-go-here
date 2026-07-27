@@ -12,6 +12,10 @@ export const BOARD_CONFIG = {
     maxZ: 0.59,
     minimumSpacing: 0.16,
   },
+  backScraper: {
+    releaseProgress: 0.18,
+    height: 0.018,
+  },
   barrier: {
     width: 0.46,
     height: 0.032,

@@ -53,6 +53,14 @@ export function renderMachine(context, width, height, engine, dropX) {
   context.fillStyle = "rgba(186,230,253,0.12)";
   context.fillRect(inset, Math.max(0, plateHeight - height * 0.12), width - inset * 2, height * 0.08);
 
+  const scraperY = engine.backScraper.position.y / BOARD_CONFIG.worldSize * height;
+  const scraperHeight = Math.max(7, (engine.backScraper.bounds.max.y - engine.backScraper.bounds.min.y) / BOARD_CONFIG.worldSize * height);
+  const scraperMetal = metalGradient(context, 0, scraperY, 0, scraperY + scraperHeight, [[0, "#e2e8f0"], [0.38, "#64748b"], [1, "#0f172a"]]);
+  context.fillStyle = scraperMetal;
+  context.fillRect(inset, scraperY - scraperHeight / 2, width - inset * 2, scraperHeight);
+  context.fillStyle = "rgba(125, 211, 252, 0.65)";
+  context.fillRect(inset, scraperY - scraperHeight / 2, width - inset * 2, 2);
+
   const lampY = 13;
   for (let x = inset + 12; x < width - inset; x += 24) {
     const intensity = 0.6 + Math.sin(engine.elapsed * 3 + x) * 0.25;
