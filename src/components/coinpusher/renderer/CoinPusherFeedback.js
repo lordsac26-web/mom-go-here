@@ -13,6 +13,14 @@ export default class CoinPusherFeedback {
       this.shake = Math.max(this.shake, 1.5);
     }
     if (event.type === "coin_dropped") this.addBurst(event.x, 0.24, 8, "#fde68a", 1);
+    if (event.type === "barrier_hit") {
+      this.addBurst(event.x ?? 0.5, event.z ?? 0.7, 7, "#fb923c", 1.3);
+      this.shake = Math.max(this.shake, 2.4);
+    }
+    if (event.type === "barrier_broken") {
+      this.addBurst(0.5, 0.72, 20, "#fef08a", 2.5);
+      this.shake = Math.max(this.shake, 5);
+    }
     if (event.type === "coins_collected") {
       const count = event.count || 1;
       this.addBurst(0.5, 0.94, Math.min(18, count * 7), "#fde047", 2.4);

@@ -4,7 +4,8 @@ import { BOARD_CONFIG } from "./boardConfig";
 const { Bodies, Body, Composite, Engine, Events, Sleeping, World } = Matter;
 const COIN_LABEL = "pusher-coin";
 const PEG_LABEL = "pusher-peg";
-const GATE_LABEL = "coin-gate";
+const BARRIER_LABEL = "coin-barrier";
+const LIP_LABEL = "collection-lip";
 
 export default class CoinPusherEngine {
   constructor(onEvent) {
@@ -16,8 +17,10 @@ export default class CoinPusherEngine {
     this.plateFront = 0.1;
     this.pusherDirection = 0;
     this.lastImpactAt = -1;
-    this.gateHits = 0;
-    this.gateOpen = false;
+    this.barrier = null;
+    this.barrierHealth = 0;
+    this.barrierMaxHealth = 0;
+    this.nextBarrierAt = 0;
     this.engine = Engine.create({ gravity: { x: 0, y: BOARD_CONFIG.physics.gravity, scale: 0.001 } });
     this.world = this.engine.world;
     this.createMachineBodies();
@@ -35,9 +38,10 @@ export default class CoinPusherEngine {
       Bodies.rectangle(size / 2, -wallThickness / 2, size, wallThickness, staticOptions),
     ];
     const pegs = BOARD_CONFIG.pegs.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.45 }));
-    const { gate } = BOARD_CONFIG;
-    this.gate = Bodies.rectangle(gate.x * size, gate.z * size, gate.width * size, gate.height * size, { ...staticOptions, label: GATE_LABEL, restitution: 0.1 });
-    World.add(this.world, [this.pusher, ...walls, ...pegs, this.gate]);
+    const { frontLip } = BOARD_CONFIG;
+    this.frontLip = Bodies.rectangle(size / 2, frontLip.z * size, size - wallThickness * 2, frontLip.height * size, { ...staticOptions, isSensor: true, label: LIP_LABEL });
+    World.add(this.world, [this.pusher, ...walls, ...pegs, this.frontLip]);
+    this.spawnBarrier();
   }
 
   handleCollisions() {
@@ -48,18 +52,37 @@ export default class CoinPusherEngine {
         this.lastImpactAt = this.elapsed;
         this.onEvent?.({ type: "coin_impact", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize });
       }
-      const gateImpact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === GATE_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === GATE_LABEL));
-      if (gateImpact && !this.gateOpen) this.hitGate();
+      const barrierImpact = pairs.find(({ bodyA, bodyB }) => (bodyA.label === COIN_LABEL && bodyB.label === BARRIER_LABEL) || (bodyB.label === COIN_LABEL && bodyA.label === BARRIER_LABEL));
+      if (barrierImpact && this.barrier) {
+        const coin = barrierImpact.bodyA.label === COIN_LABEL ? barrierImpact.bodyA : barrierImpact.bodyB;
+        this.damageBarrier(coin);
+      }
     });
   }
 
-  hitGate() {
-    this.gateHits += 1;
-    this.onEvent?.({ type: "gate_hit", hits: this.gateHits, target: BOARD_CONFIG.gate.hitsToOpen });
-    if (this.gateHits < BOARD_CONFIG.gate.hitsToOpen) return;
-    this.gateOpen = true;
-    Composite.remove(this.world, this.gate);
-    this.onEvent?.({ type: "gate_opened" });
+  spawnBarrier() {
+    const { barrier } = BOARD_CONFIG;
+    const size = BOARD_CONFIG.worldSize;
+    const health = barrier.minHealth + Math.floor(Math.random() * (barrier.maxHealth - barrier.minHealth + 1));
+    const x = (0.27 + Math.random() * 0.46) * size;
+    const y = (barrier.minZ + Math.random() * (barrier.maxZ - barrier.minZ)) * size;
+    this.barrier = Bodies.rectangle(x, y, barrier.width * size, barrier.height * size, { isStatic: true, friction: 0.42, restitution: 0.08, label: BARRIER_LABEL });
+    this.barrierHealth = health;
+    this.barrierMaxHealth = health;
+    World.add(this.world, this.barrier);
+    this.onEvent?.({ type: "barrier_spawned", x: x / size, z: y / size, health });
+  }
+
+  damageBarrier(coin) {
+    const speed = Math.hypot(coin.velocity.x, coin.velocity.y);
+    const damage = Math.max(1, Math.min(3, Math.round(speed / 2)));
+    this.barrierHealth = Math.max(0, this.barrierHealth - damage);
+    this.onEvent?.({ type: "barrier_hit", x: coin.position.x / BOARD_CONFIG.worldSize, z: coin.position.y / BOARD_CONFIG.worldSize, damage, health: this.barrierHealth, maxHealth: this.barrierMaxHealth });
+    if (this.barrierHealth > 0) return;
+    Composite.remove(this.world, this.barrier);
+    this.barrier = null;
+    this.nextBarrierAt = this.elapsed + BOARD_CONFIG.barrier.respawnSeconds;
+    this.onEvent?.({ type: "barrier_broken" });
   }
 
   seed() {
@@ -123,6 +146,7 @@ export default class CoinPusherEngine {
 
   step(dt) {
     this.elapsed += dt;
+    if (!this.barrier && this.elapsed >= this.nextBarrierAt) this.spawnBarrier();
     this.movePusher();
     Engine.update(this.engine, dt * 1000);
     this.syncCoins(dt);

@@ -83,25 +83,34 @@ export function renderMachine(context, width, height, engine, dropX) {
     context.fill();
   });
 
-  if (!engine.gateOpen) {
-    const { gate } = BOARD_CONFIG;
-    const gateWidth = gate.width * width;
-    const gateHeight = Math.max(10, gate.height * height);
-    const gateX = gate.x * width - gateWidth / 2;
-    const gateY = gate.z * height - gateHeight / 2;
+  if (engine.barrier) {
+    const barrierWidth = (engine.barrier.bounds.max.x - engine.barrier.bounds.min.x) / BOARD_CONFIG.worldSize * width;
+    const barrierHeight = Math.max(11, (engine.barrier.bounds.max.y - engine.barrier.bounds.min.y) / BOARD_CONFIG.worldSize * height);
+    const barrierX = engine.barrier.position.x / BOARD_CONFIG.worldSize * width - barrierWidth / 2;
+    const barrierY = engine.barrier.position.y / BOARD_CONFIG.worldSize * height - barrierHeight / 2;
+    const healthRatio = engine.barrierHealth / engine.barrierMaxHealth;
     context.save();
-    context.shadowColor = "#facc15";
+    context.shadowColor = healthRatio > 0.5 ? "#22c55e" : "#f97316";
     context.shadowBlur = 14;
-    context.fillStyle = "#a16207";
-    context.fillRect(gateX, gateY, gateWidth, gateHeight);
-    context.fillStyle = "#fde047";
-    context.fillRect(gateX + 3, gateY + 3, gateWidth - 6, 3);
+    context.fillStyle = healthRatio > 0.5 ? "#166534" : "#9a3412";
+    context.fillRect(barrierX, barrierY, barrierWidth, barrierHeight);
+    context.fillStyle = "#e2e8f0";
+    context.fillRect(barrierX + 3, barrierY + 3, barrierWidth - 6, 3);
     context.shadowColor = "transparent";
+    context.fillStyle = "rgba(2,6,23,0.8)";
+    context.fillRect(barrierX, barrierY - 9, barrierWidth, 6);
+    context.fillStyle = healthRatio > 0.5 ? "#4ade80" : "#fb923c";
+    context.fillRect(barrierX, barrierY - 9, barrierWidth * healthRatio, 6);
     context.fillStyle = "#fff7ed";
-    context.font = "900 12px Nunito, sans-serif";
+    context.font = "900 11px Nunito, sans-serif";
     context.textAlign = "center";
-    context.fillText(`GATE ${engine.gateHits}/${gate.hitsToOpen}`, gate.x * width, gateY - 7);
+    context.fillText(`BARRIER ${engine.barrierHealth} HP`, barrierX + barrierWidth / 2, barrierY - 13);
     context.restore();
+  } else if (engine.nextBarrierAt > engine.elapsed) {
+    context.fillStyle = "rgba(255,255,255,0.7)";
+    context.font = "800 11px Nunito, sans-serif";
+    context.textAlign = "center";
+    context.fillText(`NEXT BARRIER ${Math.ceil(engine.nextBarrierAt - engine.elapsed)}s`, width / 2, height * 0.74);
   }
 
   context.save();
@@ -116,6 +125,20 @@ export function renderMachine(context, width, height, engine, dropX) {
   context.lineTo(9, 0);
   context.closePath();
   context.fill();
+  context.restore();
+
+  const lipY = BOARD_CONFIG.frontLip.z * height;
+  context.save();
+  context.fillStyle = "#475569";
+  context.beginPath();
+  context.moveTo(inset, lipY + 10);
+  context.lineTo(width - inset, lipY + 10);
+  context.lineTo(width - inset - 10, lipY - 6);
+  context.lineTo(inset + 10, lipY - 6);
+  context.closePath();
+  context.fill();
+  context.fillStyle = "#cbd5e1";
+  context.fillRect(inset + 10, lipY - 6, width - inset * 2 - 20, 3);
   context.restore();
 
   const chute = metalGradient(context, 0, height - 22, 0, height, [[0, "#fef08a"], [0.3, "#ca8a04"], [1, "#713f12"]]);
