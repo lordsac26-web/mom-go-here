@@ -50,6 +50,8 @@ export function renderMachine(context, width, height, engine, dropX) {
   context.fillRect(inset, plateHeight - 3, width - inset * 2, 3);
   context.fillStyle = "rgba(2,6,23,0.38)";
   context.fillRect(inset, plateHeight, width - inset * 2, 8);
+  context.fillStyle = "rgba(186,230,253,0.12)";
+  context.fillRect(inset, Math.max(0, plateHeight - height * 0.12), width - inset * 2, height * 0.08);
 
   const lampY = 13;
   for (let x = inset + 12; x < width - inset; x += 24) {

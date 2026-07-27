@@ -101,9 +101,10 @@ export default class CoinPusherEngine {
     coin.lift = isDrop ? 82 : 0;
     coin.loading = loading;
     coin.stackLevel = stackLevel;
+    coin.stackAnchor = null;
     coin.x = xFraction;
     coin.z = loading ? this.pusher.position.y / size : zFraction;
-    coin.y = coin.lift + stackLevel * radius * 0.75;
+    coin.y = coin.lift + stackLevel * radius * BOARD_CONFIG.physics.stackLayerLift;
     coin.spin = 0;
     this.coins.push(coin);
     World.add(this.world, coin.body);
@@ -148,15 +149,20 @@ export default class CoinPusherEngine {
         Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y - pusherHeight * 0.2 });
         if (coin.lift === 0 && this.pusherDirection < 0 && this.pusher.position.y <= releaseLine) {
           coin.loading = false;
-          coin.stackLevel = 0;
           Body.setStatic(coin.body, false);
-          Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y + pusherHeight / 2 + radius * 1.1 });
-          Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 1.2, y: 1.1 });
+          const releaseY = this.pusher.position.y + pusherHeight / 2 + radius * 1.1;
+          Body.setPosition(coin.body, { x: coin.x * size, y: releaseY });
+          coin.stackAnchor = coin.stackLevel > 0 ? { x: coin.x * size, y: releaseY } : null;
+          Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 0.35, y: 1.1 });
         }
       }
       coin.x = coin.body.position.x / size;
       coin.z = coin.body.position.y / size;
-      coin.y = coin.lift + coin.stackLevel * radius * 0.75;
+      if (coin.stackAnchor && Math.hypot(coin.body.position.x - coin.stackAnchor.x, coin.body.position.y - coin.stackAnchor.y) > radius * 1.6) {
+        coin.stackLevel = 0;
+        coin.stackAnchor = null;
+      }
+      coin.y = coin.lift + coin.stackLevel * radius * BOARD_CONFIG.physics.stackLayerLift;
       coin.spin = (coin.body.angle * 180) / Math.PI;
       if (coin.body.position.x < radius) Body.setPosition(coin.body, { x: radius, y: coin.body.position.y });
       if (coin.body.position.x > size - radius) Body.setPosition(coin.body, { x: size - radius, y: coin.body.position.y });
