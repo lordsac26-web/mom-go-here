@@ -15,8 +15,8 @@ export const BOARD_CONFIG = {
   barrier: {
     width: 0.46,
     height: 0.032,
-    minHealth: 6,
-    maxHealth: 16,
+    minHealth: 12,
+    maxHealth: 48,
     minZ: 0.64,
     maxZ: 0.82,
     respawnSeconds: 60,
