@@ -1,6 +1,6 @@
 import { BOARD_CONFIG } from "../engine/boardConfig";
 import { getCoinSprite } from "./coinSprites";
-import { renderGlass, renderMachine } from "./machineRenderer";
+import { renderBarrier, renderGlass, renderMachine } from "./machineRenderer";
 
 function renderCoins(context, width, height, coins) {
   const radius = BOARD_CONFIG.coinRadius * width;
@@ -25,6 +25,7 @@ export function renderCoinPusher(context, width, height, engine, dropX, feedback
   context.translate(offset.x, offset.y);
   renderMachine(context, width, height, engine, dropX);
   renderCoins(context, width, height, engine.coins);
+  renderBarrier(context, width, height, engine);
   context.restore();
   feedback?.render(context, width, height);
   renderGlass(context, width, height);

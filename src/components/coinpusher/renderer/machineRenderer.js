@@ -83,30 +83,7 @@ export function renderMachine(context, width, height, engine, dropX) {
     context.fill();
   });
 
-  if (engine.barrier) {
-    const barrierWidth = (engine.barrier.bounds.max.x - engine.barrier.bounds.min.x) / BOARD_CONFIG.worldSize * width;
-    const barrierHeight = Math.max(11, (engine.barrier.bounds.max.y - engine.barrier.bounds.min.y) / BOARD_CONFIG.worldSize * height);
-    const barrierX = engine.barrier.position.x / BOARD_CONFIG.worldSize * width - barrierWidth / 2;
-    const barrierY = engine.barrier.position.y / BOARD_CONFIG.worldSize * height - barrierHeight / 2;
-    const healthRatio = engine.barrierHealth / engine.barrierMaxHealth;
-    context.save();
-    context.shadowColor = healthRatio > 0.5 ? "#22c55e" : "#f97316";
-    context.shadowBlur = 14;
-    context.fillStyle = healthRatio > 0.5 ? "#166534" : "#9a3412";
-    context.fillRect(barrierX, barrierY, barrierWidth, barrierHeight);
-    context.fillStyle = "#e2e8f0";
-    context.fillRect(barrierX + 3, barrierY + 3, barrierWidth - 6, 3);
-    context.shadowColor = "transparent";
-    context.fillStyle = "rgba(2,6,23,0.8)";
-    context.fillRect(barrierX, barrierY - 9, barrierWidth, 6);
-    context.fillStyle = healthRatio > 0.5 ? "#4ade80" : "#fb923c";
-    context.fillRect(barrierX, barrierY - 9, barrierWidth * healthRatio, 6);
-    context.fillStyle = "#fff7ed";
-    context.font = "900 11px Nunito, sans-serif";
-    context.textAlign = "center";
-    context.fillText(`BARRIER ${engine.barrierHealth} HP`, barrierX + barrierWidth / 2, barrierY - 13);
-    context.restore();
-  } else if (engine.nextBarrierAt > engine.elapsed) {
+  if (!engine.barrier && engine.nextBarrierAt > engine.elapsed) {
     context.fillStyle = "rgba(255,255,255,0.7)";
     context.font = "800 11px Nunito, sans-serif";
     context.textAlign = "center";
@@ -150,6 +127,33 @@ export function renderMachine(context, width, height, engine, dropX) {
   [inset * 0.5, width - inset * 0.5].forEach((x) => {
     [28, height * 0.42, height - 32].forEach((y) => drawRivet(context, x, y, 3));
   });
+}
+
+export function renderBarrier(context, width, height, engine) {
+  if (!engine.barrier) return;
+  const barrierWidth = (engine.barrier.bounds.max.x - engine.barrier.bounds.min.x) / BOARD_CONFIG.worldSize * width;
+  const barrierHeight = Math.max(16, (engine.barrier.bounds.max.y - engine.barrier.bounds.min.y) / BOARD_CONFIG.worldSize * height);
+  const barrierX = engine.barrier.position.x / BOARD_CONFIG.worldSize * width - barrierWidth / 2;
+  const barrierY = engine.barrier.position.y / BOARD_CONFIG.worldSize * height - barrierHeight / 2;
+  const healthRatio = engine.barrierHealth / engine.barrierMaxHealth;
+  context.save();
+  context.shadowColor = healthRatio > 0.5 ? "#22c55e" : "#f97316";
+  context.shadowBlur = 14;
+  context.fillStyle = healthRatio > 0.5 ? "#166534" : "#9a3412";
+  context.fillRect(barrierX, barrierY, barrierWidth, barrierHeight);
+  context.fillStyle = "#e2e8f0";
+  context.fillRect(barrierX + 3, barrierY + 3, barrierWidth - 6, 3);
+  context.shadowColor = "transparent";
+  context.fillStyle = "rgba(2,6,23,0.72)";
+  context.fillRect(barrierX + 4, barrierY + 5, barrierWidth - 8, barrierHeight - 10);
+  context.fillStyle = healthRatio > 0.5 ? "#4ade80" : "#fb923c";
+  context.fillRect(barrierX + 4, barrierY + 5, (barrierWidth - 8) * healthRatio, barrierHeight - 10);
+  context.fillStyle = "#ffffff";
+  context.font = "900 12px Nunito, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(`${engine.barrierHealth} HP`, barrierX + barrierWidth / 2, barrierY + barrierHeight / 2);
+  context.restore();
 }
 
 export function renderGlass(context, width, height) {
