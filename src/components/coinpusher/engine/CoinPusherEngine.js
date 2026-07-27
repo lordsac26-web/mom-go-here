@@ -25,6 +25,8 @@ export default class CoinPusherEngine {
     this.barrierMaxHealth = 0;
     this.nextBarrierAt = 0;
     this.engine = Engine.create({ gravity: { x: 0, y: BOARD_CONFIG.physics.gravity, scale: 0.001 } });
+    this.engine.positionIterations = 8;
+    this.engine.velocityIterations = 6;
     this.world = this.engine.world;
     this.createMachineBodies();
     this.handleCollisions();
@@ -34,6 +36,7 @@ export default class CoinPusherEngine {
     const size = BOARD_CONFIG.worldSize;
     const { wallThickness, pusherHeight, pusherTravelStart, pusherTravelDistance } = BOARD_CONFIG.physics;
     const staticOptions = { isStatic: true, friction: 0.3, restitution: 0.04 };
+    const scraperOptions = { isStatic: true, friction: 0.72, restitution: 0.01, label: SCRAPER_LABEL };
     this.pusher = Bodies.rectangle(size / 2, BOARD_CONFIG.physics.pusherTravelStart, size - wallThickness * 2, pusherHeight, { ...staticOptions, label: PUSHER_LABEL });
     const walls = [
       Bodies.rectangle(wallThickness / 2, size / 2, wallThickness, size * 1.2, staticOptions),
@@ -44,7 +47,7 @@ export default class CoinPusherEngine {
     const pegs = this.pegLayout.map(({ x, z }) => Bodies.circle(x * size, z * size, BOARD_CONFIG.pegRadius * size, { ...staticOptions, label: PEG_LABEL, restitution: 0.9 }));
     const { frontLip, backScraper } = BOARD_CONFIG;
     const scraperY = pusherTravelStart + pusherTravelDistance * backScraper.releaseProgress;
-    this.backScraper = Bodies.rectangle(size / 2, scraperY, size - wallThickness * 2, backScraper.height * size, { ...staticOptions, label: SCRAPER_LABEL });
+    this.backScraper = Bodies.rectangle(size / 2, scraperY, size - wallThickness * 2, backScraper.height * size, scraperOptions);
     this.frontLip = Bodies.rectangle(size / 2, frontLip.z * size, size - wallThickness * 2, frontLip.height * size, { ...staticOptions, isSensor: true, label: LIP_LABEL });
     World.add(this.world, [this.pusher, ...walls, ...pegs, this.backScraper, this.frontLip]);
     this.spawnBarrier();
@@ -169,10 +172,11 @@ export default class CoinPusherEngine {
     return {
       label: COIN_LABEL,
       friction: BOARD_CONFIG.physics.coinFriction,
+      frictionStatic: 0.55,
       frictionAir: BOARD_CONFIG.physics.coinAirFriction,
-      restitution: Math.max(BOARD_CONFIG.physics.coinRestitution, 0.3),
+      restitution: BOARD_CONFIG.physics.coinRestitution,
       density: 0.002,
-      slop: 0.02,
+      slop: 0.015,
     };
   }
 
@@ -180,6 +184,7 @@ export default class CoinPusherEngine {
     this.elapsed += dt;
     if (!this.barrier && this.elapsed >= this.nextBarrierAt) this.spawnBarrier();
     this.movePusher();
+    this.pushCoins();
     Engine.update(this.engine, dt * 1000);
     this.syncCoins(dt);
     this.collectOverflow();
@@ -194,11 +199,42 @@ export default class CoinPusherEngine {
     this.plateFront = (y + pusherHeight / 2) / BOARD_CONFIG.worldSize;
   }
 
+  pushCoins() {
+    if (this.pusherDirection <= 0) return;
+    const { pusherHeight, pusherTransfer, pusherMaxSpeed, pusherContactPadding } = BOARD_CONFIG.physics;
+    const radius = BOARD_CONFIG.coinRadius * BOARD_CONFIG.worldSize;
+    const rearEdge = this.pusher.position.y - pusherHeight / 2 - radius * pusherContactPadding;
+    const frontEdge = this.pusher.position.y + pusherHeight / 2 + radius * pusherContactPadding;
+    const transferSpeed = Math.min(pusherMaxSpeed, Math.max(0.45, this.pusherDirection * pusherTransfer));
+
+    this.coins.forEach((coin) => {
+      if (coin.loading || coin.body.position.y < rearEdge || coin.body.position.y > frontEdge) return;
+      if (coin.body.isSleeping) Sleeping.set(coin.body, false);
+      if (coin.body.velocity.y < transferSpeed) Body.setVelocity(coin.body, { x: coin.body.velocity.x, y: transferSpeed });
+    });
+  }
+
+  releaseLoadingCoin(coin, radius) {
+    const { releaseClearance, exitSpeed, lateralJitter } = BOARD_CONFIG.backScraper;
+    const laneOffset = (coin.stackLevel - 1) * radius * 0.32;
+    const x = Math.max(radius + BOARD_CONFIG.physics.wallThickness, Math.min(BOARD_CONFIG.worldSize - radius - BOARD_CONFIG.physics.wallThickness, coin.x * BOARD_CONFIG.worldSize + laneOffset));
+    const releaseY = Math.max(
+      this.backScraper.bounds.max.y + radius * releaseClearance,
+      this.pusher.bounds.max.y + radius * 1.12,
+    );
+
+    coin.loading = false;
+    Body.setStatic(coin.body, false);
+    Body.setPosition(coin.body, { x, y: releaseY });
+    Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * lateralJitter, y: exitSpeed + coin.stackLevel * 0.12 });
+    Body.setAngularVelocity(coin.body, (Math.random() - 0.5) * 0.06);
+    coin.stackAnchor = coin.stackLevel > 0 ? { x, y: releaseY } : null;
+  }
+
   syncCoins(dt) {
     const size = BOARD_CONFIG.worldSize;
     const radius = BOARD_CONFIG.coinRadius * size;
-    const { pusherHeight, pusherTravelStart, pusherTravelDistance } = BOARD_CONFIG.physics;
-    const releaseLine = pusherTravelStart + pusherTravelDistance * BOARD_CONFIG.backScraper.releaseProgress;
+    const { pusherHeight } = BOARD_CONFIG.physics;
     for (const coin of this.coins) {
       if (coin.settleElapsed !== null) {
         coin.settleElapsed = Math.min(0.48, coin.settleElapsed + dt);
@@ -212,14 +248,10 @@ export default class CoinPusherEngine {
         }
       }
       if (coin.loading) {
-        Body.setPosition(coin.body, { x: coin.x * size, y: this.pusher.position.y - pusherHeight * 0.2 });
-        if (coin.lift === 0 && this.pusherDirection < 0 && this.pusher.position.y <= releaseLine) {
-          coin.loading = false;
-          Body.setStatic(coin.body, false);
-          const releaseY = this.pusher.position.y + pusherHeight / 2 + radius * 1.1;
-          Body.setPosition(coin.body, { x: coin.x * size, y: releaseY });
-          coin.stackAnchor = coin.stackLevel > 0 ? { x: coin.x * size, y: releaseY } : null;
-          Body.setVelocity(coin.body, { x: (Math.random() - 0.5) * 0.35, y: 1.1 });
+        const carrierY = this.pusher.position.y - pusherHeight * 0.2 - coin.stackLevel * radius * 0.1;
+        Body.setPosition(coin.body, { x: coin.x * size, y: carrierY });
+        if (coin.lift === 0 && this.pusherDirection < 0 && carrierY <= this.backScraper.position.y) {
+          this.releaseLoadingCoin(coin, radius);
         }
       }
       coin.x = coin.body.position.x / size;
