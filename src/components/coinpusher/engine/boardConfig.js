@@ -1,6 +1,6 @@
 export const BOARD_CONFIG = {
   worldSize: 1000,
-  coinRadius: 0.05,
+  coinRadius: 0.04,
   pegRadius: 0.022,
   maxCoins: 80,
   fixedStep: 1 / 60,
