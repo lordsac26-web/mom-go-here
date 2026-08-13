@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import AudioSettings from "@/components/AudioSettings";
 import WarmLoader from "../components/WarmLoader";
@@ -13,6 +8,7 @@ import PermissionsPanel from "@/components/PermissionsPanel";
 import SettingsGameManager from "@/components/SettingsGameManager";
 
 import CardBackPicker from "@/components/solitaire/CardBackPicker";
+import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
 
 const RELIGIONS = [
   { value: "None",         label: "No Preference", emoji: "🌍", sub: "Motivational quotes only" },
@@ -245,74 +241,16 @@ export default function Settings() {
 
         {/* Account Management */}
         <div className="bg-card border-2 border-border rounded-2xl p-6 shadow-xl mt-4 space-y-4">
-          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">🔒 Account Management</h2>
-          <p className="text-muted-foreground text-lg">
-            Manage your account and sign-in.
-          </p>
+          <h2 className="text-2xl font-black text-foreground flex items-center gap-2">🔒 Account</h2>
           <button
             onClick={() => base44.auth.logout("/")}
             className="w-full bg-secondary text-foreground text-xl font-black py-4 rounded-2xl border-2 border-border"
           >
             🚪 Log Out
           </button>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="w-full bg-destructive text-destructive-foreground text-xl font-black py-4 rounded-2xl">
-                🗑️ Delete My Account
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="max-w-sm mx-auto">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black">Delete your account?</AlertDialogTitle>
-                <AlertDialogDescription className="text-base">
-                  This will <span className="font-black text-destructive">permanently delete</span> all your data — scores, achievements, journal entries, contacts, and settings. This action <span className="font-black">cannot be undone</span>.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="text-lg font-bold">Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    // Delete all user-owned entity records then log out
-                    const email = user?.email;
-                    if (!email) return;
-                    const entities = [
-                      base44.entities.UserProfile,
-                      base44.entities.GameScore,
-                      base44.entities.PlayerXP,
-                      base44.entities.Achievement,
-                      base44.entities.DailyLoginBonus,
-                      base44.entities.SolitaireStats,
-                      base44.entities.ZenPoints,
-                      base44.entities.EngagementStreak,
-                      base44.entities.JournalEntry,
-                      base44.entities.Contact,
-                      base44.entities.PersonalEvent,
-                      base44.entities.DailyProgress,
-                      base44.entities.SavedGame,
-                      base44.entities.DartPopBlitzScore,
-                      base44.entities.PlayerCoins,
-                      base44.entities.PlayerInventory,
-                      base44.entities.DailyMission,
-                      base44.entities.GalleryPost,
-                      base44.entities.CheckerCosmetic,
-                      base44.entities.EmergencyFund,
-                      base44.entities.DailyWheelSpin,
-                    ];
-                    for (const entity of entities) {
-                      const records = await entity.filter({ user_email: email });
-                      for (const r of records) await entity.delete(r.id);
-                    }
-                    base44.auth.logout("/");
-                  }}
-                  className="bg-destructive text-destructive-foreground text-lg font-black"
-                >
-                  Delete Everything
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
+
+        <DeleteAccountSection />
       </div>
     </div>
   );
