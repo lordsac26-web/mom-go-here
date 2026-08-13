@@ -51,8 +51,8 @@ export default function TermsOfService() {
 
           <h2 className="text-xl font-black text-primary">6. AI-Generated Content</h2>
           <p>
-            The App uses artificial intelligence to generate daily inspiration, art, history facts,
-            and chatbot responses. AI-generated content is provided "as is" and may not always be
+            The App uses artificial intelligence to generate daily inspiration, art, and history facts.
+            AI-generated content is provided "as is" and may not always be
             perfectly accurate. It should not be relied upon as professional, medical, legal, or
             theological advice.
           </p>

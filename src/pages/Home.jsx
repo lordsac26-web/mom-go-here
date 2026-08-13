@@ -19,6 +19,7 @@ import LevelProgressBar from "../components/LevelProgressBar";
 import AchievementsWidget from "../components/AchievementsWidget";
 import DailyWheel from "../components/DailyWheel";
 import DailyMissionsWidget from "../components/missions/DailyMissionsWidget";
+import DailyAffirmationCard from "../components/DailyAffirmationCard";
 import offlineCache from "../lib/offlineCache";
 
 const NAV_CARDS = [
@@ -164,11 +165,12 @@ export default function Home() {
 
   const { containerRef, pullDistance, refreshing } = usePullToRefresh(handleRefresh);
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
+  const greeting = (name) => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return `Good morning, ${name}! Ready for a peaceful day?`;
+    if (hour >= 12 && hour < 17) return `Good afternoon, ${name}! Hope you're having a lovely day.`;
+    if (hour >= 17 && hour < 22) return `Good evening, ${name}! Time to relax with a fun game.`;
+    return `Welcome back, ${name}! Take things at your own pace.`;
   };
 
   const religionInfo = profile?.religion && RELIGION_LABELS[profile.religion];
@@ -184,7 +186,7 @@ export default function Home() {
       {/* Greeting */}
       <div className="text-center mb-3 sm:mb-4">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-primary mb-1">
-          {greeting()}, {profile?.display_name || user?.full_name?.split(" ")[0] || "Friend"}! 👋
+          {greeting(profile?.display_name || user?.full_name?.split(" ")[0] || "Friend")}
         </h1>
         <p className="text-muted-foreground text-base sm:text-lg">Tap a card to explore!</p>
       </div>
@@ -206,6 +208,8 @@ export default function Home() {
           </p>
         </div>
       )}
+
+      <DailyAffirmationCard />
 
       {/* Daily Inspiration link */}
       {religionInfo && (

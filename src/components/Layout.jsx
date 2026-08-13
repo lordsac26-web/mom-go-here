@@ -1,8 +1,7 @@
-import { useRef, useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen, ChevronLeft } from "lucide-react";
 import { useTabHistoryStore, TAB_ROOTS, getTabForPath } from "../stores/tabHistoryStore";
-import { useAuth } from "@/lib/AuthContext";
 import useHaptics from "../hooks/useHaptics";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
 
@@ -15,9 +14,8 @@ import GameActivityMonitor from "./GameActivityMonitor";
 import AchievementUnlockToast from "./AchievementUnlockToast";
 import OfflineBanner from "./OfflineBanner";
 
-// Only truly heavy components get lazy-loaded
-const AIChatBot = lazy(() => import("./AIChatBot"));
-const MajorAchievementModal = lazy(() => import("./achievements/MajorAchievementModal"));
+import MajorAchievementModal from "./achievements/MajorAchievementModal";
+import WarmEncouragementToast from "./WarmEncouragementToast";
 
 const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
@@ -36,7 +34,6 @@ const SCROLL_TABS = ["/", "/games", "/daily", "/memories", "/progress", "/settin
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { tapVibrate } = useHaptics();
   const mainRef = useRef(null);
   const scrollMap = useRef({});
@@ -163,15 +160,10 @@ export default function Layout() {
       {/* Achievement Toast */}
       <AchievementUnlockToast achievement={achievementBadge} />
 
-      {/* Major Achievement Full-Screen Celebration (lazy — no Zustand hooks at top level) */}
-      <Suspense fallback={null}>
-        <MajorAchievementModal />
-      </Suspense>
+      {/* Major Achievement Full-Screen Celebration */}
+      <MajorAchievementModal />
 
-      {/* AI Chat Bot (lazy — heavy component) */}
-      <Suspense fallback={null}>
-        <AIChatBot />
-      </Suspense>
+      <WarmEncouragementToast />
 
       {/* Bottom Nav Bar */}
       <nav className="bg-card border-t border-border sticky bottom-0 z-50 shadow-lg pb-[env(safe-area-inset-bottom)] nav-no-select">

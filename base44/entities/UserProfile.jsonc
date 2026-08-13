@@ -60,7 +60,7 @@
     },
     "chatbot_name": {
       "type": "string",
-      "description": "Custom name for the AI assistant (default: Rosie)"
+      "description": "Deprecated legacy field retained for backward compatibility; no longer read or written by the app."
     }
   },
   "required": [

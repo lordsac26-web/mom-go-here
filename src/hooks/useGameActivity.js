@@ -9,6 +9,10 @@ import { useDailyMissions } from "./useDailyMissions";
 // Module-level guard — prevents double-fire across any render cycle
 let _busy = false;
 
+function announceCompletion(result) {
+  window.dispatchEvent(new CustomEvent("game-completed", { detail: { result } }));
+}
+
 export function useGameActivity() {
   const { awardXP } = usePlayerXP();
   const { checkAchievements } = useAchievements((badge) => {
@@ -22,6 +26,7 @@ export function useGameActivity() {
 
     // All store calls via getState() — no hook selectors
     useGameActivityStore.getState().recordWin(gameName || "Game");
+    announceCompletion("win");
     awardXP("win");
 
     const batch = [
@@ -46,6 +51,7 @@ export function useGameActivity() {
     _busy = true;
 
     useGameActivityStore.getState().recordLoss();
+    announceCompletion("complete");
     awardXP("loss");
 
     const batch = [{ type: "play_any" }];

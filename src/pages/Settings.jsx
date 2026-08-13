@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useReducer } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -9,7 +9,6 @@ import {
 import { Link } from "react-router-dom";
 import AudioSettings from "@/components/AudioSettings";
 import WarmLoader from "../components/WarmLoader";
-import { useUIStore } from "@/stores/uiStore";
 import PermissionsPanel from "@/components/PermissionsPanel";
 import SettingsGameManager from "@/components/SettingsGameManager";
 
@@ -29,55 +28,6 @@ const RELIGIONS = [
 // FIX (security): cap display name to match Onboarding validation
 const MAX_NAME_LENGTH = 50;
 
-function ChatBubbleSettings() {
-  const [chatBubbleEnabled, setChatBubbleEnabled] = useState(
-    () => useUIStore.getState().chatBubbleEnabled
-  );
-
-  useEffect(() => {
-    const unsub = useUIStore.subscribe(
-      (s) => setChatBubbleEnabled(s.chatBubbleEnabled)
-    );
-    return unsub;
-  }, []);
-
-  const toggleChatBubble = () => useUIStore.getState().toggleChatBubble();
-
-  return (
-    <div className="bg-card border-2 border-border rounded-2xl p-6 space-y-4">
-      <h2 className="text-3xl font-black text-primary flex items-center gap-2">
-        💬 Chat Bubble
-      </h2>
-      <p className="text-muted-foreground text-lg">Customize your AI assistant</p>
-
-      <div className="flex items-center justify-between bg-secondary rounded-xl px-4 py-4">
-        <div>
-          <p className="text-lg font-bold text-foreground">Enable Chat Bubble</p>
-          <p className="text-sm text-muted-foreground">Show/hide the AI helper button</p>
-        </div>
-        <button
-          onClick={toggleChatBubble}
-          className={`px-6 py-3 rounded-lg font-black text-lg transition-all ${
-            chatBubbleEnabled
-              ? "bg-primary text-primary-foreground"
-              : "bg-red-600 text-white"
-          }`}
-        >
-          {chatBubbleEnabled ? "✅ ON" : "🔇 OFF"}
-        </button>
-      </div>
-
-      {chatBubbleEnabled && (
-        <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
-          <p>
-            💡 <span className="font-bold">Tip:</span> Drag the chat bubble to move it around the screen.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function Settings() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -90,7 +40,6 @@ export default function Settings() {
   const [saveError, setSaveError] = useState(null);
   const [location, setLocation] = useState(null);
   const [cardBackDesign, setCardBackDesign] = useState("classic_blue");
-  const [chatbotName, setChatbotName] = useState("Rosie");
 
   // FIX (bug): useCallback + AbortController prevents stale closure and race conditions
   // (same pattern fixed in Memories.jsx — loadProfile was defined outside the effect
@@ -111,7 +60,6 @@ export default function Settings() {
         setBirthday(profiles[0].birthday || "");
         setReligion(profiles[0].religion || "None");
         setCardBackDesign(profiles[0].card_back_design || "classic_blue");
-        setChatbotName(profiles[0].chatbot_name || "Rosie");
       }
     } catch (err) {
       if (signal?.aborted) return;
@@ -144,7 +92,6 @@ export default function Settings() {
         birthday,
         religion,
         card_back_design: cardBackDesign,
-        chatbot_name: chatbotName.trim() || "Rosie",
         ...(location && {
           latitude: location.latitude,
           longitude: location.longitude,
@@ -207,18 +154,6 @@ export default function Settings() {
               />
             </div>
             <div>
-              <label className="block text-lg font-black text-foreground mb-2">🌸 AI Assistant Name</label>
-              <input
-                type="text"
-                value={chatbotName}
-                onChange={e => setChatbotName(e.target.value.slice(0, MAX_NAME_LENGTH))}
-                placeholder="Rosie"
-                maxLength={MAX_NAME_LENGTH}
-                className="w-full bg-secondary border-2 border-border rounded-2xl px-5 py-4 text-xl font-bold text-foreground focus:outline-none focus:border-primary"
-              />
-              <p className="text-sm text-muted-foreground mt-1 ml-1">Your AI helper's name (default: Rosie)</p>
-            </div>
-            <div>
               <label className="block text-lg font-black text-foreground mb-2">🎂 Birthday</label>
               <input
                 type="date"
@@ -240,9 +175,6 @@ export default function Settings() {
 
         {/* Card Back Design */}
         <CardBackPicker selected={cardBackDesign} onChange={setCardBackDesign} />
-
-        {/* Chat Bubble Settings */}
-        <ChatBubbleSettings />
 
         {/* Permissions Panel */}
         <PermissionsPanel

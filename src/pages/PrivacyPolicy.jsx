@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
           <p>We collect the following types of information:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Account Information:</strong> Email address and full name (provided during sign-up).</li>
-            <li><strong>Profile Information:</strong> Display name, birthday, religious preference, and AI assistant name (provided voluntarily during onboarding).</li>
+            <li><strong>Profile Information:</strong> Display name, birthday, and religious preference (provided voluntarily during onboarding).</li>
             <li><strong>Location Data:</strong> Approximate city and coordinates (only when you explicitly grant permission, used for weather and local history facts).</li>
             <li><strong>Contacts:</strong> Names, birthdays, anniversaries, and relationship types of people you choose to add (stored only for you).</li>
             <li><strong>Game Data:</strong> Scores, achievements, streaks, saved game states, and play time statistics.</li>

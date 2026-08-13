@@ -3,12 +3,14 @@ import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Flame, ChevronRight, ChevronDown } from "lucide-react";
 import WidgetErrorState from "./WidgetErrorState";
+import useConfetti from "../hooks/useConfetti";
 
 export default function HomeStreakWidget({ userEmail, refreshKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { fireworks } = useConfetti();
 
   function fetchData() {
     if (!userEmail) return;
@@ -20,6 +22,18 @@ export default function HomeStreakWidget({ userEmail, refreshKey }) {
   }
 
   useEffect(() => { fetchData(); }, [userEmail, refreshKey]);
+
+  useEffect(() => {
+    if (!data || !userEmail) return;
+    const milestones = [3, 7, 30];
+    const streaks = [data.daily_current_streak || 0, data.memories_current_streak || 0];
+    const milestone = milestones.find(value => streaks.includes(value));
+    if (!milestone) return;
+    const key = `streak-celebration:${userEmail}:${milestone}:${new Date().toISOString().slice(0, 10)}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "shown");
+    fireworks();
+  }, [data, userEmail, fireworks]);
 
   if (error) return <WidgetErrorState message="Couldn't load streaks" emoji="🔥" onRetry={fetchData} />;
   if (loading || !data) return null;
