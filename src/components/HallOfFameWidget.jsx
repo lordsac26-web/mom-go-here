@@ -80,7 +80,7 @@ export default function HallOfFameWidget({ userEmail, refreshKey }) {
   async function refreshRankings() {
     setRefreshing(true);
     try {
-      await base44.functions.invoke("refreshHallOfFame", {});
+      await base44.functions.invoke("syncLeaderboard", {});
       // Small delay to let entity writes settle
       await new Promise(r => setTimeout(r, 500));
       const data = await base44.entities.HallOfFame.list("-total_score", 10);

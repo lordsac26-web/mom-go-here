@@ -57,7 +57,11 @@ export async function saveGameScore(payload) {
       completed: !!payload.completed,
     };
 
-    return await syncQueue.safeCreate("GameScore", record);
+    const savedScore = await syncQueue.safeCreate("GameScore", record);
+    if (savedScore?.id) {
+      base44.functions.invoke("syncLeaderboard", {}).catch(() => {});
+    }
+    return savedScore;
   } catch (err) {
     console.error("saveGameScore failed:", err);
     return null;

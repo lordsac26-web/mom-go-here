@@ -1,6 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
 
@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
     hallOfFame.forEach((entry) => {
       if (!entry?.user_email || !entry.game_breakdown) return;
 
-      Object.entries(entry.game_breakdown).forEach(([gameName, score]) => {
+      Object.entries(entry.game_breakdown).forEach(([gameName, details]) => {
+        const score = typeof details === 'number' ? details : details?.highScore;
         if (typeof score !== 'number') return;
         const normalizedName = gameName.trim().replace(/\s+/g, ' ');
 
@@ -119,6 +120,7 @@ Deno.serve(async (req) => {
         games_played: playerEntry?.games_played || 0,
         best_game: playerEntry?.best_game || '',
         best_game_score: playerEntry?.best_game_score || 0,
+        game_breakdown: playerEntry?.game_breakdown || {},
         display_name: playerEntry?.display_name || (userEmail ? userEmail.split('@')[0] : 'Player'),
       },
       last_updated: new Date().toISOString(),
@@ -127,5 +129,5 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('getLeaderboardScores error:', error);
     return Response.json({ error: error.message }, { status: 500 });
-  }
-});
+    }
+    }

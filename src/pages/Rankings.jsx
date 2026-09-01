@@ -13,6 +13,7 @@ import RankRow from "../components/rankings/RankRow";
 import GameFilter from "../components/rankings/GameFilter";
 import PlayerRankCard from "../components/rankings/PlayerRankCard";
 import GameLeaderboard from "../components/rankings/GameLeaderboard";
+import UserGameBreakdown from "../components/rankings/UserGameBreakdown";
 
 const MARQUEE_ITEMS = [
   "🏆 TOP PLAYERS",
@@ -34,6 +35,7 @@ export default function Rankings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [updated, setUpdated] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const { reportMissionProgress } = useDailyMissions();
 
@@ -51,9 +53,11 @@ export default function Rankings() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    // Also refresh Hall of Fame data in background
-    base44.functions.invoke('refreshHallOfFame', {}).catch(() => {});
+    setUpdated(false);
+    await base44.functions.invoke("syncLeaderboard", {});
     await loadScores();
+    setUpdated(true);
+    setTimeout(() => setUpdated(false), 1800);
   }
 
   // Build game filter chips from server data
@@ -80,7 +84,18 @@ export default function Rankings() {
 
   return (
     <div className="min-h-screen pb-24">
-      <SubPageHeader backTo="/games" title="Global Leaderboard" icon={Trophy} />
+      <SubPageHeader
+        backTo="/games"
+        title="Hall of Fame"
+        icon={Trophy}
+        rightSlot={<div className="flex items-center gap-2">
+          {updated && <span role="status" className="text-sm font-black text-green-500">Updated!</span>}
+          <button onClick={handleRefresh} disabled={refreshing} className="flex min-h-11 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-bold text-foreground disabled:opacity-50">
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">{refreshing ? "Refreshing…" : "Refresh"}</span>
+          </button>
+        </div>}
+      />
 
       {/* Marquee Banner */}
       <MarqueeBanner speed={20} className="bg-primary/10 border-y border-primary/30 py-3 mb-5">
@@ -97,22 +112,14 @@ export default function Rankings() {
           <PlayerRankCard
             rank={player.rank}
             totalPlayers={player.total_players || 0}
+            totalScore={player.total_score || 0}
+            gamesPlayed={player.games_played || 0}
             bestScore={player.best_score || 0}
             bestGame={player.best_game || ""}
           />
         )}
 
-        {/* Refresh button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-bold text-foreground active:scale-95 transition-transform disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
+        <UserGameBreakdown breakdown={player.game_breakdown} />
 
         {/* Game Filter */}
         {gamesWithScores.length > 1 && (
