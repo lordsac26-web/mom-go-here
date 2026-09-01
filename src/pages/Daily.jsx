@@ -8,6 +8,7 @@ import WarmLoader from "../components/WarmLoader";
 import useStreakTracker from "../hooks/useStreakTracker";
 import StreakBanner from "../components/StreakBanner";
 import offlineCache from "../lib/offlineCache";
+import DailyHubExtras from "../components/daily/DailyHubExtras";
 
 const RELIGION_CONFIG = {
   Christianity: { label: "Daily Scripture", emoji: "✝️" },
@@ -121,6 +122,7 @@ export default function Daily() {
             Go to Settings to choose your daily reading →
           </Link>
         </div>
+        <DailyHubExtras userEmail={user?.email} profile={profile} />
       </div>
     );
   }
@@ -193,6 +195,8 @@ export default function Daily() {
           </button>
         </div>
       )}
+
+      <DailyHubExtras userEmail={user?.email} profile={profile} />
     </div>
   );
 }

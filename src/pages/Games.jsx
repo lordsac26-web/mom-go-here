@@ -6,6 +6,7 @@ import WarmLoader from "../components/WarmLoader";
 import MagneticCard from "../components/MagneticCard";
 import GameTileManager, { ALL_GAMES as MASTER_GAMES } from "../components/GameTileManager";
 import { Settings, Trophy } from "lucide-react";
+import SolitaireStatsDashboard from "../components/SolitaireStatsDashboard";
 
 
 
@@ -77,8 +78,12 @@ export default function Games() {
         className="flex items-center justify-center gap-2 bg-primary/10 border-2 border-primary rounded-2xl px-5 py-3 mx-auto max-w-lg mb-6"
       >
         <Trophy size={22} className="text-primary" />
-        <span className="text-lg font-black text-primary">View Rankings & Leaderboard</span>
+        <span className="text-lg font-black text-primary">Hall of Fame & Rankings</span>
       </Link>
+
+      <div className="mx-auto max-w-lg">
+        <SolitaireStatsDashboard userEmail={user?.email} />
+      </div>
 
       {showManager && (
         <GameTileManager

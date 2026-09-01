@@ -3,13 +3,13 @@ import { create } from "zustand";
 /**
  * Tab History Store
  *
- * Remembers the last URL visited within each of the 6 main bottom tabs.
+ * Remembers the last URL visited within each of the 4 main bottom tabs.
  * When a tab is clicked:
  *   - If it's a different tab → navigate to lastVisited[tab] (or root)
  *   - If it's the already-active tab → reset to tab root
  */
 
-const TAB_ROOTS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
+const TAB_ROOTS = ["/", "/games", "/daily", "/profile"];
 
 export const useTabHistoryStore = create((set, get) => ({
   // Map of tab root → last visited path within that tab
@@ -17,9 +17,7 @@ export const useTabHistoryStore = create((set, get) => ({
     "/": "/",
     "/games": "/games",
     "/daily": "/daily",
-    "/memories": "/memories",
-    "/progress": "/progress",
-    "/settings": "/settings",
+    "/profile": "/profile",
   },
 
   // Track which tab is currently active
@@ -52,19 +50,17 @@ export const useTabHistoryStore = create((set, get) => ({
  * Given a pathname, determine which tab "owns" it.
  * - Exact match on a root → that tab
  * - /games/* → /games tab
- * - /rankings, /achievements, /contacts, /scripture, /daily-challenge, /onboarding → / (Home tab)
+ * - Supporting pages map to Games, Daily, Profile, or Home
  * - Unknown → null
  */
 export function getTabForPath(pathname) {
   // Exact root match first
   if (TAB_ROOTS.includes(pathname)) return pathname;
 
-  // /games sub-routes
-  if (pathname.startsWith("/games/")) return "/games";
-
-  // Sub-pages under Home
-  const homeSubPages = ["/rankings", "/achievements", "/contacts", "/scripture", "/daily-challenge", "/onboarding", "/shop", "/gallery"];
-  if (homeSubPages.some(p => pathname === p || pathname.startsWith(p + "/"))) return "/";
+  if (pathname.startsWith("/games/") || ["/rankings", "/shop", "/gallery"].includes(pathname)) return "/games";
+  if (["/scripture", "/daily-challenge"].includes(pathname)) return "/daily";
+  if (["/memories", "/progress", "/settings", "/contacts", "/achievements"].includes(pathname)) return "/profile";
+  if (pathname === "/onboarding") return "/";
 
   return null;
 }

@@ -17,6 +17,16 @@ const RELIGIONS = [
 ];
 
 const MAX_NAME_LENGTH = 50;
+const GAME_GROUPS = [
+  { title: "Classic Brain Games", games: [
+    ["/games/memory", "Memory Match"], ["/games/sudoku", "Sudoku"], ["/games/wordsearch", "Word Search"], ["/games/buzzword", "Buzz Word"],
+    ["/games/mahjong", "Mahjong Solitaire"], ["/games/solitaire", "Klondike Solitaire"], ["/games/checkers", "Checkers"], ["/games/chess", "Chess"],
+  ] },
+  { title: "Arcade & Casual", games: [
+    ["/games/yahtzee", "Yahtzee"], ["/games/slots", "Lucky Slots"], ["/games/dartpop", "Dart Pop Blitz"], ["/games/coinpusher", "Coin Pusher"],
+  ] },
+  { title: "Creative", games: [["/games/artstudio", "AI Art Studio"]] },
+];
 
 export default function Onboarding() {
   const { user } = useAuth();
@@ -25,7 +35,7 @@ export default function Onboarding() {
   const [displayName, setDisplayName] = useState(user?.full_name?.split(" ")[0] || "");
   const [birthday, setBirthday] = useState("");
   const [religion, setReligion] = useState("None");
-  const [favoriteGames, setFavoriteGames] = useState(ALL_GAMES.map(g => g.path));
+  const [favoriteGames, setFavoriteGames] = useState(["/games/memory", "/games/wordsearch"]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [religionDrawerOpen, setReligionDrawerOpen] = useState(false);
@@ -181,24 +191,27 @@ export default function Onboarding() {
           <div className="text-center">
             <div className="text-7xl mb-4">🎮</div>
             <h1 className="text-4xl font-black text-primary mb-2">Your Games</h1>
-            <p className="text-xl text-muted-foreground mb-6">Pick which games to show on your home page</p>
+            <p className="text-xl text-muted-foreground mb-6">Choose your favorite games</p>
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {ALL_GAMES.map(g => {
-                const selected = favoriteGames.includes(g.path);
-                return (
-                  <button
-                    key={g.path}
-                    onClick={() => toggleGame(g.path)}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all ${
-                      selected ? "border-primary bg-primary/10" : "border-border bg-card opacity-50"
-                    }`}
-                  >
-                    <span className="text-4xl">{g.emoji}</span>
-                    <span className="text-sm font-black text-foreground leading-tight">{g.name}</span>
-                  </button>
-                );
-              })}
+            <div className="mb-6 space-y-6 text-left">
+              {GAME_GROUPS.map(group => (
+                <section key={group.title}>
+                  <h2 className="mb-3 text-xl font-black text-foreground">{group.title}</h2>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {group.games.map(([path, label]) => {
+                      const game = ALL_GAMES.find(item => item.path === path);
+                      const selected = favoriteGames.includes(path);
+                      return (
+                        <button key={path} type="button" aria-pressed={selected} onClick={() => toggleGame(path)} className={`flex min-h-[72px] items-center gap-4 rounded-2xl border-2 px-4 text-left transition-colors ${selected ? "border-primary bg-primary/20" : "border-border bg-card"}`}>
+                          <span className="text-4xl" aria-hidden="true">{game?.emoji}</span>
+                          <span className="flex-1 text-lg font-black text-foreground">{label}</span>
+                          <span className="text-2xl" aria-label={selected ? "Selected" : "Not selected"}>{selected ? "✅" : "○"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
 
             <p className="text-muted-foreground text-lg mb-4">{favoriteGames.length} of {ALL_GAMES.length} selected</p>

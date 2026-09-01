@@ -39,6 +39,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import Gallery from './pages/Gallery';
 import Shop from './pages/Shop';
+import Profile from './pages/Profile';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -99,6 +100,7 @@ const AuthenticatedApp = () => {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/shop" element={<PageTransition><Shop /></PageTransition>} />
+          <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>

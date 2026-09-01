@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Gamepad2, Settings, Star, BarChart2, BookOpen, ChevronLeft } from "lucide-react";
+import { Home, Gamepad2, Star, UserRound, ChevronLeft } from "lucide-react";
 import { useTabHistoryStore, TAB_ROOTS, getTabForPath } from "../stores/tabHistoryStore";
 import useHaptics from "../hooks/useHaptics";
 import { useAchievementToastStore } from "@/stores/achievementToastStore";
@@ -21,15 +21,13 @@ const NAV_ITEMS = [
   { to: "/", label: "🏠 Home", icon: Home },
   { to: "/games", label: "🎮 Games", icon: Gamepad2 },
   { to: "/daily", label: "⭐ Daily", icon: Star },
-  { to: "/memories", label: "📔 Memories", icon: BookOpen },
-  { to: "/progress", label: "📊 Progress", icon: BarChart2 },
-  { to: "/settings", label: "⚙️ Settings", icon: Settings },
+  { to: "/profile", label: "👤 Profile", icon: UserRound },
 ];
 
 
 
 // Tabs whose scroll position we preserve
-const SCROLL_TABS = ["/", "/games", "/daily", "/memories", "/progress", "/settings"];
+const SCROLL_TABS = ["/", "/games", "/daily", "/profile"];
 
 export default function Layout() {
   const location = useLocation();
