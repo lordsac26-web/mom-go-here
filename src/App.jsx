@@ -9,6 +9,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Layout from './components/Layout';
 import PageTransition from './components/PageTransition';
+import GameErrorBoundary from './components/GameErrorBoundary';
 import Home from './pages/Home';
 import Games from './pages/Games';
 import Settings from './pages/Settings';
@@ -74,28 +75,28 @@ const AuthenticatedApp = () => {
           <Route path="/games" element={<PageTransition><Games /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
           <Route path="/daily" element={<PageTransition><Daily /></PageTransition>} />
-          <Route path="/games/memory" element={<MemoryGame />} />
+          <Route path="/games/memory" element={<GameErrorBoundary><MemoryGame /></GameErrorBoundary>} />
 
-          <Route path="/games/yahtzee" element={<Yahtzee />} />
-          <Route path="/games/wordsearch" element={<WordSearch />} />
-          <Route path="/games/sudoku" element={<Sudoku />} />
-          <Route path="/games/checkers" element={<Checkers />} />
-          <Route path="/games/chess" element={<Chess />} />
-          <Route path="/games/mahjong" element={<Mahjong />} />
-          <Route path="/games/solitaire" element={<Solitaire />} />
-          <Route path="/games/artstudio" element={<AIArtStudio />} />
+          <Route path="/games/yahtzee" element={<GameErrorBoundary><Yahtzee /></GameErrorBoundary>} />
+          <Route path="/games/wordsearch" element={<GameErrorBoundary><WordSearch /></GameErrorBoundary>} />
+          <Route path="/games/sudoku" element={<GameErrorBoundary><Sudoku /></GameErrorBoundary>} />
+          <Route path="/games/checkers" element={<GameErrorBoundary><Checkers /></GameErrorBoundary>} />
+          <Route path="/games/chess" element={<GameErrorBoundary><Chess /></GameErrorBoundary>} />
+          <Route path="/games/mahjong" element={<GameErrorBoundary><Mahjong /></GameErrorBoundary>} />
+          <Route path="/games/solitaire" element={<GameErrorBoundary><Solitaire /></GameErrorBoundary>} />
+          <Route path="/games/artstudio" element={<GameErrorBoundary><AIArtStudio /></GameErrorBoundary>} />
           <Route path="/progress" element={<PageTransition><Progress /></PageTransition>} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/memories" element={<PageTransition><Memories /></PageTransition>} />
-          <Route path="/games/buzzword" element={<BuzzWord />} />
-          <Route path="/games/slots" element={<SlotMachine />} />
+          <Route path="/games/buzzword" element={<GameErrorBoundary><BuzzWord /></GameErrorBoundary>} />
+          <Route path="/games/slots" element={<GameErrorBoundary><SlotMachine /></GameErrorBoundary>} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/rankings" element={<Rankings />} />
           <Route path="/scripture" element={<Scripture />} />
           <Route path="/daily-challenge" element={<DailyChallenge />} />
           <Route path="/achievements" element={<Achievements />} />
-          <Route path="/games/dartpop" element={<DartPopBlitz />} />
-          <Route path="/games/coinpusher" element={<CoinPusher />} />
+          <Route path="/games/dartpop" element={<GameErrorBoundary><DartPopBlitz /></GameErrorBoundary>} />
+          <Route path="/games/coinpusher" element={<GameErrorBoundary><CoinPusher /></GameErrorBoundary>} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/gallery" element={<Gallery />} />

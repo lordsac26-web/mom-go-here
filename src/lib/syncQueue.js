@@ -33,6 +33,11 @@ function _notify(status) {
   _listeners.forEach(fn => fn(status));
 }
 
+function isNetworkError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return !navigator.onLine || message.includes("network") || message.includes("fetch") || message.includes("timeout") || message.includes("connection");
+}
+
 /** Add an operation to the offline queue. */
 async function enqueue(entity, action, payload, recordId = null) {
   try {
@@ -49,6 +54,7 @@ async function enqueue(entity, action, payload, recordId = null) {
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
+    _notify({ queued: true });
   } catch {
     // Best-effort — if IndexedDB fails, the operation is lost
   }
@@ -157,9 +163,15 @@ function _openDB() {
 async function safeCreate(entity, payload) {
   if (!navigator.onLine) {
     await enqueue(entity, "create", payload);
-    return null; // caller knows it was queued
+    return null;
   }
-  return base44.entities[entity].create(payload);
+  try {
+    return await base44.entities[entity].create(payload);
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+    await enqueue(entity, "create", payload);
+    return null;
+  }
 }
 
 async function safeUpdate(entity, recordId, payload) {
@@ -167,7 +179,13 @@ async function safeUpdate(entity, recordId, payload) {
     await enqueue(entity, "update", payload, recordId);
     return null;
   }
-  return base44.entities[entity].update(recordId, payload);
+  try {
+    return await base44.entities[entity].update(recordId, payload);
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+    await enqueue(entity, "update", payload, recordId);
+    return null;
+  }
 }
 
 const syncQueue = {

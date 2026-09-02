@@ -1,16 +1,13 @@
 import { RefreshCw } from "lucide-react";
 
-export default function WidgetErrorState({ message = "Something went wrong", onRetry, emoji = "😕" }) {
+export default function WidgetErrorState({ message = "Connection trouble — your progress is saved!", onRetry, emoji = "😕" }) {
   return (
-    <div className="bg-card border border-border rounded-2xl mb-4 shadow px-4 py-5 text-center">
-      <span className="text-3xl block mb-1">{emoji}</span>
-      <p className="text-base font-bold text-foreground mb-1">{message}</p>
+    <div className="mb-4 rounded-2xl border-2 border-primary bg-card px-5 py-6 text-center shadow">
+      <span className="mb-2 block text-4xl">{emoji}</span>
+      <p className="mb-3 text-xl font-bold text-foreground">{message}</p>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="inline-flex items-center gap-1.5 text-primary text-sm font-bold mt-1"
-        >
-          <RefreshCw size={14} /> Tap to retry
+        <button onClick={onRetry} className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-primary px-5 text-lg font-black text-primary-foreground">
+          <RefreshCw size={20} /> Try Again
         </button>
       )}
     </div>

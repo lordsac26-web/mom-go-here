@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookmarkPlus, Check, Volume2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import syncQueue from "@/lib/syncQueue";
 
 export default function HomeInspirationCard({ quote, userEmail, onComplete }) {
   const [saved, setSaved] = useState(false);
@@ -13,7 +13,7 @@ export default function HomeInspirationCard({ quote, userEmail, onComplete }) {
 
   async function save() {
     if (saved) return;
-    await base44.entities.JournalEntry.create({
+    await syncQueue.safeCreate("JournalEntry", {
       user_email: userEmail,
       entry_date: new Date().toISOString().slice(0, 10),
       memory_text: `“${quote.quote}”\n\n— ${quote.author}`,

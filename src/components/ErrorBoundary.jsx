@@ -35,9 +35,9 @@ export default class ErrorBoundary extends Component {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 py-8 bg-background text-foreground">
         <div className="max-w-md text-center space-y-5">
           <div className="text-6xl">😔</div>
-          <h1 className="text-3xl font-black text-primary">Something went wrong</h1>
-          <p className="text-lg text-muted-foreground">
-            Don't worry — your data is safe. Let's get you back on track.
+          <h1 className="text-3xl font-black text-primary">Something went wrong — tap to try again</h1>
+          <p className="text-xl text-muted-foreground">
+            Don't worry — your progress is safe.
           </p>
           <div className="flex flex-col gap-3 mt-6">
             <button

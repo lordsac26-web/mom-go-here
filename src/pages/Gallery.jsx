@@ -7,6 +7,8 @@ import { ArrowLeft, TrendingUp, Clock, Palette } from "lucide-react";
 import GalleryPostCard from "../components/gallery/GalleryPostCard";
 import GalleryCommentSheet from "../components/gallery/GalleryCommentSheet";
 import { toast } from "sonner";
+import WarmLoader from "@/components/WarmLoader";
+import WidgetErrorState from "@/components/WidgetErrorState";
 
 const SORT_OPTIONS = [
   { key: "recent", label: "Recent", icon: Clock },
@@ -24,7 +26,7 @@ export default function Gallery() {
     base44.auth.me().then(u => setCurrentUser(u));
   }, []);
 
-  const { data: posts = [], isLoading } = useQuery({
+  const { data: posts = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["gallery_posts", sortBy],
     queryFn: () => base44.entities.GalleryPost.list(
       sortBy === "popular" ? "-like_count" : "-created_date",
@@ -119,11 +121,11 @@ export default function Gallery() {
         })}
       </div>
 
-      {/* Loading state */}
+      {/* Loading and recovery states */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+        <WarmLoader message="Loading the gallery…" />
+      ) : isError ? (
+        <WidgetErrorState onRetry={refetch} emoji="🖼️" />
       ) : posts.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">🖼️</div>

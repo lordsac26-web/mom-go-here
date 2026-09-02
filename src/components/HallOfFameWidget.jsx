@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Trophy, ChevronRight, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import WidgetErrorState from "./WidgetErrorState";
+import GameSpinner from "./GameSpinner";
 
 const MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -106,7 +107,7 @@ export default function HallOfFameWidget({ userEmail, refreshKey }) {
         <span className="text-base font-bold text-foreground">Hall of Fame</span>
       </div>
       <div className="flex justify-center py-6">
-        <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        <GameSpinner size="sm" />
       </div>
     </div>
   );
@@ -138,8 +139,9 @@ export default function HallOfFameWidget({ userEmail, refreshKey }) {
       {entries.length === 0 ? (
         <div className="text-center py-8 px-4">
           <span className="text-4xl block mb-2">🎮</span>
-          <p className="text-sm font-bold text-muted-foreground">No scores yet!</p>
-          <p className="text-xs text-muted-foreground">Play games to earn your spot.</p>
+          <p className="text-lg font-bold text-foreground">No scores yet!</p>
+          <p className="text-base text-muted-foreground">Play your first game to earn your spot.</p>
+          <Link to="/games" className="mt-3 inline-flex min-h-[44px] items-center rounded-xl bg-primary px-4 font-black text-primary-foreground">Play Your First Game</Link>
         </div>
       ) : (
         <div className="p-2 space-y-1">

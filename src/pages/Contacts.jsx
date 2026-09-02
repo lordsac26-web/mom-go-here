@@ -6,6 +6,7 @@ import SubPageHeader from "../components/SubPageHeader";
 import WarmLoader from "../components/WarmLoader";
 import EventForm from "../components/EventForm";
 import EventList from "../components/EventList";
+import WidgetErrorState from "../components/WidgetErrorState";
 
 const RELATIONSHIPS = ["Family", "Friend", "Neighbor", "Coworker", "Other"];
 
@@ -125,6 +126,7 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [tab, setTab] = useState("contacts");
@@ -139,15 +141,21 @@ export default function Contacts() {
   }, [user]);
 
   async function loadContacts() {
-    const list = await base44.entities.Contact.filter({ user_email: user.email });
-    // Sort by upcoming birthday
-    list.sort((a, b) => {
-      if (!a.birthday) return 1;
-      if (!b.birthday) return -1;
-      return getDaysUntilBirthday(a.birthday) - getDaysUntilBirthday(b.birthday);
-    });
-    setContacts(list);
-    setLoading(false);
+    setError(false);
+    try {
+      const list = await base44.entities.Contact.filter({ user_email: user.email });
+      list.sort((a, b) => {
+        if (!a.birthday) return 1;
+        if (!b.birthday) return -1;
+        return getDaysUntilBirthday(a.birthday) - getDaysUntilBirthday(b.birthday);
+      });
+      setContacts(list);
+    } catch (loadError) {
+      console.error("Could not load contacts:", loadError);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSave(data) {
@@ -172,8 +180,13 @@ export default function Contacts() {
   }
 
   async function loadEvents() {
-    const list = await base44.entities.PersonalEvent.filter({ user_email: user.email });
-    setEvents(list);
+    try {
+      const list = await base44.entities.PersonalEvent.filter({ user_email: user.email });
+      setEvents(list);
+    } catch (loadError) {
+      console.error("Could not load events:", loadError);
+      setError(true);
+    }
   }
 
   async function handleEventSave(data) {
@@ -204,6 +217,7 @@ export default function Contacts() {
   }
 
   if (loading) return <WarmLoader message="Loading your contacts..." />;
+  if (error) return <div className="min-h-screen px-4 py-12"><WidgetErrorState onRetry={() => { setLoading(true); loadContacts(); loadEvents(); }} emoji="👥" /></div>;
 
   return (
     <div className="min-h-screen px-4 py-6 pb-24">

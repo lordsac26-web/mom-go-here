@@ -14,6 +14,7 @@ import GameFilter from "../components/rankings/GameFilter";
 import PlayerRankCard from "../components/rankings/PlayerRankCard";
 import GameLeaderboard from "../components/rankings/GameLeaderboard";
 import UserGameBreakdown from "../components/rankings/UserGameBreakdown";
+import WidgetErrorState from "../components/WidgetErrorState";
 
 const MARQUEE_ITEMS = [
   "🏆 TOP PLAYERS",
@@ -35,6 +36,7 @@ export default function Rankings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const [updated, setUpdated] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const { reportMissionProgress } = useDailyMissions();
@@ -45,10 +47,17 @@ export default function Rankings() {
   }, []);
 
   async function loadScores() {
-    const res = await base44.functions.invoke('getLeaderboardScores', {});
-    setData(res.data);
-    setLoading(false);
-    setRefreshing(false);
+    setError(false);
+    try {
+      const res = await base44.functions.invoke('getLeaderboardScores', {});
+      setData(res.data);
+    } catch (loadError) {
+      console.error("Could not load rankings:", loadError);
+      setError(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
   async function handleRefresh() {
@@ -79,6 +88,7 @@ export default function Rankings() {
   }, [data, selectedGame]);
 
   if (loading) return <WarmLoader message="Loading rankings..." />;
+  if (error) return <div className="min-h-screen px-4 py-12"><WidgetErrorState onRetry={() => { setLoading(true); loadScores(); }} emoji="🏆" /></div>;
 
   const player = data?.player || {};
 

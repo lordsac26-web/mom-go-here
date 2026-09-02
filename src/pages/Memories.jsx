@@ -45,7 +45,7 @@ export default function Memories() {
     } catch (err) {
       if (signal?.aborted) return;
       console.error("Failed to load journal entries:", err);
-      setError("Could not load your memories. Please try again.");
+      setError("Connection trouble — your progress is saved!");
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
